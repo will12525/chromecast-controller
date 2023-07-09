@@ -27,7 +27,7 @@ if [ $ERR_CODE -eq 0 ]; then
         ERR_CODE=1
         echo "FAILED TO STOP $MEDIA_DRIVE_WEBPAGE_SERVICE: ${RESULT}"
     else
-        rm $SYSTEMCTL_DIR/chromecast_controller.service
+        rm $SYSTEMCTL_DIR/media_drive_as_webpage.service
     fi
 fi
 
@@ -41,7 +41,7 @@ if [ $ERR_CODE -eq 0 ]; then
         ERR_CODE=1
         echo "FAILED TO STOP $CHROMECAST_CONTROLLER_SERVICE: ${RESULT}"
     else
-        rm $SYSTEMCTL_DIR/media_drive_as_webpage.service
+        rm $SYSTEMCTL_DIR/chromecast_controller.service
     fi
 fi
 

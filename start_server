@@ -9,7 +9,7 @@ PORT=5001
 if [ ! -d "${WORKSPACE}/.venv/" ]; then
     echo "Creating virtual environment ${WORKSPACE}/.venv"
     # Create virtual environment
-    python3.9 -m venv $WORKSPACE/.venv
+    python3 -m venv $WORKSPACE/.venv
 fi
 
 # Source virtual environement
