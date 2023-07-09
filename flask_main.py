@@ -1,15 +1,7 @@
-import os
-import signal
-import sys
-from functools import partial
-from multiprocessing import Process
-import subprocess
-# from mysql.connector import Error, connect
+
 from enum import Enum
 from flask import Flask, request, jsonify, redirect, url_for, current_app, render_template
-
 from main import MediaURLBuilder, MyMediaDevice, ChromecastHandler, CommandList
-
 
 app = Flask(__name__)
 
@@ -34,6 +26,8 @@ current_episode = ""
 print("HELLO WORLD!")
 
 path_type_strings = ["tv_show", "tv_show_season", "tv_show_season_episode"]
+
+
 class PathType(Enum):
     TV_SHOW = 0
     TV_SHOW_SEASON = 1
@@ -59,7 +53,8 @@ def build_chromecast_menu():
     chromecast_buttons += '</div>'
 
     connected_chromecasts = '<div style="float:left; margin:10px">'
-    connected_chromecasts += f'<select name="select_connected_to_chromecast" id="select_connected_to_chromecast_id" size=4>'
+    connected_chromecasts += f'<select name="select_connected_to_chromecast" ' \
+                             f'id="select_connected_to_chromecast_id" size=4>'
     connected_devices_str = chromecast_handler.get_connected_devices_list_str()
     if connected_devices_str:
         for index, item_str in enumerate(connected_devices_str):
@@ -69,15 +64,17 @@ def build_chromecast_menu():
     return scanned_chromecasts + chromecast_buttons + connected_chromecasts
 
 
-def build_select_list(set_selected, name:PathType, list_to_convert, selected_index=-1):
-    # ret_select_html = f'<div style="float:left; margin:10px"><select" name="{name}" size="{len(list_to_convert)}" id="select_{name}_id">'
+def build_select_list(set_selected, name: PathType, list_to_convert, selected_index=-1):
+    # ret_select_html = f'<div style="float:left; margin:10px"><select" name="{name}" ' \
+    #                   f'size="{len(list_to_convert)}" id="select_{name}_id">'
     # ret_select_html = f'<div style="float:left; margin:10px"><select" name="test" size="30">'
     add_autofocus = ""
     if set_selected:
         add_autofocus = "autofocus"
 
     ret_select_html = '<div style="float:left; margin:10px">'
-    ret_select_html += f'<select {add_autofocus} name="select_{name.get_str()}" onchange="this.form.submit()" id="select_{name.get_str()}_id" size=30>'
+    ret_select_html += f'<select {add_autofocus} name="select_{name.get_str()}" onchange="this.form.submit()" ' \
+                       f'id="select_{name.get_str()}_id" size=30>'
 
     for index, item_str in enumerate(list_to_convert):
         if selected_index == index:
@@ -97,20 +94,26 @@ def build_tv_show_name_list(set_selected, selected_tv_show_id=-1):
 
 def build_tv_show_season_name_list(set_selected, tv_show_id, selected_tv_show_season_id=-1):
     if tv_show_season_dir_list := url_builder.get_tv_show_season_dir_list(tv_show_id):
-        return build_select_list(set_selected, PathType.TV_SHOW_SEASON, tv_show_season_dir_list, selected_tv_show_season_id)
+        return build_select_list(set_selected, PathType.TV_SHOW_SEASON, tv_show_season_dir_list,
+                                 selected_tv_show_season_id)
 
 
-def build_tv_show_season_episode_name_list(set_selected, tv_show_id, tv_show_season_id, selected_tv_show_season_episode_id=-1):
+def build_tv_show_season_episode_name_list(set_selected, tv_show_id, tv_show_season_id,
+                                           selected_tv_show_season_episode_id=-1):
     if tv_show_season_episode_dir_list := url_builder.get_tv_show_season_show_dir_list(tv_show_id, tv_show_season_id):
-        return build_select_list(set_selected, PathType.TV_SHOW_SEASON_EPISODE, tv_show_season_episode_dir_list, selected_tv_show_season_episode_id)
+        return build_select_list(set_selected, PathType.TV_SHOW_SEASON_EPISODE, tv_show_season_episode_dir_list,
+                                 selected_tv_show_season_episode_id)
 
 
 def build_visual_selector(tv_show_id, tv_show_season_id, tv_show_season_episode_id, changed_type):
     print(changed_type.get_str())
     episode_select = f'<div style="float:left; margin:10px"><form action="{url_for("main_index")}" method="post">'
     episode_select += str(build_tv_show_name_list(PathType.TV_SHOW == changed_type, tv_show_id))
-    episode_select += str(build_tv_show_season_name_list(PathType.TV_SHOW_SEASON == changed_type, tv_show_id, tv_show_season_id))
-    episode_select += str(build_tv_show_season_episode_name_list(PathType.TV_SHOW_SEASON_EPISODE == changed_type, tv_show_id, tv_show_season_id, tv_show_season_episode_id))
+    episode_select += str(build_tv_show_season_name_list(PathType.TV_SHOW_SEASON == changed_type, tv_show_id,
+                                                         tv_show_season_id))
+    episode_select += str(build_tv_show_season_episode_name_list(PathType.TV_SHOW_SEASON_EPISODE == changed_type,
+                                                                 tv_show_id, tv_show_season_id,
+                                                                 tv_show_season_episode_id))
 
     button_dict = {"start": "Start", "pause": "Pause", "stop": "Stop", "play": "Play", "skip": "Skip"}
 
@@ -124,8 +127,6 @@ def build_visual_selector(tv_show_id, tv_show_season_id, tv_show_season_episode_
     #                    <input type="submit" name="skip" value="skip"></form>'
     episode_select += build_chromecast_menu()
     episode_select += '</form></div>'
-
-
 
     return episode_select
 
@@ -142,7 +143,8 @@ def pause_cast():
 
 @app.route('/', methods=['GET', 'POST'])
 def main_index():
-    global current_episode, previous_selected_tv_show, previous_selected_tv_show_season, previous_selected_tv_show_season_episode
+    global current_episode, previous_selected_tv_show, previous_selected_tv_show_season, \
+        previous_selected_tv_show_season_episode
     print(request.form)
 
     tv_show_id = 0
@@ -160,19 +162,24 @@ def main_index():
             print(f"VALID tv_show_season_id: {tv_show_id}")
         if POST_tv_show_season_id:
             POST_tv_show_id_season_int = int(POST_tv_show_season_id)
-            tv_show_season_id = POST_tv_show_id_season_int if url_builder.valid_tv_show_season_id(tv_show_id, POST_tv_show_id_season_int) else 0
+            tv_show_season_id = POST_tv_show_id_season_int \
+                if url_builder.valid_tv_show_season_id(tv_show_id, POST_tv_show_id_season_int) else 0
             print(f"VALID tv_show_season_id: {tv_show_season_id}")
         if POST_tv_show_season_episode_id:
             POST_tv_show_id_season_episode_int = int(POST_tv_show_season_episode_id)
-            tv_show_season_episode_id = POST_tv_show_id_season_episode_int if url_builder.valid_tv_show_season_episode_id(tv_show_id, tv_show_season_id, POST_tv_show_id_season_episode_int) else 0
+            tv_show_season_episode_id = POST_tv_show_id_season_episode_int \
+                if url_builder.valid_tv_show_season_episode_id(tv_show_id, tv_show_season_id,
+                                                               POST_tv_show_id_season_episode_int) else 0
             print(f"VALID tv_show_season_episode_id: {tv_show_season_episode_id}")
 
         if request.form.get('start'):
-            # current_episode = url_builder.get_tv_show_season_episode_url(tv_show_id, tv_show_season_id, tv_show_season_episode_id)
+            # current_episode = url_builder.get_tv_show_season_episode_url(tv_show_id, tv_show_season_id,
+            #                                                              tv_show_season_episode_id)
             print(f"Playing episode: {current_episode}")
             # my_media_device.play_url(current_episode)
             # my_media_device.play_media_drive_id(tv_show_id, tv_show_season_id, tv_show_season_episode_id)
-            current_episode = chromecast_handler.play_from_media_drive(tv_show_id, tv_show_season_id, tv_show_season_episode_id)
+            current_episode = chromecast_handler.play_from_media_drive(tv_show_id, tv_show_season_id,
+                                                                       tv_show_season_episode_id)
             # current_episode = my_media_device.get_url()
             print("START PRESSED")
 
@@ -225,4 +232,3 @@ if __name__ == "__main__":
     app.run(debug=True, host='0.0.0.0', port=6000)
 
     # server = Process(target=app.run)
-

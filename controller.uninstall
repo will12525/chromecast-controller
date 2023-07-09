@@ -1,11 +1,7 @@
 #!/bin/bash
 
-WORKSPACE=`pwd`
-SERVICES_DIR=${WORKSPACE}/system_services
 SYSTEMCTL_DIR=/etc/systemd/system/
-#SYSTEMCTL_DIR=${WORKSPACE}/test_install
 
-CONFIG_FILE=config.cfg
 CHROMECAST_CONTROLLER_SERVICE=chromecast_controller.service
 MEDIA_DRIVE_WEBPAGE_SERVICE=media_drive_as_webpage.service
 
@@ -17,7 +13,7 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 
-# Start the media drive webapge
+# Start the media drive webpage
 if [ $ERR_CODE -eq 0 ]; then
     echo "Uninstall $MEDIA_DRIVE_WEBPAGE_SERVICE"
     if [ -f "$SYSTEMCTL_DIR/media_drive_as_webpage.service" ]; then

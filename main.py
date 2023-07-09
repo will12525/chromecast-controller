@@ -3,7 +3,6 @@ import pychromecast
 import os
 import traceback
 import threading
-from pychromecast.controllers.receiver import CastStatus
 from enum import Enum
 
 # provide list of shows
@@ -48,13 +47,15 @@ class EpisodeInfo:
                                                                       self.tv_show_season_episode_id)
 
     def get_url(self):
-        return self.media_url_builder.get_tv_show_season_episode_url(self.tv_show_id, self.tv_show_season_id, self.tv_show_season_episode_id)
+        return self.media_url_builder.get_tv_show_season_episode_url(self.tv_show_id, self.tv_show_season_id,
+                                                                     self.tv_show_season_episode_id)
 
     def increment_episode(self):
         new_tv_show_season_id = self.tv_show_season_id + 1
         new_tv_show_season_episode_id = self.tv_show_season_episode_id + 1
 
-        if self.media_url_builder.valid_tv_show_season_episode_id(self.tv_show_id, self.tv_show_season_id, new_tv_show_season_episode_id):
+        if self.media_url_builder.valid_tv_show_season_episode_id(self.tv_show_id, self.tv_show_season_id,
+                                                                  new_tv_show_season_episode_id):
             self.tv_show_season_episode_id = new_tv_show_season_episode_id
         elif self.media_url_builder.valid_tv_show_season_id(self.tv_show_id, new_tv_show_season_episode_id):
             self.tv_show_season_id = new_tv_show_season_id
@@ -117,7 +118,8 @@ class MediaURLBuilder:
             return self.get_tv_show_season_dir_list(tv_show_id)[tv_show_season_id]
 
     def get_tv_show_season_dir_path(self, tv_show_id, tv_show_season_id):
-        return f"{self.get_tv_show_dir_path(tv_show_id)}/{self.get_tv_show_season_dir_name(tv_show_id, tv_show_season_id)}"
+        return f"{self.get_tv_show_dir_path(tv_show_id)}/" \
+               f"{self.get_tv_show_season_dir_name(tv_show_id, tv_show_season_id)}"
 
     def get_tv_show_season_show_dir_list(self, tv_show_id, tv_show_season_id):
         return get_dir_list(self.get_tv_show_season_dir_path(tv_show_id, tv_show_season_id))
@@ -131,17 +133,22 @@ class MediaURLBuilder:
                self.get_tv_show_season_show_name(tv_show_id, tv_show_season_id, tv_show_season_episode_id)
 
     def get_tv_show_season_episode_url(self, tv_show_id, tv_show_season_id, tv_show_season_episode_id):
-        return f"{SERVER_URL_TV_SHOWS}{self.get_tv_show_dir_name(tv_show_id)}/{self.get_tv_show_season_dir_name(tv_show_id, tv_show_season_id)}/{self.get_tv_show_season_show_name(tv_show_id, tv_show_season_id, tv_show_season_episode_id)}"
+        return f"{SERVER_URL_TV_SHOWS}" \
+               f"{self.get_tv_show_dir_name(tv_show_id)}/" \
+               f"{self.get_tv_show_season_dir_name(tv_show_id, tv_show_season_id)}/" \
+               f"{self.get_tv_show_season_show_name(tv_show_id, tv_show_season_id, tv_show_season_episode_id)}"
 
     def valid_tv_show_id(self, tv_show_id):
         return -1 < tv_show_id < len(self.get_tv_show_dir_list())
 
     def valid_tv_show_season_id(self, tv_show_id, tv_show_season_id):
-        return self.valid_tv_show_id(tv_show_id) and (-1 < tv_show_season_id < len(self.get_tv_show_season_dir_list(tv_show_id)))
+        return self.valid_tv_show_id(tv_show_id) \
+            and (-1 < tv_show_season_id < len(self.get_tv_show_season_dir_list(tv_show_id)))
 
     def valid_tv_show_season_episode_id(self, tv_show_id, tv_show_season_id, tv_show_season_episode_id):
         return self.valid_tv_show_season_id(tv_show_id, tv_show_season_id) and (
-                    -1 < tv_show_season_episode_id < len(self.get_tv_show_season_show_dir_list(tv_show_id, tv_show_season_id)))
+                    -1 < tv_show_season_episode_id < len(self.get_tv_show_season_show_dir_list(tv_show_id,
+                                                                                               tv_show_season_id)))
 
 
 class CommandList(Enum):
@@ -154,9 +161,8 @@ class CommandList(Enum):
     CMD_PLAY_NEXT = 6
     CMD_PLAY_PREV = 7
 
-# class MyMediaDevice(threading.Thread):
-class MyMediaDevice:
 
+class MyMediaDevice:
 
     DEFAULT_MEDIA_TYPE = "video/mp4"
     media_start_time = None
@@ -166,9 +172,6 @@ class MyMediaDevice:
     current_media = None
     last_time_check = 0
     last_state = None
-
-# New Stuff
-
 
     cmd_data_dict = {}
     ID_STR = ""
@@ -238,8 +241,8 @@ class MyMediaDevice:
 
 # -------------------------------------------------------------------
 
-    def interpret_char_cmd(self, user_input: int):
-        print(f"Provided input: {user_input}")
+    # def interpret_char_cmd(self, user_input: int):
+    #     print(f"Provided input: {user_input}")
         #
         # if user_input == 1:
         #     self.device_wait()
@@ -248,7 +251,8 @@ class MyMediaDevice:
         #     # self.play_url(
         #     #     SERVER_URL_TV_SHOWS + url_builder.get_tv_show_season_episode_url(selected_tv_show_id,
         #     #                                                                      selected_tv_show_season_id,
-        #     #                                                                      selected_tv_show_season_episode_id))
+        #     #                                                                      selected_tv_show_season_episode_id
+        #           ))
         # elif user_input == 3:
         #     self.play()
         # elif user_input == 4:
@@ -310,6 +314,7 @@ class ChromecastHandler(threading.Thread):
     last_scanned_devices = None
     initialized = False
     last_scan_time = 0
+    browser = None
 
     def __init__(self):
         threading.Thread.__init__(self)
@@ -391,11 +396,13 @@ class MyThread(threading.Thread):
     new_input = False
     user_input = None
     check_user_input = False
+    thread_name = None
+    thread_id = None
 
-    def __init__(self, thread_name, thread_ID):
+    def __init__(self, thread_name, thread_id):
         threading.Thread.__init__(self)
         self.thread_name = thread_name
-        self.thread_ID = thread_ID
+        self.thread_id = thread_id
         self.check_user_input = True
         # helper function to execute the threads
 
@@ -422,47 +429,48 @@ class MyThread(threading.Thread):
                 break
 
 
-if __name__ == "__main__":
-
-    selected_tv_show_id = TV_SHOW_ID
-    selected_tv_show_season_id = TV_SHOW_SEASON_ID + TV_SHOW_SEASON_ID_OFFSET
-    selected_tv_show_season_episode_id = TV_SHOW_SEASON_EPISODE_ID + TV_SHOW_SEASON_EPISODE_ID_OFFSET
-
-    url_builder = MediaURLBuilder()
-
-    tv_show_str = url_builder.get_tv_show_dir_name(selected_tv_show_id)
-    tv_show_season_str = url_builder.get_tv_show_season_dir_name(selected_tv_show_id, selected_tv_show_season_id)
-    tv_show_season_episode_str = url_builder.get_tv_show_season_show_name(selected_tv_show_id, selected_tv_show_season_id, selected_tv_show_season_episode_id)
-
-    print(tv_show_str)
-    print(tv_show_season_str)
-    print(tv_show_season_episode_str)
-
-    selected_episode_url = url_builder.get_tv_show_season_episode_url(selected_tv_show_id, selected_tv_show_season_id, selected_tv_show_season_episode_id)
-
-    print(selected_episode_url)
-
-    chromecast_handler = ChromecastHandler()
-    chromecast_handler.start()
-
-    mc = chromecast_handler.connect_to_chromecast(CHROMECAST_DEVICE_LIVING_ROOM_STR)
-
-    mc.play_url(selected_episode_url)
-
-    thread1 = MyThread("Input_Handler", 1)
-    thread1.start()
-
-    while True:
-        try:
-            if thread1.new_user_input():
-                mc.interpret_char_cmd(thread1.get_user_input())
-            time.sleep(0.1)
-        except KeyboardInterrupt:
-            break
-
-    thread1.stop()
-    mc.stop_scanner()
-
-    print("PROGRAM END")
-
-
+# if __name__ == "__main__":
+#
+#     selected_tv_show_id = TV_SHOW_ID
+#     selected_tv_show_season_id = TV_SHOW_SEASON_ID + TV_SHOW_SEASON_ID_OFFSET
+#     selected_tv_show_season_episode_id = TV_SHOW_SEASON_EPISODE_ID + TV_SHOW_SEASON_EPISODE_ID_OFFSET
+#
+#     url_builder = MediaURLBuilder()
+#
+#     tv_show_str = url_builder.get_tv_show_dir_name(selected_tv_show_id)
+#     tv_show_season_str = url_builder.get_tv_show_season_dir_name(selected_tv_show_id, selected_tv_show_season_id)
+#     tv_show_season_episode_str = url_builder.get_tv_show_season_show_name(selected_tv_show_id,
+#                                                                           selected_tv_show_season_id,
+#                                                                           selected_tv_show_season_episode_id)
+#
+#     print(tv_show_str)
+#     print(tv_show_season_str)
+#     print(tv_show_season_episode_str)
+#
+#     selected_episode_url = url_builder.get_tv_show_season_episode_url(selected_tv_show_id, selected_tv_show_season_id,
+#                                                                       selected_tv_show_season_episode_id)
+#
+#     print(selected_episode_url)
+#
+#     chromecast_handler = ChromecastHandler()
+#     chromecast_handler.start()
+#
+#     mc = chromecast_handler.connect_to_chromecast(CHROMECAST_DEVICE_LIVING_ROOM_STR)
+#
+#     mc.play_url(selected_episode_url)
+#
+#     thread1 = MyThread("Input_Handler", 1)
+#     thread1.start()
+#
+#     while True:
+#         try:
+#             if thread1.new_user_input():
+#                 mc.interpret_char_cmd(thread1.get_user_input())
+#             time.sleep(0.1)
+#         except KeyboardInterrupt:
+#             break
+#
+#     thread1.stop()
+#     mc.stop_scanner()
+#
+#     print("PROGRAM END")

@@ -1,9 +1,8 @@
 #!/bin/bash
 
-WORKSPACE=`pwd`
+WORKSPACE=$(pwd)
 SERVICES_DIR=${WORKSPACE}/system_services
 SYSTEMCTL_DIR=/etc/systemd/system/
-#SYSTEMCTL_DIR=${WORKSPACE}/test_install
 
 CONFIG_FILE=config.cfg
 CHROMECAST_CONTROLLER_SERVICE=chromecast_controller.service
@@ -27,7 +26,8 @@ fi
 if [ $ERR_CODE -eq 0 ]; then
     if [ -f "$WORKSPACE/$CONFIG_FILE" ]; then
         # Source the config file
-        source $WORKSPACE/$CONFIG_FILE
+        # shellcheck source=./config.cfg
+        source "$WORKSPACE/$CONFIG_FILE"
         RESULT=$?
         if [ $RESULT != 0 ]; then
             ERR_CODE=1
@@ -40,7 +40,7 @@ if [ $ERR_CODE -eq 0 ]; then
     fi
 fi
 
-# Install the media drive wepbage service and update the media drive dir
+# Install the media drive webpage service and update the media drive dir
 if [ $ERR_CODE -eq 0 ]; then
     if [ -f "$SERVICES_DIR/$MEDIA_DRIVE_WEBPAGE_SERVICE" ]; then
         cp "$SERVICES_DIR/$MEDIA_DRIVE_WEBPAGE_SERVICE" $SYSTEMCTL_DIR
@@ -52,7 +52,7 @@ if [ $ERR_CODE -eq 0 ]; then
     fi
 fi
 
-# Install the chromecast controll service and update the install dir
+# Install the chromecast control service and update the install dir
 if [ $ERR_CODE -eq 0 ]; then
     if [ -f "$SERVICES_DIR/$CHROMECAST_CONTROLLER_SERVICE" ]; then
         cp "$SERVICES_DIR/$CHROMECAST_CONTROLLER_SERVICE" $SYSTEMCTL_DIR
@@ -74,7 +74,7 @@ if [ $ERR_CODE -eq 0 ]; then
     fi
 fi
 
-# Start the media drive webapge
+# Start the media drive webpage
 if [ $ERR_CODE -eq 0 ]; then
     systemctl start $MEDIA_DRIVE_WEBPAGE_SERVICE
     RESULT=$?
@@ -84,7 +84,7 @@ if [ $ERR_CODE -eq 0 ]; then
     fi
 fi
 
-# Enable the media drive webapge
+# Enable the media drive webpage
 if [ $ERR_CODE -eq 0 ]; then
     systemctl enable $MEDIA_DRIVE_WEBPAGE_SERVICE
     RESULT=$?
