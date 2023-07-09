@@ -1,9 +1,9 @@
 #!/bin/bash
 
 
-TEST_ENV=$1
+PRODUCTION_ENV=$1
 WORKSPACE=`pwd`
-PORT=5000
+PORT=5001
 
 # Check if .venv exists
 if [ ! -d "${WORKSPACE}/.venv/" ]; then
@@ -21,16 +21,11 @@ pip install -r $WORKSPACE/requirements.txt
 
 
 # Check if using test environement
-echo "Checking if test server"
-if [ "$TEST_ENV" = "test" ]; then
+echo "Checking server type server"
+if [ "$PRODUCTION_ENV" = "production" ]; then
   echo "USING PRODUCTION PORT"
-  PORT=5001
+  PORT=5000
 fi
-
-#Activate virtual env
-#. $WORKSPACE/media_controller_python_venv/bin/activate
-
-#python3 -m pip install -r $WORKSPACE/requirements.txt
 
 # Point to the main flask applicaiton
 echo "Setting flask app"

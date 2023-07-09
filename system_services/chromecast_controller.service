@@ -10,7 +10,7 @@ Restart=always
 RestartSec=1
 User=willow
 WorkingDirectory=INSTALL_DIR
-ExecStart=/bin/bash start_server
+ExecStart=/bin/bash start_server production
 
 [Install]
 WantedBy=multi-user.target
