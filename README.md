@@ -1,5 +1,15 @@
-To run application
+## Setup/Install the necessary system services
+sudo ./controller.install
+
+## To run locally
 ./start_server
 
-To run test server
-./start_server test
+
+### Use systemctl to control this application
+services: 
+ * chromecast_controller.service
+ * media_drive_as_webpage.service
+
+sudo systemctl stop <service>
+sudo systemctl start <service>
+sudo systemctl restart <service>

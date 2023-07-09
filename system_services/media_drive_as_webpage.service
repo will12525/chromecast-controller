@@ -9,7 +9,7 @@ Type=simple
 Restart=always
 RestartSec=1
 User=willow
-WorkingDirectory=/media/hdd1/plex_media
+WorkingDirectory=MEDIA_DIR
 ExecStart=http-server -p 8000
 
 [Install]

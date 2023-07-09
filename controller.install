@@ -1,0 +1,114 @@
+#!/bin/bash
+
+WORKSPACE=`pwd`
+SERVICES_DIR=${WORKSPACE}/system_services
+SYSTEMCTL_DIR=/etc/systemd/system/
+#SYSTEMCTL_DIR=${WORKSPACE}/test_install
+
+CONFIG_FILE=config.cfg
+CHROMECAST_CONTROLLER_SERVICE=chromecast_controller.service
+MEDIA_DRIVE_WEBPAGE_SERVICE=media_drive_as_webpage.service
+
+ERR_CODE=0
+
+if [[ $EUID -ne 0 ]]; then
+    ERR_CODE=1
+    echo "RUN AS ROOT"
+fi
+
+
+# Check if services folder exists
+if [ $ERR_CODE -eq 0 ] && [ ! -d "${SERVICES_DIR}" ]; then
+    ERR_CODE=1
+    echo "MISSING: ${SERVICES_DIR}"
+fi
+
+# Check if config file exists
+if [ $ERR_CODE -eq 0 ]; then
+    if [ -f "$WORKSPACE/$CONFIG_FILE" ]; then
+        # Source the config file
+        source $WORKSPACE/$CONFIG_FILE
+    else
+        ERR_CODE=1
+        echo "MISSING: ${WORKSPACE}/${CONFIG_FILE}"
+    fi
+fi
+
+# Install the media drive wepbage service and update the media drive dir
+if [ $ERR_CODE -eq 0 ]; then
+    if [ -f "$SERVICES_DIR/$MEDIA_DRIVE_WEBPAGE_SERVICE" ]; then
+        cp "$SERVICES_DIR/$MEDIA_DRIVE_WEBPAGE_SERVICE" $SYSTEMCTL_DIR
+        # Update the service workspace to this repo location
+        sed -i "s,MEDIA_DIR,${MEDIA_DIR},g" "$SYSTEMCTL_DIR/$MEDIA_DRIVE_WEBPAGE_SERVICE"
+    else
+        ERR_CODE=1
+        echo "MISSING: ${SERVICES_DIR}/${MEDIA_DRIVE_WEBPAGE_SERVICE}"
+    fi
+fi
+
+# Install the chromecast controll service and update the install dir
+if [ $ERR_CODE -eq 0 ]; then
+    if [ -f "$SERVICES_DIR/$CHROMECAST_CONTROLLER_SERVICE" ]; then
+        cp "$SERVICES_DIR/$CHROMECAST_CONTROLLER_SERVICE" $SYSTEMCTL_DIR
+        # Update the service workspace to this repo location
+        sed -i "s,INSTALL_DIR,${WORKSPACE},g" "$SYSTEMCTL_DIR/$CHROMECAST_CONTROLLER_SERVICE"
+    else
+        ERR_CODE=1
+        echo "MISSING: ${SERVICES_DIR}/${CHROMECAST_CONTROLLER_SERVICE}"
+    fi
+fi
+
+# Reload the system service
+if [ $ERR_CODE -eq 0 ]; then
+    systemctl daemon-reload
+    RESULT=$?
+    if [ $RESULT != 0 ]; then
+        ERR_CODE=1
+        echo "FAILED TO RESTART SYSTEMCTL: ${RESULT}"
+    fi
+fi
+
+# Start the media drive webapge
+if [ $ERR_CODE -eq 0 ]; then
+    systemctl start $MEDIA_DRIVE_WEBPAGE_SERVICE
+    RESULT=$?
+    if [ $RESULT != 0 ]; then
+        ERR_CODE=1
+        echo "FAILED TO START $MEDIA_DRIVE_WEBPAGE_SERVICE: ${RESULT}"
+    fi
+fi
+
+# Enable the media drive webapge
+if [ $ERR_CODE -eq 0 ]; then
+    systemctl enable $MEDIA_DRIVE_WEBPAGE_SERVICE
+    RESULT=$?
+    if [ $RESULT != 0 ]; then
+        ERR_CODE=1
+        echo "FAILED TO ENABLE $MEDIA_DRIVE_WEBPAGE_SERVICE: ${RESULT}"
+    fi
+fi
+
+# Start the chromecast controller
+if [ $ERR_CODE -eq 0 ]; then
+    systemctl start $CHROMECAST_CONTROLLER_SERVICE
+    RESULT=$?
+    if [ $RESULT != 0 ]; then
+        ERR_CODE=1
+        echo "FAILED TO START $CHROMECAST_CONTROLLER_SERVICE: ${RESULT}"
+    fi
+fi
+
+# Enable the chromecast controller
+if [ $ERR_CODE -eq 0 ]; then
+    systemctl enable $CHROMECAST_CONTROLLER_SERVICE
+    RESULT=$?
+    if [ $RESULT != 0 ]; then
+        ERR_CODE=1
+        echo "FAILED TO ENABLE $CHROMECAST_CONTROLLER_SERVICE: ${RESULT}"
+    fi
+fi
+
+if [ $ERR_CODE -eq 0 ]; then
+    echo "INSTALL SUCCESS"
+fi
+
