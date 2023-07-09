@@ -214,10 +214,10 @@ def main_index():
         print("SEASON CHANGED")
         changed_type = PathType.TV_SHOW_SEASON
         previous_selected_tv_show_season = tv_show_season_id
-    elif previous_selected_tv_show_season_episode != tv_show_season_episode_id:
-        print("EPISODE CHANGED")
-        changed_type = PathType.TV_SHOW_SEASON_EPISODE
-        previous_selected_tv_show_season_episode = tv_show_season_episode_id
+    # elif previous_selected_tv_show_season_episode != tv_show_season_episode_id:
+    #     print("EPISODE CHANGED")
+    #     changed_type = PathType.TV_SHOW_SEASON_EPISODE
+    #     previous_selected_tv_show_season_episode = tv_show_season_episode_id
 
     html_form = build_visual_selector(tv_show_id, tv_show_season_id, tv_show_season_episode_id, changed_type)
     html_form += current_episode

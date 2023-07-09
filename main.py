@@ -169,7 +169,7 @@ class MyMediaDevice:
     player_state = None
     initialized = False
     current_url = ""
-    current_media = None
+    current_episode_info = None
     last_time_check = 0
     last_state = None
 
@@ -206,10 +206,11 @@ class MyMediaDevice:
         self.media_controller.block_until_active()
         self.interpret_enum_cmd(CommandList.CMD_PLAY)
 
-    def play_media_drive(self, current_media):
+    def play_media_drive(self, current_episode_info):
         # self.current_media = EpisodeInfo(tv_show_id, tv_show_season_id, tv_show_season_episode_id)
-        self.current_media = current_media
-        self.play_url(current_media.get_url())
+        self.current_episode_info = current_episode_info
+        # print(f"play_media_drive: {current_media.get_url()}")
+        self.play_url(current_episode_info.get_url())
 
     # def play_media_drive_id(self, tv_show_id, tv_show_season_id, tv_show_season_episode_id):
     #     current_media = EpisodeInfo(tv_show_id, tv_show_season_id, tv_show_season_episode_id)
@@ -224,8 +225,8 @@ class MyMediaDevice:
         self.cast_device.media_controller.play_media(url, self.DEFAULT_MEDIA_TYPE, enqueue=True)
 
     def get_url(self):
-        if self.current_media:
-            return self.current_media.get_url()
+        if self.current_episode_info:
+            return self.current_episode_info.get_url()
         return self.current_url
 
     def seek(self):
@@ -285,15 +286,15 @@ class MyMediaDevice:
                 print("NEW PLAYER STATE:", self.player_state)
 
                 # If we have a media object than we can auto increment to the next episode
-                if self.current_media:
+                if self.current_episode_info:
                     # If we went into IDLE after playing
                     if self.player_state == "IDLE" and self.last_state != "PAUSED":
-                        if self.current_media.increment_episode():
+                        if self.current_episode_info.increment_episode():
                             print(f"Adding next episode: {current_device_timestamp}")
-                            self.play_url(self.current_media.get_url())
+                            self.play_url(self.current_episode_info.get_url())
                     # If we started playing, print the current media url
                     if self.player_state == "PLAYING":
-                        print(f"NOW PLAYING: {self.current_media.get_url()}")
+                        print(f"NOW PLAYING: {self.current_episode_info.get_url()}")
 
                 self.last_state = self.player_state
             # Update every 5 seconds
@@ -365,11 +366,12 @@ class ChromecastHandler(threading.Thread):
         return [connected_device.ID_STR for key, connected_device in self.connected_devices.items()]
 
     def play_from_media_drive(self, tv_show_id, tv_show_season_id, tv_show_season_episode_id):
-        current_media = EpisodeInfo(tv_show_id, tv_show_season_id, tv_show_season_episode_id)
+        current_episode_info = EpisodeInfo(tv_show_id, tv_show_season_id, tv_show_season_episode_id)
+        current_episode_url = current_episode_info.get_url()
         for key, connected_device in self.connected_devices.items():
-            connected_device.play_media_drive(current_media)
+            connected_device.play_url(current_episode_url)
 
-        return current_media.get_url()
+        return current_episode_url
 
     def send_command(self, media_device_command):
         for key, connected_device in self.connected_devices.items():
