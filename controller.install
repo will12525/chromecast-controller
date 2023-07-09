@@ -28,9 +28,15 @@ if [ $ERR_CODE -eq 0 ]; then
     if [ -f "$WORKSPACE/$CONFIG_FILE" ]; then
         # Source the config file
         source $WORKSPACE/$CONFIG_FILE
+        RESULT=$?
+        if [ $RESULT != 0 ]; then
+            ERR_CODE=1
+            echo "Source of $WORKSPACE/$CONFIG_FILE failed, fix file"
+        fi
     else
         ERR_CODE=1
-        echo "MISSING: ${WORKSPACE}/${CONFIG_FILE}"
+        echo "Please update $CONFIG_FILE file: ${WORKSPACE}/${CONFIG_FILE}"
+        cp --preserve=mode,ownership config.default config.cfg
     fi
 fi
 
@@ -108,7 +114,7 @@ if [ $ERR_CODE -eq 0 ]; then
     fi
 fi
 
-if [ $ERR_CODE -eq 0 ]; then
-    echo "INSTALL SUCCESS"
+if [ $ERR_CODE -ne 0 ]; then
+    echo "INSTALL FAILED"
 fi
 
