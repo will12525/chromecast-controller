@@ -9,7 +9,8 @@ sudo ./controller.install
 services: 
  * chromecast_controller.service
  * media_drive_as_webpage.service
-
+```
 sudo systemctl stop <service>
 sudo systemctl start <service>
 sudo systemctl restart <service>
+```
