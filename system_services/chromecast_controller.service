@@ -1,0 +1,16 @@
+[Unit]
+Description=Starts the flask app for chromecasting the media drive
+After=network.target
+StartLimitIntervalSec=1d
+StartLimitBurst=5
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=1
+User=willow
+WorkingDirectory=INSTALL_DIR
+ExecStart=/bin/bash start_server
+
+[Install]
+WantedBy=multi-user.target

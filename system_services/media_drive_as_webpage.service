@@ -1,0 +1,16 @@
+[Unit]
+Description=Start server for the media drive
+After=network.target
+StartLimitIntervalSec=1d
+StartLimitBurst=5
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=1
+User=willow
+WorkingDirectory=/media/hdd1/plex_media
+ExecStart=http-server -p 8000
+
+[Install]
+WantedBy=multi-user.target
