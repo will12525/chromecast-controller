@@ -6,28 +6,6 @@ import threading
 from pychromecast.controllers.receiver import CastStatus
 from enum import Enum
 
-# ssh into server
-# CAST MEDIA
-# cd /home/willow/workspace/cast_media_server
-# python3 main.py
-
-# START SERVER
-# cd /media/hdd1/plex_media
-#./start_chromacst_video_access_server
-
-# UPDATE main.py WITH THIS FILE
-# scp main.py willow@192.168.1.200:/home/willow/workspace/cast_media_server/
-
-# View live journal
-# sudo journalctl -u media_folder_python.service -f
-
-# SCP the files
-# scp -r templates/ main.py flask_main.py willow@192.168.1.200:/home/willow/workspace/chromecast_flask_app
-
-# systemctl
-#  sudo systemctl status media_folder_python.service
-#  sudo systemctl start media_folder_python.service
-
 # provide list of shows
 # provide list of seasons
 # provide list of episodes
@@ -46,11 +24,6 @@ CHROMECAST_DEVICE_LIVING_ROOM_STR = "Family Room TV"
 SERVER_URL = "http://192.168.1.200:8000/"
 SERVER_URL_TV_SHOWS = SERVER_URL + "tv_shows/"
 
-
-# tv_show_dir_path = "/media/hdd1/plex_media/tv_shows/"
-# unsorted_tv_shows_dir_path_list = os.listdir(tv_show_dir_path)
-# tv_shows_dir_path_list = sorted(unsorted_tv_shows_dir_path_list)
-# print(f"Sorted list len: {len(tv_shows_dir_path_list)}, list: {tv_shows_dir_path_list}")
 
 def get_dir_list(dir_path):
     if os.path.exists(dir_path):
