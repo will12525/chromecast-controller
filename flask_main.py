@@ -159,7 +159,7 @@ def main_index():
         if POST_tv_show_id:
             POST_tv_show_id_int = int(POST_tv_show_id)
             tv_show_id = POST_tv_show_id_int if url_builder.valid_tv_show_id(POST_tv_show_id_int) else 0
-            print(f"VALID tv_show_season_id: {tv_show_id}")
+            print(f"VALID tv_show_id: {tv_show_id}")
         if POST_tv_show_season_id:
             POST_tv_show_id_season_int = int(POST_tv_show_season_id)
             tv_show_season_id = POST_tv_show_id_season_int \
@@ -173,15 +173,13 @@ def main_index():
             print(f"VALID tv_show_season_episode_id: {tv_show_season_episode_id}")
 
         if request.form.get('start'):
-            # current_episode = url_builder.get_tv_show_season_episode_url(tv_show_id, tv_show_season_id,
-            #                                                              tv_show_season_episode_id)
-            print(f"Playing episode: {current_episode}")
+            print("START PRESSED")
             # my_media_device.play_url(current_episode)
             # my_media_device.play_media_drive_id(tv_show_id, tv_show_season_id, tv_show_season_episode_id)
             current_episode = chromecast_handler.play_from_media_drive(tv_show_id, tv_show_season_id,
                                                                        tv_show_season_episode_id)
+            print(f"Playing episode: {current_episode}")
             # current_episode = my_media_device.get_url()
-            print("START PRESSED")
 
         elif request.form.get('play'):
             print("PLAY PRESSED")
