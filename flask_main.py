@@ -3,6 +3,8 @@ from enum import Enum
 from flask import Flask, request, jsonify, redirect, url_for, current_app, render_template
 from main import MediaURLBuilder, MyMediaDevice, ChromecastHandler, CommandList
 
+import media_folder_metadata_handler
+
 app = Flask(__name__)
 
 SERVER_URL = "http://192.168.1.200:8000/"
@@ -12,7 +14,7 @@ SERVER_URL_TV_SHOWS = SERVER_URL + "tv_shows/"
 url_builder = MediaURLBuilder()
 chromecast_handler = ChromecastHandler()
 chromecast_handler.start()
-chromecast_handler.connect_to_chromecast("Family Room TV")
+# chromecast_handler.connect_to_chromecast("Family Room TV")
 
 
 previous_selected_tv_show = None
@@ -27,6 +29,7 @@ print("HELLO WORLD!")
 
 path_type_strings = ["tv_show", "tv_show_season", "tv_show_season_episode"]
 
+media_folder_metadata_handler.media_folder_entry_point()
 
 class PathType(Enum):
     TV_SHOW = 0

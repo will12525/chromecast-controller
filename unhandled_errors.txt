@@ -1,0 +1,35 @@
+from journalctl
+This error caused build up in journalctl.
+This error caused the syslog to fill the entirety of the partition
+Required use of command `truncate -s 0 /var/log/syslog`
+Find the 40 largest files in directory: `sudo du -ha . | sort -n -r | head -n 40`
+Find folder size: `sudo du -hs /`
+```
+Jul 14 20:55:09 debianPlex bash[15378]: [Family Room TV(192.168.1.185):8009] Error communicating with socket, resetting connection
+Jul 14 20:55:09 debianPlex bash[15378]: [Family Room TV(192.168.1.185):8009] Unhandled exception in worker thread, attempting reconnect
+Jul 14 20:55:09 debianPlex bash[15378]: Traceback (most recent call last):
+Jul 14 20:55:09 debianPlex bash[15378]:   File "/home/willow/workspace/chromecast-controller/.venv/lib/python3.11/site-packages/pychromecast/socket_client.py", line 540, in run
+Jul 14 20:55:09 debianPlex bash[15378]:     if self.run_once(timeout=POLL_TIME_BLOCKING) == 1:
+Jul 14 20:55:09 debianPlex bash[15378]:        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Jul 14 20:55:09 debianPlex bash[15378]:   File "/home/willow/workspace/chromecast-controller/.venv/lib/python3.11/site-packages/pychromecast/socket_client.py", line 563, in run_once
+Jul 14 20:55:09 debianPlex bash[15378]:     if not self._check_connection():
+Jul 14 20:55:09 debianPlex bash[15378]:            ^^^^^^^^^^^^^^^^^^^^^^^^
+Jul 14 20:55:09 debianPlex bash[15378]:   File "/home/willow/workspace/chromecast-controller/.venv/lib/python3.11/site-packages/pychromecast/socket_client.py", line 696, in _check_connection
+Jul 14 20:55:09 debianPlex bash[15378]:     self.initialize_connection()
+Jul 14 20:55:09 debianPlex bash[15378]:   File "/home/willow/workspace/chromecast-controller/.venv/lib/python3.11/site-packages/pychromecast/socket_client.py", line 297, in initialize_connection
+Jul 14 20:55:09 debianPlex bash[15378]:     host, port, service_info = get_host_from_service(
+Jul 14 20:55:09 debianPlex bash[15378]:                                ^^^^^^^^^^^^^^^^^^^^^^
+Jul 14 20:55:09 debianPlex bash[15378]:   File "/home/willow/workspace/chromecast-controller/.venv/lib/python3.11/site-packages/pychromecast/dial.py", line 38, in get_host_from_service
+Jul 14 20:55:09 debianPlex bash[15378]:     service_info = zconf.get_service_info("_googlecast._tcp.local.", service.data)
+Jul 14 20:55:09 debianPlex bash[15378]:                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Jul 14 20:55:09 debianPlex bash[15378]:   File "/home/willow/workspace/chromecast-controller/.venv/lib/python3.11/site-packages/zeroconf/_core.py", line 595, in get_service_info
+Jul 14 20:55:09 debianPlex bash[15378]:     if info.request(self, timeout, question_type):
+Jul 14 20:55:09 debianPlex bash[15378]:        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Jul 14 20:55:09 debianPlex bash[15378]:   File "/home/willow/workspace/chromecast-controller/.venv/lib/python3.11/site-packages/zeroconf/_services/info.py", line 634, in request
+Jul 14 20:55:09 debianPlex bash[15378]:     assert zc.loop is not None and zc.loop.is_running()
+Jul 14 20:55:09 debianPlex bash[15378]:            ^^^^^^^^^^^^^^^^^^^
+Jul 14 20:55:09 debianPlex bash[15378]: AssertionError
+```
+
+Plex taking too much space:
+https://www.reddit.com/r/PleX/comments/5trxb9/why_is_varlibplexmediaserver_95gb/

@@ -255,6 +255,10 @@ class MyMediaDevice:
 # -------------------------------------------------------------------
 
     def update_player(self):
+        if self.cast_device.media_controller:
+            print(self.cast_device.media_controller.status.player_state)
+        else:
+            print("___________________NO MEDIA_CONTROLLER_______________")
         if self.initialized and self.cast_device and self.cast_device.media_controller:
             current_device_timestamp = self.cast_device.media_controller.status.adjusted_current_time
             # Check if the player state changed
@@ -296,7 +300,8 @@ class MyMediaDevice:
                 self.last_state = self.player_state
             # Update every 5 seconds
             if current_device_timestamp - self.last_time_check > 5:
-                # print(self.cast_device.media_controller)
+                print("----- STATUS UPDATE -----")
+                print(self.cast_device.media_controller)
                 # print(self.cast_device.media_controller.status.season)
                 print(self.cast_device.media_controller.status)#.get("content_id"))
                 # print(self.cast_device.media_controller.status.is_active_input)
@@ -315,7 +320,7 @@ class ChromecastHandler(threading.Thread):
     browser = None
 
     def __init__(self):
-        threading.Thread.__init__(self)
+        threading.Thread.__init__(self, daemon=True)
         self.initialized = True
 
     def __del__(self):
@@ -328,8 +333,9 @@ class ChromecastHandler(threading.Thread):
         return self.last_scanned_devices
 
     def scan_for_chromecasts(self):
+        print("-------------- SCAN --------------")
         services, browser = pychromecast.discovery.discover_chromecasts()
-        pychromecast.discovery.stop_discovery(browser)
+        browser.stop_discovery()
         for service in services:
             print(type(service))
             print(service)
@@ -378,8 +384,7 @@ class ChromecastHandler(threading.Thread):
             connected_device.interpret_enum_cmd(media_device_command)
 
     def run(self):
-        self.scan_for_chromecasts()
-
+        disconnect_devices = []
         while self.initialized:
             try:
                 for connected_device_key in self.connected_devices:
@@ -398,6 +403,7 @@ class ChromecastHandler(threading.Thread):
                 break
 
 
+# HANDLES USER INPUT
 # Getting user input for __main__
 class MyThread(threading.Thread):
 
