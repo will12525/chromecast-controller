@@ -5,3 +5,4 @@ config.cfg
 # PyCharm
 .idea/
 venv/
+tv_show_metadata.json

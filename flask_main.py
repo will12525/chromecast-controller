@@ -1,4 +1,4 @@
-
+import json
 from enum import Enum
 from flask import Flask, request, jsonify, redirect, url_for, current_app, render_template
 from main import MediaURLBuilder, MyMediaDevice, ChromecastHandler, CommandList
@@ -28,8 +28,10 @@ current_episode = ""
 print("HELLO WORLD!")
 
 path_type_strings = ["tv_show", "tv_show_season", "tv_show_season_episode"]
+media_folder_path = "/media/hdd1/plex_media/tv_shows/"
+media_folder_metadata = media_folder_metadata_handler.media_metadata_init(media_folder_path)
+# print(media_folder_metadata)
 
-media_folder_metadata_handler.media_folder_entry_point()
 
 class PathType(Enum):
     TV_SHOW = 0
