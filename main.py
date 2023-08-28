@@ -1,9 +1,10 @@
 import time
-import pychromecast
 import os
 import traceback
 import threading
 from enum import Enum
+import pychromecast
+import git
 
 # provide list of shows
 # provide list of seasons
@@ -22,6 +23,9 @@ CHROMECAST_DEVICE_LIVING_ROOM_STR = "Family Room TV"
 
 SERVER_URL = "http://192.168.1.200:8000/"
 SERVER_URL_TV_SHOWS = SERVER_URL + "tv_shows/"
+
+repo = git.Repo(search_parent_directories=True)
+startup_sha = repo.head.object.hexsha
 
 
 def get_dir_list(dir_path):
@@ -401,6 +405,10 @@ class ChromecastHandler(threading.Thread):
                 time.sleep(0.1)
             except KeyboardInterrupt:
                 break
+
+    def get_startup_sha(self):
+        global startup_sha
+        return startup_sha
 
 
 # HANDLES USER INPUT
