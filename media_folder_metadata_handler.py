@@ -124,12 +124,3 @@ def generate_tv_show_list(media_folder):
     return media_folder_metadata_json
 
 
-# def generate_media_folder(media_folder_path):
-#     # media_folder = "/media/hdd1/plex_media/tv_shows/"
-#
-#     media_folder_metadata_json = generate_tv_show_list(media_folder)
-#     # media_folder_metadata_json = load_metadata_from_file()
-#
-#     print(json.dumps(media_folder_metadata_json, indent=4))
-
-    # save_metadata_to_file(media_folder_metadata_json)
