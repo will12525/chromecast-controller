@@ -41,7 +41,10 @@ print("HELLO WORLD!")
 
 path_type_strings = ["tv_show", "tv_show_season", "tv_show_season_episode"]
 media_folder_path = "/media/hdd1/plex_media/tv_shows/"
-media_folder_metadata = media_folder_metadata_handler.generate_tv_show_list(media_folder_path)
+media_folder_metadata = media_folder_metadata_handler.media_metadata_init(media_folder_path)
+
+media_folder_metadata_handler.update(media_folder_metadata)
+
 # print(media_folder_metadata)
 # print(json.dumps(media_folder_metadata_handler.get_tv_show_season_episode_metadata(media_folder_metadata, 0, 0, 0), indent=4))
 

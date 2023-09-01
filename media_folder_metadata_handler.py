@@ -15,19 +15,21 @@ get_tv_show_season_episode_metadata(media_folder_metadata, tv_show_id, tv_show_s
 MEDIA_METADATA_FILE = "tv_show_metadata.json"
 
 
+def get_metadata_content_by_id(media_metadata_list, media_id):
+    if 0 <= media_id < len(media_metadata_list):
+        return media_metadata_list[media_id]
+    return None
+
+
 def get_tv_show_metadata(media_folder_metadata, tv_show_id):
     if media_folder_metadata:
-        tv_show_list = media_folder_metadata.get("tv_shows")
-        if 0 <= tv_show_id < len(tv_show_list):
-            return tv_show_list[tv_show_id]
+        return get_metadata_content_by_id(media_folder_metadata.get("tv_shows"), tv_show_id)
     return None
 
 
 def get_tv_show_season_metadata(media_folder_metadata, tv_show_id, tv_show_season_id):
     if media_folder_metadata and (tv_show_metadata := get_tv_show_metadata(media_folder_metadata, tv_show_id)):
-        tv_show_season_list = tv_show_metadata.get("seasons")
-        if 0 <= tv_show_season_id < len(tv_show_season_list):
-            return tv_show_season_list[tv_show_season_id]
+        return get_metadata_content_by_id(tv_show_metadata.get("seasons"), tv_show_season_id)
     return None
 
 
@@ -40,26 +42,24 @@ def get_tv_show_season_episode_metadata(media_folder_metadata, tv_show_id, tv_sh
 
 
 def media_metadata_init(media_folder_path):
-    # media_metadata = None
     media_metadata_file_path = f"{os.path.dirname(__file__)}/{MEDIA_METADATA_FILE}"
-    print(media_metadata_file_path)
     if os.path.exists(media_metadata_file_path) and os.path.isfile(media_metadata_file_path):
-        print("Loading file")
-        media_metadata = load_metadata_from_file(media_metadata_file_path)
+        media_metadata = load_metadata_from_file()
     else:
-        print("Generating file")
         media_metadata = generate_tv_show_list(media_folder_path)
+        save_metadata_to_file(media_metadata)
     return media_metadata
 
 
-def load_metadata_from_file(media_metadata_file_path):
-    with open(media_metadata_file_path, 'r') as f:
-        media_metadata_json = json.load(f)
-    return media_metadata_json
+def load_metadata_from_file() -> [dict, None]:
+    if os.path.exists(MEDIA_METADATA_FILE):
+        with open(MEDIA_METADATA_FILE, 'r') as f:
+            return json.load(f)
+    return None
 
 
 def save_metadata_to_file(tv_show_metadata_json):
-    with open('tv_show_metadata.json', 'w') as f:
+    with open(MEDIA_METADATA_FILE, 'w') as f:
         json.dump(tv_show_metadata_json, f, indent=4)
 
 
@@ -136,19 +136,25 @@ def generate_tv_show_list(media_folder):
         for idy, tv_show_dir_name in enumerate(tv_shows_dir_path_list):
             # Build a path for the tv show
             tv_show_path = f"{media_folder}{tv_show_dir_name}/"
-            tv_show_season_list = generate_season_list(tv_show_path)
-            total_episode_count = 0
-            for season in tv_show_season_list:
-                total_episode_count += season.get("episode_count", 0)
+            if os.path.exists(tv_show_path):
+                tv_show_season_list = generate_season_list(tv_show_path)
+                total_episode_count = 0
+                for season in tv_show_season_list:
+                    total_episode_count += season.get("episode_count", 0)
 
-            tv_show_metadata_list.append({"id": idy,
-                                           "name": tv_show_dir_name,
-                                           "path": tv_show_path,
-                                           "season_count": len(tv_show_season_list),
-                                           "episode_count": total_episode_count,
-                                           "seasons": tv_show_season_list})
+                tv_show_metadata_list.append({"id": idy,
+                                               "name": tv_show_dir_name,
+                                               "path": tv_show_path,
+                                               "season_count": len(tv_show_season_list),
+                                               "episode_count": total_episode_count,
+                                               "seasons": tv_show_season_list})
     media_folder_metadata_json["tv_shows"] = tv_show_metadata_list
     media_folder_metadata_json["tv_show_count"] = len(tv_show_metadata_list)
     return media_folder_metadata_json
+
+
+def update(media_folder_metadata):
+    return
+    print(json.dumps(get_tv_show_metadata(media_folder_metadata, 1), indent=4))
 
 
