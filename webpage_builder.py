@@ -10,6 +10,18 @@ app = Flask(__name__)
 SERVER_URL = "http://192.168.1.200:8000/"
 SERVER_URL_TV_SHOWS = SERVER_URL + "tv_shows/"
 
+device_button_list = [
+    {"name": "connect", "value": "Connect",},
+    {"name": "disconnect", "value": "Disconnect"}
+]
+media_controller_button_list = [
+    {"name": "start", "value": "Start"},
+    {"name": "pause", "value": "Pause"},
+    {"name": "stop", "value": "Stop"},
+    {"name": "play", "value": "Play"},
+    {"name": "skip", "value": "Skip"}
+]
+
 
 url_builder = MediaURLBuilder()
 chromecast_handler = ChromecastHandler()
@@ -43,6 +55,14 @@ class PathType(Enum):
         return path_type_strings[self.value]
 
 
+def build_html_button(button_dict):
+    return f'<input type="submit" name="{button_dict.get("name")}" value="{button_dict.get("value")}" style="width: 100px; height: 50px;">'
+
+
+def build_html_button_list(button_list):
+    return ' '.join([build_html_button(button_info) for button_info in button_list])
+
+
 def build_chromecast_menu():
     global chromecast_handler
     scanned_chromecasts = '<div style="float:left; margin:10px">'
@@ -54,8 +74,7 @@ def build_chromecast_menu():
     scanned_chromecasts += '</select></div>'
 
     chromecast_buttons = '<div style="float:left; margin:10px">'
-    chromecast_buttons += f'<input type="submit" name="connect" value="Connect"><br>'
-    chromecast_buttons += f'<input type="submit" name="disconnect" value="Disconnect">'
+    chromecast_buttons += build_html_button_list(device_button_list)
     chromecast_buttons += '</div>'
 
     connected_chromecasts = '<div style="float:left; margin:10px">'
@@ -71,9 +90,6 @@ def build_chromecast_menu():
 
 
 def build_select_list(set_selected, name: PathType, list_to_convert, selected_index=-1):
-    # ret_select_html = f'<div style="float:left; margin:10px"><select" name="{name}" ' \
-    #                   f'size="{len(list_to_convert)}" id="select_{name}_id">'
-    # ret_select_html = f'<div style="float:left; margin:10px"><select" name="test" size="30">'
     add_autofocus = ""
     if set_selected:
         add_autofocus = "autofocus"
@@ -121,16 +137,8 @@ def build_visual_selector(tv_show_id, tv_show_season_id, tv_show_season_episode_
                                                                  tv_show_id, tv_show_season_id,
                                                                  tv_show_season_episode_id))
 
-    button_dict = {"start": "Start", "pause": "Pause", "stop": "Stop", "play": "Play", "skip": "Skip"}
+    episode_select += build_html_button_list(media_controller_button_list)
 
-    for key, value in button_dict.items():
-        episode_select += f'<input type="submit" name="{key}" value="{value}">'
-
-    # episode_select += '<input type="submit" name="start" value="Start"> \
-    #                    <input type="submit" name="pause" value="Pause"> \
-    #                    <input type="submit" name="stop" value="stop"> \
-    #                     <input type="submit" name="play" value="Play"> \
-    #                    <input type="submit" name="skip" value="skip"></form>'
     episode_select += build_chromecast_menu()
     episode_select += '</form></div>'
 
