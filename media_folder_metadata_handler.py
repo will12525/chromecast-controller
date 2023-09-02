@@ -35,9 +35,7 @@ def get_tv_show_season_metadata(media_folder_metadata, tv_show_id, tv_show_seaso
 
 def get_tv_show_season_episode_metadata(media_folder_metadata, tv_show_id, tv_show_season_id, tv_show_season_episode_id):
     if media_folder_metadata and (tv_show_season_episode_list := get_tv_show_season_metadata(media_folder_metadata, tv_show_id, tv_show_season_id)):
-        tv_show_season_episode_list = tv_show_season_episode_list.get("episodes")
-        if 0 <= tv_show_season_episode_id < len(tv_show_season_episode_list):
-            return tv_show_season_episode_list[tv_show_season_episode_id]
+        return get_metadata_content_by_id( tv_show_season_episode_list.get("episodes"), tv_show_season_episode_id)
     return None
 
 
