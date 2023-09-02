@@ -9,6 +9,8 @@ app = Flask(__name__)
 
 SERVER_URL = "http://192.168.1.200:8000/"
 SERVER_URL_TV_SHOWS = SERVER_URL + "tv_shows/"
+MEDIA_FOLDER_PATH = "/media/hdd1/plex_media/tv_shows/"
+MEDIA_METADATA_FILE = "tv_show_metadata.json"
 
 device_button_list = [
     {"name": "connect", "value": "Connect"},
@@ -26,7 +28,8 @@ chromecast_handler = ChromecastHandler()
 chromecast_handler.start()
 # chromecast_handler.connect_to_chromecast("Family Room TV")
 
-media_folder_metadata = media_folder_metadata_handler.media_metadata_init("../media_folder_sample/")
+media_folder_metadata = media_folder_metadata_handler.get_media_metadata(
+    MEDIA_METADATA_FILE, "/media/hdd1/plex_media/tv_shows/")
 
 previous_selected_tv_show = None
 previous_selected_tv_show_season = None
@@ -184,8 +187,8 @@ def main_index():
         if request.form.get('start'):
             print("START PRESSED")
             current_episode = media_folder_metadata_handler.EpisodeInfo(
-                tv_show_id, tv_show_season_id, tv_show_season_episode_id)
-            chromecast_handler.play_from_media_drive(current_episode)
+                MEDIA_METADATA_FILE, MEDIA_FOLDER_PATH, tv_show_id, tv_show_season_id, tv_show_season_episode_id)
+            chromecast_handler.play_from_media_drive(current_episode, SERVER_URL_TV_SHOWS)
 
         elif request.form.get('play'):
             print("PLAY PRESSED")
@@ -226,7 +229,7 @@ def main_index():
     html_form = chromecast_handler.get_startup_sha()
     html_form += build_visual_selector(tv_show_id, tv_show_season_id, tv_show_season_episode_id, changed_type)
     if current_episode:
-        html_form += current_episode.get_url()
+        html_form += current_episode.get_url(SERVER_URL_TV_SHOWS)
 
     return html_form
 

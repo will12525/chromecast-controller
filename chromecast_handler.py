@@ -95,9 +95,9 @@ class MyMediaDevice:
         if self.browser:
             self.browser.stop_discovery()
 
-    def play_episode(self, current_episode_info):
+    def play_episode(self, current_episode_info, media_server_url):
         self.current_episode_info = current_episode_info
-        url = self.current_episode_info.get_url()
+        url = self.current_episode_info.get_url(media_server_url)
         print(f"PLAYING URL {url}")
         # self.current_url = url
         self.media_controller.play_media(url, self.DEFAULT_MEDIA_TYPE)
@@ -107,11 +107,6 @@ class MyMediaDevice:
 
     def append_queue_url(self, url):
         self.cast_device.media_controller.play_media(url, self.DEFAULT_MEDIA_TYPE, enqueue=True)
-
-    def get_url(self):
-        if self.current_episode_info:
-            return self.current_episode_info.get_url()
-        return None
 
     def seek(self):
         self.media_controller.seek()
@@ -127,7 +122,7 @@ class MyMediaDevice:
 
 # -------------------------------------------------------------------
 
-    def update_player(self):
+    def update_player(self, media_server_url):
         # if self.cast_device.media_controller:
         #     print(self.cast_device.media_controller.status.player_state)
         # else:
@@ -150,7 +145,7 @@ class MyMediaDevice:
                             self.current_episode_info.increment_next_episode()
                             print(f"Adding next episode: {current_device_timestamp}")
                             # self.play_url(self.current_episode_info.get_url())
-                            self.play_episode(self.current_episode_info)
+                            self.play_episode(self.current_episode_info, media_server_url)
                         # else:
                             # self.new_episode_started = False
                             # print("SENDING PAUSE")
@@ -160,7 +155,7 @@ class MyMediaDevice:
                     if self.player_state == "PLAYING":
                         # self.media_player_active = True
                         self.my_last_player_state = PlayerState.STATE_EPISODE_PLAYING
-                        print(f"DEVICE: {self.ID_STR}, NOW PLAYING: {self.current_episode_info.get_url()}")
+                        print(f"DEVICE: {self.ID_STR}, NOW PLAYING: {self.current_episode_info.get_url(media_server_url)}")
                     if self.player_state == "PAUSED":
                         self.my_last_player_state = PlayerState.STATE_EPISODE_PAUSED
                     if self.player_state == "BUFFERING":
@@ -191,6 +186,7 @@ class ChromecastHandler(threading.Thread):
     initialized = False
     last_scan_time = 0
     browser = None
+    media_server_url = None
 
     def __init__(self):
         threading.Thread.__init__(self, daemon=True)
@@ -243,11 +239,12 @@ class ChromecastHandler(threading.Thread):
     def get_connected_devices_list_str(self):
         return [connected_device.ID_STR for key, connected_device in self.connected_devices.items()]
 
-    def play_from_media_drive(self, current_episode_info):
+    def play_from_media_drive(self, current_episode_info, media_server_url):
+        self.media_server_url = media_server_url
         # current_episode_url = current_episode_info.get_url()
         for key, connected_device in self.connected_devices.items():
             # connected_device.play_url(current_episode_url)
-            connected_device.play_episode(current_episode_info)
+            connected_device.play_episode(current_episode_info, self.media_server_url)
 
     def send_command(self, media_device_command):
         for key, connected_device in self.connected_devices.items():
@@ -259,7 +256,7 @@ class ChromecastHandler(threading.Thread):
                 for connected_device_key in self.connected_devices:
                     my_media_device = self.connected_devices.get(connected_device_key)
                     if my_media_device:
-                        my_media_device.update_player()
+                        my_media_device.update_player(self.media_server_url)
                     else:
                         print(f"No device found for {connected_device_key}")
 
