@@ -1,8 +1,8 @@
-import json
+# import json
 from enum import Enum
-from flask import Flask, request, jsonify, redirect, url_for, current_app, render_template
-from chromecast_handler import MediaURLBuilder, MyMediaDevice, ChromecastHandler, CommandList
-
+from flask import Flask, request, url_for
+# jsonify, redirect, current_app, render_template
+from chromecast_handler import ChromecastHandler, CommandList
 import media_folder_metadata_handler
 
 app = Flask(__name__)
@@ -11,7 +11,7 @@ SERVER_URL = "http://192.168.1.200:8000/"
 SERVER_URL_TV_SHOWS = SERVER_URL + "tv_shows/"
 
 device_button_list = [
-    {"name": "connect", "value": "Connect",},
+    {"name": "connect", "value": "Connect"},
     {"name": "disconnect", "value": "Disconnect"}
 ]
 media_controller_button_list = [
@@ -22,12 +22,11 @@ media_controller_button_list = [
     {"name": "skip", "value": "Skip"}
 ]
 
-
-url_builder = MediaURLBuilder()
 chromecast_handler = ChromecastHandler()
 chromecast_handler.start()
 # chromecast_handler.connect_to_chromecast("Family Room TV")
 
+media_folder_metadata = media_folder_metadata_handler.media_metadata_init("../media_folder_sample/")
 
 previous_selected_tv_show = None
 previous_selected_tv_show_season = None
@@ -35,18 +34,9 @@ previous_selected_tv_show_season_episode = None
 
 tv_show_name_list = None
 
-current_episode = ""
-
 print("HELLO WORLD!")
 
 path_type_strings = ["tv_show", "tv_show_season", "tv_show_season_episode"]
-media_folder_path = "/media/hdd1/plex_media/tv_shows/"
-media_folder_metadata = media_folder_metadata_handler.media_metadata_init(media_folder_path)
-
-media_folder_metadata_handler.update(media_folder_metadata)
-
-# print(media_folder_metadata)
-# print(json.dumps(media_folder_metadata_handler.get_tv_show_season_episode_metadata(media_folder_metadata, 0, 0, 0), indent=4))
 
 
 class PathType(Enum):
@@ -112,26 +102,27 @@ def build_select_list(set_selected, name: PathType, list_to_convert, selected_in
 
 
 def build_tv_show_name_list(set_selected, selected_tv_show_id=-1):
-    if tv_show_dir_list := url_builder.get_tv_show_dir_list():
+    if tv_show_dir_list := media_folder_metadata_handler.get_tv_show_name_list(media_folder_metadata):
         return build_select_list(set_selected, PathType.TV_SHOW, tv_show_dir_list, selected_tv_show_id)
     return ""
 
 
 def build_tv_show_season_name_list(set_selected, tv_show_id, selected_tv_show_season_id=-1):
-    if tv_show_season_dir_list := url_builder.get_tv_show_season_dir_list(tv_show_id):
+    if tv_show_season_dir_list := media_folder_metadata_handler.get_tv_show_season_name_list(media_folder_metadata,
+                                                                                             tv_show_id):
         return build_select_list(set_selected, PathType.TV_SHOW_SEASON, tv_show_season_dir_list,
                                  selected_tv_show_season_id)
 
 
 def build_tv_show_season_episode_name_list(set_selected, tv_show_id, tv_show_season_id,
                                            selected_tv_show_season_episode_id=-1):
-    if tv_show_season_episode_dir_list := url_builder.get_tv_show_season_show_dir_list(tv_show_id, tv_show_season_id):
+    if tv_show_season_episode_dir_list := media_folder_metadata_handler.get_tv_show_season_episode_name_list(
+            media_folder_metadata, tv_show_id, tv_show_season_id):
         return build_select_list(set_selected, PathType.TV_SHOW_SEASON_EPISODE, tv_show_season_episode_dir_list,
                                  selected_tv_show_season_episode_id)
 
 
 def build_visual_selector(tv_show_id, tv_show_season_id, tv_show_season_episode_id, changed_type):
-    print(changed_type.get_str())
     episode_select = f'<div style="float:left; margin:10px"><form action="{url_for("main_index")}" method="post">'
     episode_select += str(build_tv_show_name_list(PathType.TV_SHOW == changed_type, tv_show_id))
     episode_select += str(build_tv_show_season_name_list(PathType.TV_SHOW_SEASON == changed_type, tv_show_id,
@@ -160,13 +151,12 @@ def pause_cast():
 
 @app.route('/', methods=['GET', 'POST'])
 def main_index():
-    global current_episode, previous_selected_tv_show, previous_selected_tv_show_season, \
-        previous_selected_tv_show_season_episode
-    print(request.form)
+    global previous_selected_tv_show, previous_selected_tv_show_season, previous_selected_tv_show_season_episode
 
     tv_show_id = 0
     tv_show_season_id = 0
     tv_show_season_episode_id = 0
+    current_episode = None
 
     if request.method == 'POST':
         POST_tv_show_id = request.form.get(f'select_{PathType.TV_SHOW.get_str()}')
@@ -175,28 +165,27 @@ def main_index():
 
         if POST_tv_show_id:
             POST_tv_show_id_int = int(POST_tv_show_id)
-            tv_show_id = POST_tv_show_id_int if url_builder.valid_tv_show_id(POST_tv_show_id_int) else 0
+            tv_show_id = POST_tv_show_id_int if media_folder_metadata_handler.get_tv_show_metadata(
+                media_folder_metadata, POST_tv_show_id_int) else 0
             print(f"VALID tv_show_id: {tv_show_id}")
         if POST_tv_show_season_id:
             POST_tv_show_id_season_int = int(POST_tv_show_season_id)
             tv_show_season_id = POST_tv_show_id_season_int \
-                if url_builder.valid_tv_show_season_id(tv_show_id, POST_tv_show_id_season_int) else 0
+                if media_folder_metadata_handler.get_tv_show_season_metadata(
+                    media_folder_metadata, tv_show_id, POST_tv_show_id_season_int) else 0
             print(f"VALID tv_show_season_id: {tv_show_season_id}")
         if POST_tv_show_season_episode_id:
             POST_tv_show_id_season_episode_int = int(POST_tv_show_season_episode_id)
             tv_show_season_episode_id = POST_tv_show_id_season_episode_int \
-                if url_builder.valid_tv_show_season_episode_id(tv_show_id, tv_show_season_id,
-                                                               POST_tv_show_id_season_episode_int) else 0
+                if media_folder_metadata_handler.get_tv_show_season_episode_metadata(
+                    media_folder_metadata, tv_show_id, tv_show_season_id, POST_tv_show_id_season_episode_int) else 0
             print(f"VALID tv_show_season_episode_id: {tv_show_season_episode_id}")
 
         if request.form.get('start'):
             print("START PRESSED")
-            # my_media_device.play_url(current_episode)
-            # my_media_device.play_media_drive_id(tv_show_id, tv_show_season_id, tv_show_season_episode_id)
-            current_episode = chromecast_handler.play_from_media_drive(tv_show_id, tv_show_season_id,
-                                                                       tv_show_season_episode_id)
-            print(f"Playing episode: {current_episode}")
-            # current_episode = my_media_device.get_url()
+            current_episode = media_folder_metadata_handler.EpisodeInfo(
+                tv_show_id, tv_show_season_id, tv_show_season_episode_id)
+            chromecast_handler.play_from_media_drive(current_episode)
 
         elif request.form.get('play'):
             print("PLAY PRESSED")
@@ -236,7 +225,8 @@ def main_index():
 
     html_form = chromecast_handler.get_startup_sha()
     html_form += build_visual_selector(tv_show_id, tv_show_season_id, tv_show_season_episode_id, changed_type)
-    html_form += current_episode
+    if current_episode:
+        html_form += current_episode.get_url()
 
     return html_form
 

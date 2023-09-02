@@ -15,28 +15,70 @@ get_tv_show_season_episode_metadata(media_folder_metadata, tv_show_id, tv_show_s
 MEDIA_METADATA_FILE = "tv_show_metadata.json"
 
 
-def get_metadata_content_by_id(media_metadata_list, media_id):
-    if 0 <= media_id < len(media_metadata_list):
-        return media_metadata_list[media_id]
-    return None
+class EpisodeInfo:
+    SERVER_URL = "http://192.168.1.200:8000/"
+    SERVER_URL_TV_SHOWS = SERVER_URL + "tv_shows/"
+    MEDIA_FOLDER_PATH = "/media/hdd1/plex_media/tv_shows/"
+    # MEDIA_FOLDER_PATH = "../media_folder_sample/"
 
+    tv_show_id = 0
+    tv_show_season_id = 0
+    tv_show_season_episode_id = 0
+    media_url_builder = None
+    media_metadata = None
 
-def get_tv_show_metadata(media_folder_metadata, tv_show_id):
-    if media_folder_metadata:
-        return get_metadata_content_by_id(media_folder_metadata.get("tv_shows"), tv_show_id)
-    return None
+    def __init__(self, tv_show_id=0, tv_show_season_id=0, tv_show_season_episode_id=0):
+        self.media_metadata = media_metadata_init(self.MEDIA_FOLDER_PATH)
+        self.tv_show_id = tv_show_id
+        self.tv_show_season_id = tv_show_season_id
+        self.tv_show_season_episode_id = tv_show_season_episode_id
 
+    def get_episode_info(self):
+        if self.media_metadata:
+            return get_tv_show_season_episode_metadata(
+                    self.media_metadata,
+                    self.tv_show_id,
+                    self.tv_show_season_id,
+                    self.tv_show_season_episode_id)
+        return None
 
-def get_tv_show_season_metadata(media_folder_metadata, tv_show_id, tv_show_season_id):
-    if media_folder_metadata and (tv_show_metadata := get_tv_show_metadata(media_folder_metadata, tv_show_id)):
-        return get_metadata_content_by_id(tv_show_metadata.get("seasons"), tv_show_season_id)
-    return None
+    def is_valid(self):
+        return self.get_episode_info() is not None
 
+    def get_url(self):
+        if current_episode := self.get_episode_info():
+            if current_episode_path := current_episode.get("path"):
+                return current_episode_path.replace(self.MEDIA_FOLDER_PATH, self.SERVER_URL_TV_SHOWS)
+        return None
 
-def get_tv_show_season_episode_metadata(media_folder_metadata, tv_show_id, tv_show_season_id, tv_show_season_episode_id):
-    if media_folder_metadata and (tv_show_season_episode_list := get_tv_show_season_metadata(media_folder_metadata, tv_show_id, tv_show_season_id)):
-        return get_metadata_content_by_id( tv_show_season_episode_list.get("episodes"), tv_show_season_episode_id)
-    return None
+    def increment_next_episode(self):
+        if not self.__increment_episode():
+            if not self.__increment_season():
+                self.tv_show_season_id = 0
+                self.tv_show_season_episode_id = 0
+
+    def __increment_season(self):
+        if self.media_metadata:
+            if get_tv_show_season_episode_metadata(
+                    self.media_metadata,
+                    self.tv_show_id,
+                    self.tv_show_season_id + 1,
+                    0):
+                self.tv_show_season_id += 1
+                self.tv_show_season_episode_id = 0
+                return True
+        return False
+
+    def __increment_episode(self):
+        if self.media_metadata:
+            if get_tv_show_season_episode_metadata(
+                    self.media_metadata,
+                    self.tv_show_id,
+                    self.tv_show_season_id,
+                    self.tv_show_season_episode_id + 1):
+                self.tv_show_season_episode_id += 1
+                return True
+        return False
 
 
 def media_metadata_init(media_folder_path):
@@ -59,6 +101,57 @@ def load_metadata_from_file() -> [dict, None]:
 def save_metadata_to_file(tv_show_metadata_json):
     with open(MEDIA_METADATA_FILE, 'w') as f:
         json.dump(tv_show_metadata_json, f, indent=4)
+
+
+def get_metadata_content_by_id(media_metadata_list, media_id):
+    if 0 <= media_id < len(media_metadata_list):
+        return media_metadata_list[media_id]
+    return None
+
+
+def get_tv_show_name_list(media_folder_metadata):
+    tv_show_name_list = []
+    if media_folder_metadata and (tv_show_list := media_folder_metadata.get("tv_shows")):
+        for tv_show_metadata in tv_show_list:
+            tv_show_name_list.append(tv_show_metadata.get("name"))
+    return tv_show_name_list
+
+
+def get_tv_show_season_name_list(media_folder_metadata, tv_show_id):
+    tv_show_season_name_list = []
+    if media_folder_metadata and (tv_show_metadata := get_tv_show_metadata(media_folder_metadata, tv_show_id)):
+        for tv_show_season_metadata in tv_show_metadata.get("seasons"):
+            tv_show_season_name_list.append(tv_show_season_metadata.get("name"))
+    return tv_show_season_name_list
+
+
+def get_tv_show_season_episode_name_list(media_folder_metadata, tv_show_id, tv_show_season_id):
+    tv_show_season_episode_name_list = []
+    if media_folder_metadata and (tv_show_season_metadata := get_tv_show_season_metadata(
+            media_folder_metadata, tv_show_id, tv_show_season_id)):
+        for tv_show_season_episode_metadata in tv_show_season_metadata.get("episodes"):
+            tv_show_season_episode_name_list.append(tv_show_season_episode_metadata.get("name"))
+    return tv_show_season_episode_name_list
+
+
+def get_tv_show_metadata(media_folder_metadata, tv_show_id):
+    if media_folder_metadata:
+        return get_metadata_content_by_id(media_folder_metadata.get("tv_shows"), tv_show_id)
+    return None
+
+
+def get_tv_show_season_metadata(media_folder_metadata, tv_show_id, tv_show_season_id):
+    if media_folder_metadata and (tv_show_metadata := get_tv_show_metadata(media_folder_metadata, tv_show_id)):
+        return get_metadata_content_by_id(tv_show_metadata.get("seasons"), tv_show_season_id)
+    return None
+
+
+def get_tv_show_season_episode_metadata(media_folder_metadata, tv_show_id,
+                                        tv_show_season_id, tv_show_season_episode_id):
+    if media_folder_metadata and (tv_show_season_episode_list := get_tv_show_season_metadata(
+            media_folder_metadata, tv_show_id, tv_show_season_id)):
+        return get_metadata_content_by_id(tv_show_season_episode_list.get("episodes"), tv_show_season_episode_id)
+    return None
 
 
 def get_dir_list(dir_path):
@@ -141,18 +234,11 @@ def generate_tv_show_list(media_folder):
                     total_episode_count += season.get("episode_count", 0)
 
                 tv_show_metadata_list.append({"id": idy,
-                                               "name": tv_show_dir_name,
-                                               "path": tv_show_path,
-                                               "season_count": len(tv_show_season_list),
-                                               "episode_count": total_episode_count,
-                                               "seasons": tv_show_season_list})
+                                              "name": tv_show_dir_name,
+                                              "path": tv_show_path,
+                                              "season_count": len(tv_show_season_list),
+                                              "episode_count": total_episode_count,
+                                              "seasons": tv_show_season_list})
     media_folder_metadata_json["tv_shows"] = tv_show_metadata_list
     media_folder_metadata_json["tv_show_count"] = len(tv_show_metadata_list)
     return media_folder_metadata_json
-
-
-def update(media_folder_metadata):
-    return
-    print(json.dumps(get_tv_show_metadata(media_folder_metadata, 1), indent=4))
-
-

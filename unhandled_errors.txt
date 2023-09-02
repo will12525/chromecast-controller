@@ -3,7 +3,7 @@ This error caused build up in journalctl.
 This error caused the syslog to fill the entirety of the partition
 Required use of command `truncate -s 0 /var/log/syslog`
 Find the 40 largest files in directory: `sudo du -ha . | sort -n -r | head -n 40`
-Find folder size: `sudo du -hs /`
+Find folder size: `sudo du -hs /*`
 ```
 Jul 14 20:55:09 debianPlex bash[15378]: [Family Room TV(192.168.1.185):8009] Error communicating with socket, resetting connection
 Jul 14 20:55:09 debianPlex bash[15378]: [Family Room TV(192.168.1.185):8009] Unhandled exception in worker thread, attempting reconnect
