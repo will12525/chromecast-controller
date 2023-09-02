@@ -1,34 +1,14 @@
 import time
-import os
 import threading
 from enum import Enum
 import pychromecast
 import git
-
-# provide list of shows
-# provide list of seasons
-# provide list of episodes
-OFFSET = -1
-TV_SHOW_ID = 2
-TV_SHOW_ID_OFFSET = OFFSET
-TV_SHOW_SEASON_ID = 1
-TV_SHOW_SEASON_ID_OFFSET = OFFSET
-TV_SHOW_SEASON_EPISODE_ID = 4
-TV_SHOW_SEASON_EPISODE_ID_OFFSET = OFFSET
-
 
 CHROMECAST_DEVICE_BED_ROOM_STR = ["Master Bedroom TV"]
 CHROMECAST_DEVICE_LIVING_ROOM_STR = "Family Room TV"
 
 repo = git.Repo(search_parent_directories=True)
 startup_sha = repo.head.object.hexsha
-
-
-def get_dir_list(dir_path):
-    if os.path.exists(dir_path):
-        unsorted_dir_path_list = os.listdir(dir_path)
-        sorted_dir_path_list = sorted(unsorted_dir_path_list)
-        return sorted_dir_path_list
 
 
 class CommandList(Enum):
