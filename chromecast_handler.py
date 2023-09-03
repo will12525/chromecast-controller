@@ -1,8 +1,8 @@
-import time
 import threading
+import time
 from enum import Enum
-import pychromecast
 
+import pychromecast
 
 CHROMECAST_DEVICE_BED_ROOM_STR = ["Master Bedroom TV"]
 CHROMECAST_DEVICE_LIVING_ROOM_STR = "Family Room TV"
@@ -29,7 +29,6 @@ class PlayerState(Enum):
 
 
 class MyMediaDevice:
-
     DEFAULT_MEDIA_TYPE = "video/mp4"
     media_start_time = None
     player_state = None
@@ -44,6 +43,7 @@ class MyMediaDevice:
     episode_info = None
     browser = None
     my_last_player_state = 0
+
     # new_episode_started = False
 
     def __init__(self, cast_device_id_str, cast_device, browser):
@@ -91,13 +91,10 @@ class MyMediaDevice:
     def stop_scanner(self):
         self.initialized = False
 
-# -------------------------------------------------------------------
     def interpret_enum_cmd(self, cmd_enum):
         print(f"PROCESSING CMD FOR {self.ID_STR}")
         if cmd := self.cmd_data_dict.get(cmd_enum):
             cmd()
-
-# -------------------------------------------------------------------
 
     def update_player(self, media_server_url):
         # if self.cast_device.media_controller:
@@ -124,15 +121,16 @@ class MyMediaDevice:
                             # self.play_url(self.current_episode_info.get_url())
                             self.play_episode(self.current_episode_info, media_server_url)
                         # else:
-                            # self.new_episode_started = False
-                            # print("SENDING PAUSE")
-                            # self.interpret_enum_cmd(CommandList.CMD_PAUSE)
+                        # self.new_episode_started = False
+                        # print("SENDING PAUSE")
+                        # self.interpret_enum_cmd(CommandList.CMD_PAUSE)
                         print(f"LAST PLAYER STATE {self.last_state}")
                     # If we started playing, print the current media url
                     if self.player_state == "PLAYING":
                         # self.media_player_active = True
                         self.my_last_player_state = PlayerState.STATE_EPISODE_PLAYING
-                        print(f"DEVICE: {self.ID_STR}, NOW PLAYING: {self.current_episode_info.get_url(media_server_url)}")
+                        print(
+                            f"DEVICE: {self.ID_STR}, NOW PLAYING: {self.current_episode_info.get_url(media_server_url)}")
                     if self.player_state == "PAUSED":
                         self.my_last_player_state = PlayerState.STATE_EPISODE_PAUSED
                     if self.player_state == "BUFFERING":
@@ -155,11 +153,10 @@ class MyMediaDevice:
 
 
 class ChromecastHandler(threading.Thread):
-
     SCAN_INTERVAL = 60
     # browser = None
     connected_devices = {}
-    last_scanned_devices = None
+    last_scanned_devices = []
     initialized = False
     last_scan_time = 0
     browser = None
@@ -249,7 +246,6 @@ class ChromecastHandler(threading.Thread):
 # HANDLES USER INPUT
 # Getting user input for __main__
 class MyThread(threading.Thread):
-
     new_input = False
     user_input = None
     check_user_input = False

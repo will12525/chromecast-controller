@@ -5,7 +5,6 @@ from chromecast_handler import ChromecastHandler
 
 
 class BackEndHandler:
-
     SERVER_URL = "http://192.168.1.200:8000/"
     SERVER_URL_TV_SHOWS = SERVER_URL + "tv_shows/"
     MEDIA_FOLDER_PATH = "/media/hdd1/plex_media/tv_shows/"

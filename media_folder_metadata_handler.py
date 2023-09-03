@@ -97,10 +97,10 @@ class EpisodeInfo:
     def get_episode_info(self):
         if self.media_metadata:
             return get_tv_show_season_episode_metadata(
-                    self.media_metadata,
-                    self.tv_show_id,
-                    self.tv_show_season_id,
-                    self.tv_show_season_episode_id)
+                self.media_metadata,
+                self.tv_show_id,
+                self.tv_show_season_id,
+                self.tv_show_season_episode_id)
         return None
 
     def get_url(self, media_server_url):

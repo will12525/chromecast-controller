@@ -1,5 +1,6 @@
-from unittest import TestCase
 import os
+from unittest import TestCase
+
 import media_folder_metadata_handler
 
 MEDIA_FOLDER_SAMPLE_PATH = "../media_folder_sample/"
