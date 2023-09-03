@@ -15,6 +15,72 @@ get_tv_show_season_episode_metadata(media_folder_metadata, tv_show_id, tv_show_s
 MEDIA_METADATA_VERSION = 1
 
 
+class MediaFolderMetadataHandler:
+    tv_show_id = 0
+    tv_show_season_id = 0
+    tv_show_season_episode_id = 0
+    media_metadata = None
+
+    def __init__(self, media_metadata_file, media_folder_path):
+        self.media_metadata = get_media_metadata(media_metadata_file, media_folder_path)
+
+    def set_media_metadata(self, media_metadata):
+        self.media_metadata = media_metadata
+
+    def get_media_metadata(self):
+        return self.media_metadata
+
+    def set_episode_id(self, tv_show_id, tv_show_season_id, tv_show_season_episode_id):
+        if get_tv_show_season_episode_metadata(self.media_metadata, tv_show_id, tv_show_season_id,
+                                               tv_show_season_episode_id):
+            self.tv_show_id = tv_show_id
+            self.tv_show_season_id = tv_show_season_id
+            self.tv_show_season_episode_id = tv_show_season_episode_id
+            return True
+        return False
+
+    def get_episode_info(self):
+        return get_tv_show_season_episode_metadata(self.media_metadata,
+                                                   self.tv_show_id,
+                                                   self.tv_show_season_id,
+                                                   self.tv_show_season_episode_id)
+
+    def get_url(self, media_server_url):
+        if self.media_metadata and (media_folder_path := self.media_metadata.get("path")):
+            if current_episode := self.get_episode_info():
+                if current_episode_path := current_episode.get("path"):
+                    return current_episode_path.replace(media_folder_path, media_server_url)
+        return None
+
+    def increment_next_episode(self):
+        if self.media_metadata:
+            if not self.__increment_episode(self.media_metadata):
+                self.tv_show_season_episode_id = 0
+                if not self.__increment_season(self.media_metadata):
+                    self.tv_show_season_id = 0
+
+    def __increment_season(self, media_metadata):
+        if get_tv_show_season_episode_metadata(
+                media_metadata,
+                self.tv_show_id,
+                self.tv_show_season_id + 1,
+                0):
+            self.tv_show_season_id += 1
+            self.tv_show_season_episode_id = 0
+            return True
+        return False
+
+    def __increment_episode(self, media_metadata):
+        if get_tv_show_season_episode_metadata(
+                media_metadata,
+                self.tv_show_id,
+                self.tv_show_season_id,
+                self.tv_show_season_episode_id + 1):
+            self.tv_show_season_episode_id += 1
+            return True
+        return False
+
+
 class EpisodeInfo:
     tv_show_id = 0
     tv_show_season_id = 0

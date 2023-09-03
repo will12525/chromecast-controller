@@ -2,15 +2,10 @@
 from enum import Enum
 from flask import Flask, request, url_for
 # jsonify, redirect, current_app, render_template
-from chromecast_handler import ChromecastHandler, CommandList
-import media_folder_metadata_handler
+from backend_handler import BackEndHandler
+from chromecast_handler import CommandList
 
 app = Flask(__name__)
-
-SERVER_URL = "http://192.168.1.200:8000/"
-SERVER_URL_TV_SHOWS = SERVER_URL + "tv_shows/"
-MEDIA_FOLDER_PATH = "/media/hdd1/plex_media/tv_shows/"
-MEDIA_METADATA_FILE = "tv_show_metadata.json"
 
 device_button_list = [
     {"name": "connect", "value": "Connect"},
@@ -24,20 +19,12 @@ media_controller_button_list = [
     {"name": "skip", "value": "Skip"}
 ]
 
-chromecast_handler = ChromecastHandler()
-chromecast_handler.start()
-# chromecast_handler.connect_to_chromecast("Family Room TV")
-
-media_folder_metadata = media_folder_metadata_handler.get_media_metadata(
-    MEDIA_METADATA_FILE, "/media/hdd1/plex_media/tv_shows/")
+backend_handler = BackEndHandler()
+backend_handler.start()
 
 previous_selected_tv_show = None
 previous_selected_tv_show_season = None
 previous_selected_tv_show_season_episode = None
-
-tv_show_name_list = None
-
-print("HELLO WORLD!")
 
 path_type_strings = ["tv_show", "tv_show_season", "tv_show_season_episode"]
 
@@ -60,10 +47,9 @@ def build_html_button_list(button_list):
 
 
 def build_chromecast_menu():
-    global chromecast_handler
     scanned_chromecasts = '<div style="float:left; margin:10px">'
     scanned_chromecasts += f'<select name="select_scan_chromecast" id="select_scan_chromecast_id" size=4>'
-    scanned_devices = chromecast_handler.get_scan_list()
+    scanned_devices = backend_handler.get_chromecast_scan_list()
     if scanned_devices:
         for index, item_str in enumerate(scanned_devices):
             scanned_chromecasts += f'<option value="{item_str}">{item_str}</option>'
@@ -76,7 +62,7 @@ def build_chromecast_menu():
     connected_chromecasts = '<div style="float:left; margin:10px">'
     connected_chromecasts += f'<select name="select_connected_to_chromecast" ' \
                              f'id="select_connected_to_chromecast_id" size=4>'
-    connected_devices_str = chromecast_handler.get_connected_devices_list_str()
+    connected_devices_str = backend_handler.get_chromecast_connected_device_list()
     if connected_devices_str:
         for index, item_str in enumerate(connected_devices_str):
             connected_chromecasts += f'<option value="{item_str}">{item_str}</option>'
@@ -105,22 +91,21 @@ def build_select_list(set_selected, name: PathType, list_to_convert, selected_in
 
 
 def build_tv_show_name_list(set_selected, selected_tv_show_id=-1):
-    if tv_show_dir_list := media_folder_metadata_handler.get_tv_show_name_list(media_folder_metadata):
+    if tv_show_dir_list := backend_handler.get_tv_show_name_list():
         return build_select_list(set_selected, PathType.TV_SHOW, tv_show_dir_list, selected_tv_show_id)
     return ""
 
 
 def build_tv_show_season_name_list(set_selected, tv_show_id, selected_tv_show_season_id=-1):
-    if tv_show_season_dir_list := media_folder_metadata_handler.get_tv_show_season_name_list(media_folder_metadata,
-                                                                                             tv_show_id):
+    if tv_show_season_dir_list := backend_handler.get_tv_show_season_name_list(tv_show_id):
         return build_select_list(set_selected, PathType.TV_SHOW_SEASON, tv_show_season_dir_list,
                                  selected_tv_show_season_id)
 
 
 def build_tv_show_season_episode_name_list(set_selected, tv_show_id, tv_show_season_id,
                                            selected_tv_show_season_episode_id=-1):
-    if tv_show_season_episode_dir_list := media_folder_metadata_handler.get_tv_show_season_episode_name_list(
-            media_folder_metadata, tv_show_id, tv_show_season_id):
+    if tv_show_season_episode_dir_list := backend_handler.get_tv_show_season_episode_name_list(
+            tv_show_id, tv_show_season_id):
         return build_select_list(set_selected, PathType.TV_SHOW_SEASON_EPISODE, tv_show_season_episode_dir_list,
                                  selected_tv_show_season_episode_id)
 
@@ -159,7 +144,6 @@ def main_index():
     tv_show_id = 0
     tv_show_season_id = 0
     tv_show_season_episode_id = 0
-    current_episode = None
 
     if request.method == 'POST':
         POST_tv_show_id = request.form.get(f'select_{PathType.TV_SHOW.get_str()}')
@@ -168,49 +152,47 @@ def main_index():
 
         if POST_tv_show_id:
             POST_tv_show_id_int = int(POST_tv_show_id)
-            tv_show_id = POST_tv_show_id_int if media_folder_metadata_handler.get_tv_show_metadata(
-                media_folder_metadata, POST_tv_show_id_int) else 0
+            if backend_handler.get_tv_show_metadata(POST_tv_show_id_int):
+                tv_show_id = POST_tv_show_id_int
             print(f"VALID tv_show_id: {tv_show_id}")
         if POST_tv_show_season_id:
             POST_tv_show_id_season_int = int(POST_tv_show_season_id)
-            tv_show_season_id = POST_tv_show_id_season_int \
-                if media_folder_metadata_handler.get_tv_show_season_metadata(
-                    media_folder_metadata, tv_show_id, POST_tv_show_id_season_int) else 0
+            if backend_handler.get_tv_show_season_metadata(tv_show_id, POST_tv_show_id_season_int):
+                tv_show_season_id = POST_tv_show_id_season_int
             print(f"VALID tv_show_season_id: {tv_show_season_id}")
         if POST_tv_show_season_episode_id:
             POST_tv_show_id_season_episode_int = int(POST_tv_show_season_episode_id)
-            tv_show_season_episode_id = POST_tv_show_id_season_episode_int \
-                if media_folder_metadata_handler.get_tv_show_season_episode_metadata(
-                    media_folder_metadata, tv_show_id, tv_show_season_id, POST_tv_show_id_season_episode_int) else 0
+            if backend_handler.get_tv_show_season_episode_metadata(tv_show_id, tv_show_season_id,
+                                                                   POST_tv_show_id_season_episode_int):
+                tv_show_season_episode_id = POST_tv_show_id_season_episode_int
             print(f"VALID tv_show_season_episode_id: {tv_show_season_episode_id}")
 
         if request.form.get('start'):
             print("START PRESSED")
-            current_episode = media_folder_metadata_handler.EpisodeInfo(
-                MEDIA_METADATA_FILE, MEDIA_FOLDER_PATH, tv_show_id, tv_show_season_id, tv_show_season_episode_id)
-            chromecast_handler.play_from_media_drive(current_episode, SERVER_URL_TV_SHOWS)
+            backend_handler.set_episode(tv_show_id, tv_show_season_id, tv_show_season_episode_id)
+            backend_handler.play_episode()
 
         elif request.form.get('play'):
             print("PLAY PRESSED")
-            chromecast_handler.send_command(CommandList.CMD_PLAY)
+            backend_handler.send_chromecast_cmd(CommandList.CMD_PLAY)
         elif request.form.get('pause'):
             print("PAUSE PRESSED")
-            chromecast_handler.send_command(CommandList.CMD_PAUSE)
+            backend_handler.send_chromecast_cmd(CommandList.CMD_PAUSE)
         elif request.form.get('stop'):
-            chromecast_handler.send_command(CommandList.CMD_STOP)
+            backend_handler.send_chromecast_cmd(CommandList.CMD_STOP)
             print("STOP PRESSED")
         elif request.form.get('skip'):
             print("SKIP PRESSED")
-            chromecast_handler.send_command(CommandList.CMD_SKIP)
+            backend_handler.send_chromecast_cmd(CommandList.CMD_SKIP)
         elif request.form.get('connect'):
             print("CONNECT PRESSED")
             # print(request.form.get('select_scan_chromecast'))
             if device_id_str := request.form.get('select_scan_chromecast'):
-                chromecast_handler.connect_to_chromecast(device_id_str)
+                backend_handler.connect_chromecast(device_id_str)
         elif request.form.get('disconnect'):
             print("DISCONNECT PRESSED")
             if device_id_str := request.form.get('select_connected_to_chromecast'):
-                chromecast_handler.disconnect_from_chromecast(device_id_str)
+                backend_handler.disconnect_chromecast(device_id_str)
 
     changed_type = PathType.TV_SHOW
 
@@ -226,10 +208,9 @@ def main_index():
     #     changed_type = PathType.TV_SHOW_SEASON_EPISODE
     #     previous_selected_tv_show_season_episode = tv_show_season_episode_id
 
-    html_form = chromecast_handler.get_startup_sha()
+    html_form = backend_handler.get_startup_sha()
     html_form += build_visual_selector(tv_show_id, tv_show_season_id, tv_show_season_episode_id, changed_type)
-    if current_episode:
-        html_form += current_episode.get_url(SERVER_URL_TV_SHOWS)
+    html_form += backend_handler.get_episode_url()
 
     return html_form
 

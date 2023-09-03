@@ -2,13 +2,10 @@ import time
 import threading
 from enum import Enum
 import pychromecast
-import git
+
 
 CHROMECAST_DEVICE_BED_ROOM_STR = ["Master Bedroom TV"]
 CHROMECAST_DEVICE_LIVING_ROOM_STR = "Family Room TV"
-
-repo = git.Repo(search_parent_directories=True)
-startup_sha = repo.head.object.hexsha
 
 
 class CommandList(Enum):
@@ -247,9 +244,6 @@ class ChromecastHandler(threading.Thread):
                 time.sleep(0.1)
             except KeyboardInterrupt:
                 break
-
-    def get_startup_sha(self):
-        return startup_sha
 
 
 # HANDLES USER INPUT
