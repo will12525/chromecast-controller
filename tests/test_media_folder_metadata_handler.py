@@ -122,15 +122,17 @@ class MediaFolderMetadataHandler(TestCase):
     def reset(self):
         self.current_episode = media_folder_metadata_handler.MediaFolderMetadataHandler(MEDIA_METADATA_FILE,
                                                                                         MEDIA_FOLDER_SAMPLE_PATH)
+        self.current_episode.set_episode_id(0, 0, 0)
 
     def test_init(self):
         self.assertNotEqual(self.current_episode.media_metadata, None)
 
     def test_is_valid(self):
+        self.reset()
         self.assertNotEqual(self.current_episode.get_episode_info(), None)
 
     def test_is_not_valid(self):
-        self.current_episode.tv_show_id = 4
+        self.current_episode.media_id.tv_show_id = 4
         self.assertEqual(self.current_episode.get_episode_info(), None)
         self.current_episode.tv_show_id = self.test_base_tv_show_id
 
@@ -147,30 +149,31 @@ class MediaFolderMetadataHandler(TestCase):
 
         self.current_episode.increment_next_episode()
 
-        self.assertEqual(self.current_episode.tv_show_season_episode_id, self.test_base_tv_show_season_episode_id + 1)
-        self.assertEqual(self.current_episode.tv_show_season_id, self.test_base_tv_show_season_id)
-        self.assertEqual(self.current_episode.tv_show_id, self.test_base_tv_show_id)
+        self.assertEqual(self.current_episode.media_id.tv_show_season_episode_id,
+                         self.test_base_tv_show_season_episode_id + 1)
+        self.assertEqual(self.current_episode.media_id.tv_show_season_id, self.test_base_tv_show_season_id)
+        self.assertEqual(self.current_episode.media_id.tv_show_id, self.test_base_tv_show_id)
 
     def test_increment_season(self):
         self.reset()
-        self.current_episode.tv_show_season_episode_id = 10
+        self.current_episode.media_id.tv_show_season_episode_id = 10
 
         self.current_episode.increment_next_episode()
 
-        self.assertEqual(self.current_episode.tv_show_season_episode_id, 0)
-        self.assertEqual(self.current_episode.tv_show_season_id, self.test_base_tv_show_season_id + 1)
-        self.assertEqual(self.current_episode.tv_show_id, self.test_base_tv_show_id)
+        self.assertEqual(self.current_episode.media_id.tv_show_season_episode_id, 0)
+        self.assertEqual(self.current_episode.media_id.tv_show_season_id, self.test_base_tv_show_season_id + 1)
+        self.assertEqual(self.current_episode.media_id.tv_show_id, self.test_base_tv_show_id)
 
     def test_reset_to_base_episode(self):
         self.reset()
-        self.current_episode.tv_show_season_episode_id = 10
-        self.current_episode.tv_show_season_id = 10
+        self.current_episode.media_id.tv_show_season_episode_id = 10
+        self.current_episode.media_id.tv_show_season_id = 10
 
         self.current_episode.increment_next_episode()
 
-        self.assertEqual(self.current_episode.tv_show_season_episode_id, 0)
-        self.assertEqual(self.current_episode.tv_show_season_id, 0)
-        self.assertEqual(self.current_episode.tv_show_id, self.test_base_tv_show_id)
+        self.assertEqual(self.current_episode.media_id.tv_show_season_episode_id, 0)
+        self.assertEqual(self.current_episode.media_id.tv_show_season_id, 0)
+        self.assertEqual(self.current_episode.media_id.tv_show_id, self.test_base_tv_show_id)
 
 
 class TestEpisodeInfo(TestCase):

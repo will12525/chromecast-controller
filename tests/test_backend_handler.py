@@ -70,9 +70,10 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
         tv_show_season_episode_id = 2
 
         self.assertTrue(self.backend_handler.set_episode(tv_show_id, tv_show_season_id, tv_show_season_episode_id))
-        self.assertEqual(self.backend_handler.media_folder_metadata_handler.tv_show_id, tv_show_id)
-        self.assertEqual(self.backend_handler.media_folder_metadata_handler.tv_show_season_id, tv_show_season_id)
-        self.assertEqual(self.backend_handler.media_folder_metadata_handler.tv_show_season_episode_id,
+        self.assertEqual(self.backend_handler.media_folder_metadata_handler.media_id.tv_show_id, tv_show_id)
+        self.assertEqual(self.backend_handler.media_folder_metadata_handler.media_id.tv_show_season_id,
+                         tv_show_season_id)
+        self.assertEqual(self.backend_handler.media_folder_metadata_handler.media_id.tv_show_season_episode_id,
                          tv_show_season_episode_id)
         self.reset_backend_handler_episode()
 
