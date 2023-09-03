@@ -52,7 +52,9 @@ class BackEndHandler:
 
     def set_episode(self, tv_show_id, tv_show_season_id, tv_show_season_episode_id):
         if self.media_folder_metadata_handler:
-            return self.media_folder_metadata_handler.set_episode_id(tv_show_id, tv_show_season_id, tv_show_season_episode_id)
+            return self.media_folder_metadata_handler.set_episode_id(tv_show_id,
+                                                                     tv_show_season_id,
+                                                                     tv_show_season_episode_id)
         return False
 
     def get_episode_url(self):
@@ -83,7 +85,8 @@ class BackEndHandler:
 
     def get_tv_show_metadata(self, tv_show_id):
         if self.media_folder_metadata_handler:
-            return media_folder_metadata_handler.get_tv_show_metadata(self.media_folder_metadata_handler.get_media_metadata(), tv_show_id)
+            return media_folder_metadata_handler.get_tv_show_metadata(
+                self.media_folder_metadata_handler.get_media_metadata(), tv_show_id)
         return None
 
     def get_tv_show_season_metadata(self, tv_show_id, tv_show_season_id):
@@ -94,8 +97,9 @@ class BackEndHandler:
 
     def get_tv_show_season_episode_metadata(self, tv_show_id, tv_show_season_id, tv_show_season_episode_id):
         if self.media_folder_metadata_handler:
-            return media_folder_metadata_handler.get_tv_show_season_episode_metadata(self.media_folder_metadata_handler.get_media_metadata(),
-                                                                                     tv_show_id,
-                                                                                     tv_show_season_id,
-                                                                                     tv_show_season_episode_id)
+            return media_folder_metadata_handler.get_tv_show_season_episode_metadata(
+                self.media_folder_metadata_handler.get_media_metadata(),
+                tv_show_id,
+                tv_show_season_id,
+                tv_show_season_episode_id)
         return None
