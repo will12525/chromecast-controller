@@ -20,7 +20,6 @@ class TestMediaFolderMetadataHandler(TestCase):
         self.media_folder_metadata_handler = media_folder_metadata_handler.MediaFolderMetadataHandler(
             MEDIA_METADATA_FILE, MEDIA_FOLDER_SAMPLE_PATH)
         self.assertTrue(self.media_folder_metadata_handler.set_media_id(media_id))
-        print("Reset")
 
 
 class TestMediaMetadata(TestMediaFolderMetadataHandler):
@@ -192,3 +191,56 @@ class MediaFolderMetadataHandler(TestMediaFolderMetadataHandler):
         self.media_folder_metadata_handler.set_media_id(media_id)
         tv_show_season_episode_name_list = self.media_folder_metadata_handler.get_tv_show_season_episode_name_list()
         self.assertEqual(len(tv_show_season_episode_name_list), 2)
+
+
+class MediaFolderMetadataHandlerUpdate(TestMediaFolderMetadataHandler):
+
+    def test_update_tv_show(self):
+        media_id = MediaID(0, 0, 0)
+        new_tv_show_id = 1
+        changed_type = self.media_folder_metadata_handler.update_tv_show(new_tv_show_id, media_id)
+        self.assertEqual(changed_type, media_folder_metadata_handler.PathType.TV_SHOW)
+
+    def test_update_tv_show_no_change(self):
+        media_id = MediaID(0, 0, 0)
+        changed_type = self.media_folder_metadata_handler.update_tv_show(media_id.tv_show_id, media_id)
+        self.assertFalse(changed_type)
+
+    def test_update_tv_show_season(self):
+        media_id = MediaID(0, 0, 0)
+        new_tv_show_season_id = 1
+        changed_type = self.media_folder_metadata_handler.update_tv_show_season(new_tv_show_season_id, media_id)
+        self.assertEqual(changed_type, media_folder_metadata_handler.PathType.TV_SHOW_SEASON)
+
+    def test_update_tv_show_season_no_change(self):
+        media_id = MediaID(0, 0, 0)
+        changed_type = self.media_folder_metadata_handler.update_tv_show_season(media_id.tv_show_season_id, media_id)
+        self.assertFalse(changed_type)
+
+    def test_update_tv_show_season_episode(self):
+        media_id = MediaID(0, 0, 0)
+        new_tv_show_season_episode_id = 1
+        changed_type = self.media_folder_metadata_handler.update_tv_show_season_episode(new_tv_show_season_episode_id,
+                                                                                        media_id)
+        self.assertEqual(changed_type, media_folder_metadata_handler.PathType.TV_SHOW_SEASON_EPISODE)
+
+    def test_update_tv_show_season_episode_no_change(self):
+        media_id = MediaID(0, 0, 0)
+        changed_type = self.media_folder_metadata_handler.update_tv_show_season_episode(
+            media_id.tv_show_season_episode_id, media_id)
+        self.assertFalse(changed_type)
+
+    def test_update_media_id_selection_tv_show(self):
+        new_media_id = MediaID(1, 0, 0)
+        change_type = self.media_folder_metadata_handler.update_media_id_selection(new_media_id)
+        self.assertEqual(change_type, media_folder_metadata_handler.PathType.TV_SHOW)
+
+    def test_update_media_id_selection_tv_show_season(self):
+        new_media_id = MediaID(0, 1, 0)
+        change_type = self.media_folder_metadata_handler.update_media_id_selection(new_media_id)
+        self.assertEqual(change_type, media_folder_metadata_handler.PathType.TV_SHOW_SEASON)
+
+    def test_update_media_id_selection_tv_show_season_episode(self):
+        new_media_id = MediaID(0, 0, 1)
+        change_type = self.media_folder_metadata_handler.update_media_id_selection(new_media_id)
+        self.assertEqual(change_type, media_folder_metadata_handler.PathType.TV_SHOW_SEASON_EPISODE)

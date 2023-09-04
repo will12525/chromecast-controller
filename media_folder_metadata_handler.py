@@ -1,6 +1,7 @@
 import json
 import os
 import traceback
+from enum import Enum
 
 """
 API FUNCTIONS
@@ -13,6 +14,12 @@ get_tv_show_season_episode_metadata(media_folder_metadata, tv_show_id, tv_show_s
 """
 
 MEDIA_METADATA_VERSION = 1
+
+
+class PathType(Enum):
+    TV_SHOW = 0
+    TV_SHOW_SEASON = 1
+    TV_SHOW_SEASON_EPISODE = 2
 
 
 class MediaID:
@@ -49,13 +56,6 @@ class MediaFolderMetadataHandler:
 
     def get_media_metadata(self):
         return self.media_metadata
-
-    def set_episode_id(self, tv_show_id, tv_show_season_id, tv_show_season_episode_id):
-        media_id = MediaID(tv_show_id, tv_show_season_id, tv_show_season_episode_id)
-        if self.get_tv_show_season_episode_metadata(media_id):
-            self.media_id = media_id
-            return True
-        return False
 
     def media_id_exists(self, media_id):
         return self.get_tv_show_season_episode_metadata(media_id) is not None
@@ -119,6 +119,35 @@ class MediaFolderMetadataHandler:
             return get_metadata_content_by_id(tv_show_season_metadata.get("episodes"),
                                               media_id.tv_show_season_episode_id)
         return None
+
+    def update_tv_show(self, post_id, media_id):
+        if post_id and media_id.tv_show_id != (new_tv_show_id := int(post_id)):
+            if self.set_media_id(MediaID(new_tv_show_id, 0, 0)):
+                return PathType.TV_SHOW
+        return None
+
+    def update_tv_show_season(self, post_id, media_id):
+        if post_id and media_id.tv_show_season_id != (new_tv_show_season_id := int(post_id)):
+            if self.set_media_id(MediaID(media_id.tv_show_id, new_tv_show_season_id, 0)):
+                return PathType.TV_SHOW_SEASON
+        return None
+
+    def update_tv_show_season_episode(self, post_id, media_id):
+        if post_id and media_id.tv_show_season_episode_id != (post_id_int := int(post_id)):
+            new_media_id = media_id
+            new_media_id.tv_show_season_episode_id = post_id_int
+            if self.set_media_id(new_media_id):
+                return PathType.TV_SHOW_SEASON_EPISODE
+        return None
+
+    def update_media_id_selection(self, new_media_id):
+        media_id = self.media_id
+        changed_type = self.update_tv_show(new_media_id.tv_show_id, media_id)
+        if not changed_type:
+            changed_type = self.update_tv_show_season(new_media_id.tv_show_season_id, media_id)
+        if not changed_type:
+            changed_type = self.update_tv_show_season_episode(new_media_id.tv_show_season_episode_id, media_id)
+        return changed_type
 
 
 def get_metadata_name_list(media_metadata_list):

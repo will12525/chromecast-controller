@@ -63,3 +63,6 @@ class BackEndHandler:
 
     def get_tv_show_season_episode_name_list(self):
         return self.media_folder_metadata_handler.get_tv_show_season_episode_name_list()
+
+    def update_media_id_selection(self, new_media_id):
+        return self.media_folder_metadata_handler.update_media_id_selection(new_media_id)

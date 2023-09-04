@@ -215,9 +215,7 @@ class ChromecastHandler(threading.Thread):
 
     def play_from_media_drive(self, current_episode_info, media_server_url):
         self.media_server_url = media_server_url
-        # current_episode_url = current_episode_info.get_url()
         for key, connected_device in self.connected_devices.items():
-            # connected_device.play_url(current_episode_url)
             connected_device.play_episode(current_episode_info, self.media_server_url)
 
     def send_command(self, media_device_command):
