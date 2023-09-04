@@ -9,7 +9,7 @@ from media_folder_metadata_handler import MediaID, PathType
 
 app = Flask(__name__)
 
-device_button_list = [
+chromecast_button_list = [
     {"name": "connect", "value": "Connect"},
     {"name": "disconnect", "value": "Disconnect"}
 ]
@@ -20,11 +20,10 @@ media_controller_button_list = [
     {"name": "play", "value": "Play"},
     {"name": "skip", "value": "Skip"}
 ]
+path_type_strings = ["tv_show", "tv_show_season", "tv_show_season_episode"]
 
 backend_handler = BackEndHandler()
 backend_handler.start()
-
-path_type_strings = ["tv_show", "tv_show_season", "tv_show_season_episode"]
 
 
 def build_html_button(button_dict):
@@ -45,7 +44,7 @@ def build_chromecast_menu():
     scanned_chromecasts += '</select></div>'
 
     chromecast_buttons = '<div style="float:left; margin:10px">'
-    chromecast_buttons += build_html_button_list(device_button_list)
+    chromecast_buttons += build_html_button_list(chromecast_button_list)
     chromecast_buttons += '</div>'
 
     connected_chromecasts = '<div style="float:left; margin:10px">'
