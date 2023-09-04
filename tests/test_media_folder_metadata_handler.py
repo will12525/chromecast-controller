@@ -2,12 +2,28 @@ import os
 from unittest import TestCase
 
 import media_folder_metadata_handler
+from media_folder_metadata_handler import MediaID
 
 MEDIA_FOLDER_SAMPLE_PATH = "../media_folder_sample/"
 MEDIA_METADATA_FILE = "tv_show_metadata.json"
 
 
-class TestMediaMetadata(TestCase):
+class TestMediaFolderMetadataHandler(TestCase):
+    SERVER_URL_TV_SHOWS = "http://192.168.1.200:8000/tv_shows/"
+    media_folder_metadata_handler = None
+    test_base_tv_show_id = 0
+    test_base_tv_show_season_id = 0
+    test_base_tv_show_season_episode_id = 0
+
+    def setUp(self):
+        media_id = MediaID(0, 0, 0)
+        self.media_folder_metadata_handler = media_folder_metadata_handler.MediaFolderMetadataHandler(
+            MEDIA_METADATA_FILE, MEDIA_FOLDER_SAMPLE_PATH)
+        self.assertTrue(self.media_folder_metadata_handler.set_media_id(media_id))
+        print("Reset")
+
+
+class TestMediaMetadata(TestMediaFolderMetadataHandler):
 
     def test_generate_tv_show_list(self):
         media_folder_metadata = media_folder_metadata_handler.generate_tv_show_list(MEDIA_FOLDER_SAMPLE_PATH)
@@ -111,33 +127,21 @@ class TestMediaMetadata(TestCase):
         self.assertEqual(len(tv_show_season_episode_name_list), 2)
 
 
-class MediaFolderMetadataHandler(TestCase):
-    SERVER_URL_TV_SHOWS = "http://192.168.1.200:8000/tv_shows/"
-    test_base_tv_show_id = 0
-    test_base_tv_show_season_id = 0
-    test_base_tv_show_season_episode_id = 0
-    current_episode = media_folder_metadata_handler.MediaFolderMetadataHandler(MEDIA_METADATA_FILE,
-                                                                               MEDIA_FOLDER_SAMPLE_PATH)
-
-    def reset(self):
-        self.current_episode = media_folder_metadata_handler.MediaFolderMetadataHandler(MEDIA_METADATA_FILE,
-                                                                                        MEDIA_FOLDER_SAMPLE_PATH)
-        self.current_episode.set_episode_id(0, 0, 0)
+class MediaFolderMetadataHandler(TestMediaFolderMetadataHandler):
 
     def test_init(self):
-        self.assertNotEqual(self.current_episode.media_metadata, None)
+        self.assertNotEqual(self.media_folder_metadata_handler.media_metadata, None)
 
     def test_is_valid(self):
-        self.reset()
-        self.assertNotEqual(self.current_episode.get_episode_info(), None)
+        self.assertNotEqual(self.media_folder_metadata_handler.get_episode_info(), None)
 
     def test_is_not_valid(self):
-        self.current_episode.media_id.tv_show_id = 4
-        self.assertEqual(self.current_episode.get_episode_info(), None)
-        self.current_episode.tv_show_id = self.test_base_tv_show_id
+        self.media_folder_metadata_handler.media_id.tv_show_id = 4
+        self.assertEqual(self.media_folder_metadata_handler.get_episode_info(), None)
+        self.media_folder_metadata_handler.media_id.tv_show_id = self.test_base_tv_show_id
 
     def test_get_url(self):
-        current_episode_url = self.current_episode.get_url(self.SERVER_URL_TV_SHOWS)
+        current_episode_url = self.media_folder_metadata_handler.get_url(self.SERVER_URL_TV_SHOWS)
         self.assertTrue(current_episode_url)
         self.assertEqual(type(current_episode_url), str)
         self.assertTrue(self.SERVER_URL_TV_SHOWS in current_episode_url)
@@ -145,98 +149,46 @@ class MediaFolderMetadataHandler(TestCase):
         self.assertFalse(MEDIA_FOLDER_SAMPLE_PATH in current_episode_url)
 
     def test_increment_episode(self):
-        self.reset()
+        self.media_folder_metadata_handler.increment_next_episode()
 
-        self.current_episode.increment_next_episode()
-
-        self.assertEqual(self.current_episode.media_id.tv_show_season_episode_id,
+        self.assertEqual(self.media_folder_metadata_handler.media_id.tv_show_season_episode_id,
                          self.test_base_tv_show_season_episode_id + 1)
-        self.assertEqual(self.current_episode.media_id.tv_show_season_id, self.test_base_tv_show_season_id)
-        self.assertEqual(self.current_episode.media_id.tv_show_id, self.test_base_tv_show_id)
+        self.assertEqual(self.media_folder_metadata_handler.media_id.tv_show_season_id,
+                         self.test_base_tv_show_season_id)
+        self.assertEqual(self.media_folder_metadata_handler.media_id.tv_show_id, self.test_base_tv_show_id)
 
     def test_increment_season(self):
-        self.reset()
-        self.current_episode.media_id.tv_show_season_episode_id = 10
+        self.media_folder_metadata_handler.media_id.tv_show_season_episode_id = 10
 
-        self.current_episode.increment_next_episode()
+        self.media_folder_metadata_handler.increment_next_episode()
 
-        self.assertEqual(self.current_episode.media_id.tv_show_season_episode_id, 0)
-        self.assertEqual(self.current_episode.media_id.tv_show_season_id, self.test_base_tv_show_season_id + 1)
-        self.assertEqual(self.current_episode.media_id.tv_show_id, self.test_base_tv_show_id)
-
-    def test_reset_to_base_episode(self):
-        self.reset()
-        self.current_episode.media_id.tv_show_season_episode_id = 10
-        self.current_episode.media_id.tv_show_season_id = 10
-
-        self.current_episode.increment_next_episode()
-
-        self.assertEqual(self.current_episode.media_id.tv_show_season_episode_id, 0)
-        self.assertEqual(self.current_episode.media_id.tv_show_season_id, 0)
-        self.assertEqual(self.current_episode.media_id.tv_show_id, self.test_base_tv_show_id)
-
-
-class TestEpisodeInfo(TestCase):
-    SERVER_URL_TV_SHOWS = "http://192.168.1.200:8000/tv_shows/"
-    test_base_tv_show_id = 0
-    test_base_tv_show_season_id = 0
-    test_base_tv_show_season_episode_id = 0
-    current_episode = media_folder_metadata_handler.EpisodeInfo(
-        MEDIA_METADATA_FILE, MEDIA_FOLDER_SAMPLE_PATH, test_base_tv_show_id, test_base_tv_show_season_id,
-        test_base_tv_show_season_episode_id)
-
-    def reset(self):
-        self.current_episode = media_folder_metadata_handler.EpisodeInfo(MEDIA_METADATA_FILE,
-                                                                         MEDIA_FOLDER_SAMPLE_PATH,
-                                                                         self.test_base_tv_show_id,
-                                                                         self.test_base_tv_show_season_id,
-                                                                         self.test_base_tv_show_season_episode_id)
-
-    def test_init(self):
-        self.assertNotEqual(self.current_episode.media_metadata, None)
-
-    def test_is_valid(self):
-        self.assertNotEqual(self.current_episode.get_episode_info(), None)
-
-    def test_is_not_valid(self):
-        self.current_episode.tv_show_id = 4
-        self.assertEqual(self.current_episode.get_episode_info(), None)
-        self.current_episode.tv_show_id = self.test_base_tv_show_id
-
-    def test_get_url(self):
-        current_episode_url = self.current_episode.get_url(self.SERVER_URL_TV_SHOWS)
-        self.assertTrue(current_episode_url)
-        self.assertEqual(type(current_episode_url), str)
-        self.assertTrue(self.SERVER_URL_TV_SHOWS in current_episode_url)
-        self.assertTrue(".mp4" in current_episode_url)
-        self.assertFalse(MEDIA_FOLDER_SAMPLE_PATH in current_episode_url)
-
-    def test_increment_episode(self):
-        self.reset()
-
-        self.current_episode.increment_next_episode()
-
-        self.assertEqual(self.current_episode.tv_show_season_episode_id, self.test_base_tv_show_season_episode_id + 1)
-        self.assertEqual(self.current_episode.tv_show_season_id, self.test_base_tv_show_season_id)
-        self.assertEqual(self.current_episode.tv_show_id, self.test_base_tv_show_id)
-
-    def test_increment_season(self):
-        self.reset()
-        self.current_episode.tv_show_season_episode_id = 10
-
-        self.current_episode.increment_next_episode()
-
-        self.assertEqual(self.current_episode.tv_show_season_episode_id, 0)
-        self.assertEqual(self.current_episode.tv_show_season_id, self.test_base_tv_show_season_id + 1)
-        self.assertEqual(self.current_episode.tv_show_id, self.test_base_tv_show_id)
+        self.assertEqual(self.media_folder_metadata_handler.media_id.tv_show_season_episode_id, 0)
+        self.assertEqual(self.media_folder_metadata_handler.media_id.tv_show_season_id,
+                         self.test_base_tv_show_season_id + 1)
+        self.assertEqual(self.media_folder_metadata_handler.media_id.tv_show_id, self.test_base_tv_show_id)
 
     def test_reset_to_base_episode(self):
-        self.reset()
-        self.current_episode.tv_show_season_episode_id = 10
-        self.current_episode.tv_show_season_id = 10
+        self.media_folder_metadata_handler.media_id.tv_show_season_episode_id = 10
+        self.media_folder_metadata_handler.media_id.tv_show_season_id = 10
 
-        self.current_episode.increment_next_episode()
+        self.media_folder_metadata_handler.increment_next_episode()
 
-        self.assertEqual(self.current_episode.tv_show_season_episode_id, 0)
-        self.assertEqual(self.current_episode.tv_show_season_id, 0)
-        self.assertEqual(self.current_episode.tv_show_id, self.test_base_tv_show_id)
+        self.assertEqual(self.media_folder_metadata_handler.media_id.tv_show_season_episode_id, 0)
+        self.assertEqual(self.media_folder_metadata_handler.media_id.tv_show_season_id, 0)
+        self.assertEqual(self.media_folder_metadata_handler.media_id.tv_show_id, self.test_base_tv_show_id)
+
+    def test_get_tv_show_name_list(self):
+        tv_show_name_list = self.media_folder_metadata_handler.get_tv_show_name_list()
+        self.assertEqual(len(tv_show_name_list), 3)
+
+    def test_get_tv_show_season_name_list(self):
+        media_id = MediaID(0, 0, 0)
+        self.media_folder_metadata_handler.set_media_id(media_id)
+        tv_show_season_name_list = self.media_folder_metadata_handler.get_tv_show_season_name_list()
+        self.assertEqual(len(tv_show_season_name_list), 2)
+
+    def test_get_tv_show_season_episode_name_list(self):
+        media_id = MediaID(1, 0, 0)
+        self.media_folder_metadata_handler.set_media_id(media_id)
+        tv_show_season_episode_name_list = self.media_folder_metadata_handler.get_tv_show_season_episode_name_list()
+        self.assertEqual(len(tv_show_season_episode_name_list), 2)

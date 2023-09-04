@@ -6,6 +6,7 @@ from flask import Flask, request, url_for
 # jsonify, redirect, current_app, render_template
 from backend_handler import BackEndHandler
 from chromecast_handler import CommandList
+from media_folder_metadata_handler import MediaID
 
 app = Flask(__name__)
 
@@ -92,34 +93,33 @@ def build_select_list(set_selected, name: PathType, list_to_convert, selected_in
     return ret_select_html
 
 
-def build_tv_show_name_list(set_selected, selected_tv_show_id=-1):
+def build_tv_show_name_list(set_selected, media_id):
     if tv_show_dir_list := backend_handler.get_tv_show_name_list():
-        return build_select_list(set_selected, PathType.TV_SHOW, tv_show_dir_list, selected_tv_show_id)
+        return build_select_list(set_selected, PathType.TV_SHOW, tv_show_dir_list, media_id.tv_show_id)
     return ""
 
 
-def build_tv_show_season_name_list(set_selected, tv_show_id, selected_tv_show_season_id=-1):
-    if tv_show_season_dir_list := backend_handler.get_tv_show_season_name_list(tv_show_id):
+def build_tv_show_season_name_list(set_selected, media_id):
+    if tv_show_season_dir_list := backend_handler.get_tv_show_season_name_list():
         return build_select_list(set_selected, PathType.TV_SHOW_SEASON, tv_show_season_dir_list,
-                                 selected_tv_show_season_id)
+                                 media_id.tv_show_season_id)
+    return ""
 
 
-def build_tv_show_season_episode_name_list(set_selected, tv_show_id, tv_show_season_id,
-                                           selected_tv_show_season_episode_id=-1):
-    if tv_show_season_episode_dir_list := backend_handler.get_tv_show_season_episode_name_list(
-            tv_show_id, tv_show_season_id):
+def build_tv_show_season_episode_name_list(set_selected, media_id):
+    if tv_show_season_episode_dir_list := backend_handler.get_tv_show_season_episode_name_list():
         return build_select_list(set_selected, PathType.TV_SHOW_SEASON_EPISODE, tv_show_season_episode_dir_list,
-                                 selected_tv_show_season_episode_id)
+                                 media_id.tv_show_season_episode_id)
+    return ""
 
 
-def build_visual_selector(tv_show_id, tv_show_season_id, tv_show_season_episode_id, changed_type):
+def build_visual_selector(changed_type):
+    media_id = backend_handler.get_media_id()
     episode_select = f'<div style="float:left; margin:10px"><form action="{url_for("main_index")}" method="post">'
-    episode_select += str(build_tv_show_name_list(PathType.TV_SHOW == changed_type, tv_show_id))
-    episode_select += str(build_tv_show_season_name_list(PathType.TV_SHOW_SEASON == changed_type, tv_show_id,
-                                                         tv_show_season_id))
+    episode_select += str(build_tv_show_name_list(PathType.TV_SHOW == changed_type, media_id))
+    episode_select += str(build_tv_show_season_name_list(PathType.TV_SHOW_SEASON == changed_type, media_id))
     episode_select += str(build_tv_show_season_episode_name_list(PathType.TV_SHOW_SEASON_EPISODE == changed_type,
-                                                                 tv_show_id, tv_show_season_id,
-                                                                 tv_show_season_episode_id))
+                                                                 media_id))
 
     episode_select += build_html_button_list(media_controller_button_list)
 
@@ -127,6 +127,29 @@ def build_visual_selector(tv_show_id, tv_show_season_id, tv_show_season_episode_
     episode_select += '</form></div>'
 
     return episode_select
+
+
+def update_tv_show(post_id, media_id):
+    if post_id and media_id.tv_show_id != (new_tv_show_id := int(post_id)):
+        if backend_handler.set_media_id(MediaID(new_tv_show_id, 0, 0)):
+            return PathType.TV_SHOW
+    return None
+
+
+def update_tv_show_season(post_id, media_id):
+    if post_id and media_id.tv_show_season_id != (new_tv_show_season_id := int(post_id)):
+        if backend_handler.set_media_id(MediaID(media_id.tv_show_id, new_tv_show_season_id, 0)):
+            return PathType.TV_SHOW_SEASON
+    return None
+
+
+def update_tv_show_season_episode(post_id, media_id):
+    if post_id and media_id.tv_show_season_episode_id != (new_tv_show_season_episode_id := int(post_id)):
+        new_media_id = media_id
+        new_media_id.tv_show_season_episode_id = new_tv_show_season_episode_id
+        if backend_handler.set_media_id(new_media_id):
+            return PathType.TV_SHOW_SEASON_EPISODE
+    return None
 
 
 def hello_world():
@@ -141,37 +164,22 @@ def pause_cast():
 
 @app.route('/', methods=['GET', 'POST'])
 def main_index():
-    global previous_selected_tv_show, previous_selected_tv_show_season, previous_selected_tv_show_season_episode
-
-    tv_show_id = 0
-    tv_show_season_id = 0
-    tv_show_season_episode_id = 0
+    changed_type = None
 
     if request.method == 'POST':
         POST_tv_show_id = request.form.get(f'select_{PathType.TV_SHOW.get_str()}')
         POST_tv_show_season_id = request.form.get('select_tv_show_season')
         POST_tv_show_season_episode_id = request.form.get('select_tv_show_season_episode')
 
-        if POST_tv_show_id:
-            POST_tv_show_id_int = int(POST_tv_show_id)
-            if backend_handler.get_tv_show_metadata(POST_tv_show_id_int):
-                tv_show_id = POST_tv_show_id_int
-            print(f"VALID tv_show_id: {tv_show_id}")
-        if POST_tv_show_season_id:
-            POST_tv_show_id_season_int = int(POST_tv_show_season_id)
-            if backend_handler.get_tv_show_season_metadata(tv_show_id, POST_tv_show_id_season_int):
-                tv_show_season_id = POST_tv_show_id_season_int
-            print(f"VALID tv_show_season_id: {tv_show_season_id}")
-        if POST_tv_show_season_episode_id:
-            POST_tv_show_id_season_episode_int = int(POST_tv_show_season_episode_id)
-            if backend_handler.get_tv_show_season_episode_metadata(tv_show_id, tv_show_season_id,
-                                                                   POST_tv_show_id_season_episode_int):
-                tv_show_season_episode_id = POST_tv_show_id_season_episode_int
-            print(f"VALID tv_show_season_episode_id: {tv_show_season_episode_id}")
+        media_id = backend_handler.get_media_id()
+        changed_type = update_tv_show(POST_tv_show_id, media_id)
+        if not changed_type:
+            changed_type = update_tv_show_season(POST_tv_show_season_id, media_id)
+        if not changed_type:
+            changed_type = update_tv_show_season_episode(POST_tv_show_season_episode_id, media_id)
 
         if request.form.get('start'):
             print("START PRESSED")
-            backend_handler.set_episode(tv_show_id, tv_show_season_id, tv_show_season_episode_id)
             backend_handler.play_episode()
 
         elif request.form.get('play'):
@@ -196,22 +204,8 @@ def main_index():
             if device_id_str := request.form.get('select_connected_to_chromecast'):
                 backend_handler.disconnect_chromecast(device_id_str)
 
-    changed_type = PathType.TV_SHOW
-
-    if previous_selected_tv_show != tv_show_id:
-        print("SHOW CHANGED")
-        previous_selected_tv_show = tv_show_id
-    elif previous_selected_tv_show_season != tv_show_season_id:
-        print("SEASON CHANGED")
-        changed_type = PathType.TV_SHOW_SEASON
-        previous_selected_tv_show_season = tv_show_season_id
-    # elif previous_selected_tv_show_season_episode != tv_show_season_episode_id:
-    #     print("EPISODE CHANGED")
-    #     changed_type = PathType.TV_SHOW_SEASON_EPISODE
-    #     previous_selected_tv_show_season_episode = tv_show_season_episode_id
-
     html_form = backend_handler.get_startup_sha()
-    html_form += build_visual_selector(tv_show_id, tv_show_season_id, tv_show_season_episode_id, changed_type)
+    html_form += build_visual_selector(changed_type)
     html_form += backend_handler.get_episode_url()
 
     return html_form

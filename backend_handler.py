@@ -26,79 +26,40 @@ class BackEndHandler:
         return self.startup_sha
 
     def start(self):
-        if self.chromecast_handler:
-            self.chromecast_handler.start()
+        self.chromecast_handler.start()
 
     def get_chromecast_scan_list(self):
-        if self.chromecast_handler:
-            return self.chromecast_handler.get_scan_list()
+        return self.chromecast_handler.get_scan_list()
 
     def get_chromecast_connected_device_list(self):
-        if self.chromecast_handler:
-            return self.chromecast_handler.get_connected_devices_list_str()
+        return self.chromecast_handler.get_connected_devices_list_str()
 
     def send_chromecast_cmd(self, cmd):
-        if self.chromecast_handler:
-            self.chromecast_handler.send_command(cmd)
+        self.chromecast_handler.send_command(cmd)
 
     def connect_chromecast(self, device_id_str):
-        if self.chromecast_handler:
-            self.chromecast_handler.connect_to_chromecast(device_id_str)
+        self.chromecast_handler.connect_to_chromecast(device_id_str)
 
     def disconnect_chromecast(self, device_id_str):
-        if self.chromecast_handler:
-            self.chromecast_handler.disconnect_from_chromecast(device_id_str)
+        self.chromecast_handler.disconnect_from_chromecast(device_id_str)
 
-    def set_episode(self, tv_show_id, tv_show_season_id, tv_show_season_episode_id):
-        if self.media_folder_metadata_handler:
-            return self.media_folder_metadata_handler.set_episode_id(tv_show_id,
-                                                                     tv_show_season_id,
-                                                                     tv_show_season_episode_id)
-        return False
+    def set_media_id(self, media_id):
+        return self.media_folder_metadata_handler.set_media_id(media_id)
+
+    def get_media_id(self):
+        return self.media_folder_metadata_handler.get_media_id()
 
     def get_episode_url(self):
-        if self.media_folder_metadata_handler:
-            return self.media_folder_metadata_handler.get_url(self.SERVER_URL_TV_SHOWS)
+        return self.media_folder_metadata_handler.get_url(self.SERVER_URL_TV_SHOWS)
 
     def play_episode(self):
-        if self.chromecast_handler and self.media_folder_metadata_handler:
-            self.chromecast_handler.play_from_media_drive(self.media_folder_metadata_handler, self.SERVER_URL_TV_SHOWS)
+        self.chromecast_handler.play_from_media_drive(self.media_folder_metadata_handler, self.SERVER_URL_TV_SHOWS)
 
     def get_tv_show_name_list(self):
-        if self.media_folder_metadata_handler:
-            return media_folder_metadata_handler.get_tv_show_name_list(
-                self.media_folder_metadata_handler.get_media_metadata())
-        return None
+        return self.media_folder_metadata_handler.get_tv_show_name_list()
 
-    def get_tv_show_season_name_list(self, tv_show_id):
-        if self.media_folder_metadata_handler:
-            return media_folder_metadata_handler.get_tv_show_season_name_list(
-                self.media_folder_metadata_handler.get_media_metadata(), tv_show_id)
-        return None
+    def get_tv_show_season_name_list(self):
+        return self.media_folder_metadata_handler.get_tv_show_season_name_list()
 
-    def get_tv_show_season_episode_name_list(self, tv_show_id, tv_show_season_id):
-        if self.media_folder_metadata_handler:
-            return media_folder_metadata_handler.get_tv_show_season_episode_name_list(
-                self.media_folder_metadata_handler.get_media_metadata(), tv_show_id, tv_show_season_id)
-        return None
-
-    def get_tv_show_metadata(self, tv_show_id):
-        if self.media_folder_metadata_handler:
-            return media_folder_metadata_handler.get_tv_show_metadata(
-                self.media_folder_metadata_handler.get_media_metadata(), tv_show_id)
-        return None
-
-    def get_tv_show_season_metadata(self, tv_show_id, tv_show_season_id):
-        if self.media_folder_metadata_handler:
-            return media_folder_metadata_handler.get_tv_show_season_metadata(
-                self.media_folder_metadata_handler.get_media_metadata(), tv_show_id, tv_show_season_id)
-        return None
-
-    def get_tv_show_season_episode_metadata(self, tv_show_id, tv_show_season_id, tv_show_season_episode_id):
-        if self.media_folder_metadata_handler:
-            return media_folder_metadata_handler.get_tv_show_season_episode_metadata(
-                self.media_folder_metadata_handler.get_media_metadata(),
-                tv_show_id,
-                tv_show_season_id,
-                tv_show_season_episode_id)
-        return None
+    def get_tv_show_season_episode_name_list(self):
+        return self.media_folder_metadata_handler.get_tv_show_season_episode_name_list()
