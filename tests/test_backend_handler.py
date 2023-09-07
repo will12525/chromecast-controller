@@ -36,10 +36,10 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
         chromecast_scan_list = self.backend_handler.get_chromecast_scan_list()
         self.assertEqual(type(chromecast_scan_list), list)
 
-    def test_get_chromecast_connected_device_list(self):
-        self.test_connect_chromecast()
-        connected_devices_list = self.backend_handler.get_chromecast_connected_device_list()
-        self.assertEqual(type(connected_devices_list), list)
+    # def test_get_chromecast_connected_device_list(self):
+    #     self.test_connect_chromecast()
+    #     connected_devices_list = self.backend_handler.get_chromecast_connected_device_list()
+    #     self.assertEqual(type(connected_devices_list), list)
 
     def test_send_chromecast_cmd(self):
         self.test_play_episode()
@@ -49,16 +49,14 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
 
     def test_connect_chromecast(self):
         self.backend_handler.connect_chromecast(self.CHROMECAST_ID)
-        connected_devices_list = self.backend_handler.get_chromecast_connected_device_list()
-        self.assertTrue(self.CHROMECAST_ID in connected_devices_list)
+        self.assertEqual(self.CHROMECAST_ID, self.backend_handler.get_chromecast_device_id())
 
     def test_disconnect_chromecast(self):
         self.test_connect_chromecast()
-        self.backend_handler.disconnect_chromecast(self.CHROMECAST_ID)
-        connected_devices_list = self.backend_handler.get_chromecast_connected_device_list()
+        self.backend_handler.disconnect_chromecast()
+        connected_device_id = self.backend_handler.get_chromecast_device_id()
 
-        self.assertEqual(type(connected_devices_list), list)
-        self.assertEqual(connected_devices_list, [])
+        self.assertFalse(connected_device_id)
 
     def test_set_episode(self):
         media_id = MediaID(0, 1, 2)
@@ -76,10 +74,11 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
         self.assertEqual(type(episode_url), str)
 
     def test_play_episode(self):
-        self.backend_handler.connect_chromecast(self.CHROMECAST_ID)
-        connected_devices_list = self.backend_handler.get_chromecast_connected_device_list()
-        print(connected_devices_list)
-        self.assertTrue(self.CHROMECAST_ID in connected_devices_list)
+        self.test_connect_chromecast()
+        # self.backend_handler.connect_chromecast(self.CHROMECAST_ID)
+        # connected_devices_list = self.backend_handler.get_chromecast_connected_device_list()
+        # print(connected_devices_list)
+        # self.assertTrue(self.CHROMECAST_ID in connected_devices_list)
 
         self.backend_handler.play_episode()
 

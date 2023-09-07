@@ -50,10 +50,9 @@ def build_chromecast_menu():
     connected_chromecasts = '<div style="float:left; margin:10px">'
     connected_chromecasts += f'<select name="select_connected_to_chromecast" ' \
                              f'id="select_connected_to_chromecast_id" size=4>'
-    connected_devices_str = backend_handler.get_chromecast_connected_device_list()
-    if connected_devices_str:
-        for index, item_str in enumerate(connected_devices_str):
-            connected_chromecasts += f'<option value="{item_str}">{item_str}</option>'
+    connected_device_id = backend_handler.get_chromecast_device_id()
+    if connected_device_id:
+        connected_chromecasts += f'<option value="{connected_device_id}">{connected_device_id}</option>'
     connected_chromecasts += '</select></div>'
 
     return scanned_chromecasts + chromecast_buttons + connected_chromecasts
@@ -146,7 +145,7 @@ def main_index():
         elif request.form.get('disconnect'):
             print("DISCONNECT PRESSED")
             if device_id_str := request.form.get('select_connected_to_chromecast'):
-                backend_handler.disconnect_chromecast(device_id_str)
+                backend_handler.disconnect_chromecast()
 
     html_form = backend_handler.get_startup_sha()
     html_form += build_episode_selector(changed_type, backend_handler.get_media_id())

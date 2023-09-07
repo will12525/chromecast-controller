@@ -31,17 +31,17 @@ class BackEndHandler:
     def get_chromecast_scan_list(self):
         return self.chromecast_handler.get_scan_list()
 
-    def get_chromecast_connected_device_list(self):
-        return self.chromecast_handler.get_connected_devices_list_str()
+    def get_chromecast_device_id(self):
+        return self.chromecast_handler.get_chromecast_id()
 
     def send_chromecast_cmd(self, cmd):
         self.chromecast_handler.send_command(cmd)
 
     def connect_chromecast(self, device_id_str):
-        self.chromecast_handler.connect_to_chromecast(device_id_str)
+        self.chromecast_handler.connect_chromecast(device_id_str)
 
-    def disconnect_chromecast(self, device_id_str):
-        self.chromecast_handler.disconnect_from_chromecast(device_id_str)
+    def disconnect_chromecast(self):
+        self.chromecast_handler.disconnect_chromecast()
 
     def set_media_id(self, media_id):
         return self.media_folder_metadata_handler.set_media_id(media_id)

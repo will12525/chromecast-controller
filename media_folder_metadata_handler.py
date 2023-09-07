@@ -70,6 +70,10 @@ class MediaFolderMetadataHandler:
                     return current_episode_path.replace(media_folder_path, media_server_url)
         return None
 
+    def get_title(self):
+        if episode_info := self.get_episode_info():
+            return episode_info.get("name")
+
     def increment_next_episode(self):
         if not self.__increment_episode():
             self.media_id.tv_show_season_episode_id = 0

@@ -31,41 +31,36 @@ class TestChromecastScanning(TestChromecastHandler):
 
 class TestChromecastConnection(TestChromecastHandler):
 
-    def test_get_connected_devices_list_str(self):
+    def test_get_chromecast_device_id(self):
         self.test_connect_to_chromecast()
-        connected_devices_list = self.chromecast_handler.get_connected_devices_list_str()
-        self.assertEqual(type(connected_devices_list), list)
+        self.assertEqual(type(self.chromecast_handler.get_chromecast_id()), str)
 
     def test_connect_to_chromecast(self):
-        self.chromecast_handler.connect_to_chromecast(self.CHROMECAST_ID)
-        connected_devices_list = self.chromecast_handler.get_connected_devices_list_str()
-        self.assertTrue(self.CHROMECAST_ID in connected_devices_list)
+        self.chromecast_handler.connect_chromecast(self.CHROMECAST_ID)
+        self.assertTrue(self.chromecast_handler.media_controller)
+        self.assertEqual(self.chromecast_handler.get_chromecast_id(), self.CHROMECAST_ID)
 
     def test_disconnect_from_chromecast(self):
         self.test_connect_to_chromecast()
-        self.chromecast_handler.disconnect_from_chromecast(self.CHROMECAST_ID)
-        connected_devices = self.chromecast_handler.get_connected_devices_list_str()
-        self.assertEqual(len(connected_devices), 0)
+        self.chromecast_handler.disconnect_chromecast()
+        self.assertFalse(self.chromecast_handler.get_media_controller())
 
     def test_get_chromecast_device(self):
         self.chromecast_handler.scan_for_chromecasts()
         chromecast_scan_list = self.chromecast_handler.get_scan_list()
         self.assertTrue(chromecast_scan_list)
-        self.chromecast_handler.connect_to_chromecast(self.CHROMECAST_ID)
-        connected_devices_list = self.chromecast_handler.get_connected_devices_list_str()
+        self.chromecast_handler.connect_chromecast(self.CHROMECAST_ID)
 
-        self.assertTrue(connected_devices_list)
-        self.assertEqual(len(connected_devices_list), 1)
-        chromecast_device = self.chromecast_handler.get_chromecast_device(self.CHROMECAST_ID)
-        self.assertEqual(chromecast_device.ID_STR, self.CHROMECAST_ID)
+        self.assertTrue(self.chromecast_handler.media_controller)
+        self.assertEqual(self.chromecast_handler.get_chromecast_id(), self.CHROMECAST_ID)
 
 
 class TestChromecastCommands(TestChromecastHandler):
     # Requires Visual acknowledgement
     def test_play_from_media_drive(self):
-        self.chromecast_handler.connect_to_chromecast(self.CHROMECAST_ID)
-        connected_devices_list = self.chromecast_handler.get_connected_devices_list_str()
-        self.assertTrue(self.CHROMECAST_ID in connected_devices_list)
+        self.chromecast_handler.connect_chromecast(self.CHROMECAST_ID)
+        chromecast_id = self.chromecast_handler.get_chromecast_id()
+        self.assertTrue(self.CHROMECAST_ID == chromecast_id)
 
         self.chromecast_handler.play_from_media_drive(MediaFolderMetadataHandler(
             self.MEDIA_METADATA_FILE, self.MEDIA_FOLDER_PATH), self.SERVER_URL_TV_SHOWS)
