@@ -1,3 +1,4 @@
+import logging
 import threading
 import time
 from enum import Enum, auto
@@ -56,13 +57,13 @@ class MyMediaDevice:
 
     def play_episode(self, media_folder_metadata_handler, media_server_url):
         self.media_folder_metadata_handler = media_folder_metadata_handler
-        self.play_media(media_server_url)
+        self.play_url(media_server_url)
 
     def play_next_episode(self, media_server_url):
         self.media_folder_metadata_handler.increment_next_episode()
-        self.play_media(media_server_url)
+        self.play_url(media_server_url)
 
-    def play_media(self, media_server_url):
+    def play_url(self, media_server_url):
         url = self.media_folder_metadata_handler.get_url(media_server_url)
         print(f"PLAYING URL {url}")
         self.media_controller.play_media(url, self.DEFAULT_MEDIA_TYPE,
@@ -83,6 +84,10 @@ class MyMediaDevice:
     def new_media_status(self, status):
         print("----- STATUS LISTENER UPDATE -----")
         print(f"Listener: {status}")
+        if self.media_folder_metadata_handler:
+            logging.debug(f'Status: {status}, {self.media_folder_metadata_handler.get_title()}')
+        else:
+            logging.debug(f'Status: {status}')
 
     def update_player(self, media_server_url):
         current_timestamp = time.time()
@@ -135,6 +140,8 @@ class ChromecastHandler(threading.Thread):
 
     def __init__(self):
         threading.Thread.__init__(self, daemon=True)
+        logging.basicConfig(filename='status_change.log', filemode='w', format='%(name)s - %(levelname)s - %(message)s',
+                            level=logging.DEBUG)
 
     def __del__(self):
         print("deleting ChromecastHandler")

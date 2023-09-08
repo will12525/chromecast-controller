@@ -51,6 +51,7 @@ class TestChromecastConnection(TestChromecastHandler):
         self.assertTrue(chromecast_scan_list)
         self.chromecast_handler.connect_chromecast(self.CHROMECAST_ID)
 
+        # Random failure count: 1
         self.assertTrue(self.chromecast_handler.media_controller)
         self.assertEqual(self.chromecast_handler.get_chromecast_id(), self.CHROMECAST_ID)
 
