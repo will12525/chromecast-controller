@@ -1,4 +1,4 @@
-# import json
+import json
 
 from flask import Flask, request, url_for
 
@@ -19,6 +19,9 @@ media_controller_button_list = [
     {"name": "stop", "value": "Stop"},
     {"name": "play", "value": "Play"},
     {"name": "skip", "value": "Skip"}
+]
+seek_button_list = [
+    {"name": "seek", "value": "Seek"}
 ]
 path_type_strings = ["tv_show", "tv_show_season", "tv_show_season_episode"]
 
@@ -110,6 +113,17 @@ def build_chromecast_controls():
     return chromecast_controls
 
 
+def build_seek_input():
+    current_duration = backend_handler.get_media_current_duration()
+
+    seek_control = f'<div style="float:left; margin:10px"><form action="{url_for("main_index")}" method="post">'
+    seek_control += f"<label for='seek_text_input'>Time, Max: {current_duration}:</label>"
+    seek_control += f"<input type='text' id='seek_text_input' name='seek_input''>"
+    seek_control += build_html_button_list(seek_button_list)
+    seek_control += '</div>'
+    return seek_control
+
+
 @app.route('/', methods=['GET', 'POST'])
 def main_index():
     changed_type = None
@@ -138,6 +152,12 @@ def main_index():
         elif request.form.get('skip'):
             print("SKIP PRESSED")
             backend_handler.send_chromecast_cmd(CommandList.CMD_SKIP)
+        elif request.form.get('seek'):
+            print("SEEK PRESSED")
+            print(json.dumps(request.form, indent=4))
+            media_time = request.form.get('seek_input')
+            if media_time:
+                backend_handler.seek_media_time(media_time)
         elif request.form.get('connect'):
             print("CONNECT PRESSED")
             if device_id_str := request.form.get('select_scan_chromecast'):
@@ -152,6 +172,9 @@ def main_index():
     html_form += build_chromecast_controls()
     html_form += build_media_controls()
     html_form += backend_handler.get_episode_url()
+    html_form += build_seek_input()
+    if current_playing_episode_info := backend_handler.get_current_playing_episode_info():
+        html_form += current_playing_episode_info.get("name", "")
 
     return html_form
 

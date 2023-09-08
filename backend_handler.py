@@ -34,6 +34,15 @@ class BackEndHandler:
     def get_chromecast_device_id(self):
         return self.chromecast_handler.get_chromecast_id()
 
+    def get_media_current_time(self):
+        return self.chromecast_handler.get_media_current_time()
+
+    def get_media_current_duration(self):
+        return self.chromecast_handler.get_media_current_duration()
+
+    def seek_media_time(self, media_time):
+        self.chromecast_handler.seek_media_time(media_time)
+
     def send_chromecast_cmd(self, cmd):
         self.chromecast_handler.send_command(cmd)
 
@@ -51,6 +60,9 @@ class BackEndHandler:
 
     def get_episode_url(self):
         return self.media_folder_metadata_handler.get_url(self.SERVER_URL_TV_SHOWS)
+
+    def get_current_playing_episode_info(self):
+        return self.chromecast_handler.get_current_playing_episode_info()
 
     def play_episode(self):
         self.chromecast_handler.play_from_media_drive(self.media_folder_metadata_handler, self.SERVER_URL_TV_SHOWS)

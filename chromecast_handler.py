@@ -38,6 +38,8 @@ class MyMediaDevice:
     cmd_data_dict = {}
     my_last_player_state = 0
 
+    status = None
+
     def __init__(self, media_controller):
         self.media_controller = media_controller
         self.my_last_player_state = PlayerState.STATE_WAITING
@@ -71,6 +73,14 @@ class MyMediaDevice:
         self.media_controller.block_until_active()
         self.my_last_player_state = PlayerState.STATE_NEW_EPISODE_START
 
+    def get_media_current_time(self):
+        if self.status:
+            return self.status.current_time
+
+    def get_media_current_duration(self):
+        if self.status:
+            return self.status.duration
+
     def append_queue_url(self, url):
         self.media_controller.play_media(url, self.DEFAULT_MEDIA_TYPE, enqueue=True)
 
@@ -81,13 +91,19 @@ class MyMediaDevice:
         if cmd := self.cmd_data_dict.get(cmd_enum):
             cmd()
 
+    def get_current_media_status(self):
+        return self.status
+
     def new_media_status(self, status):
+        self.status = status
         print("----- STATUS LISTENER UPDATE -----")
-        print(f"Listener: {status}")
+        message = ""
+        message += f'Status: {status}'
         if self.media_folder_metadata_handler:
-            logging.debug(f'Status: {status}, {self.media_folder_metadata_handler.get_title()}')
-        else:
-            logging.debug(f'Status: {status}')
+            message += f'\n{self.media_folder_metadata_handler.get_title()}'
+
+        # print(message)
+        logging.info(message)
 
     def update_player(self, media_server_url):
         current_timestamp = time.time()
@@ -118,6 +134,13 @@ class MyMediaDevice:
             # Update every 5 seconds
             if current_timestamp - self.last_time_check > 5:
                 print("\n----- STATUS UPDATE -----")
+                self.status = self.media_controller.status
+                current_runtime = 0
+                # current_runtime = self.media_controller.status.
+
+                print(f"\n{current_runtime}")
+                print(type(player_state))
+
                 print(f"CURRENT PLAYER STATE: {player_state}")
                 print(self.media_controller.status)
                 self.last_time_check = current_timestamp
@@ -179,6 +202,23 @@ class ChromecastHandler(threading.Thread):
 
     def get_chromecast_id(self) -> str:
         return self.chromecast_id
+
+    def get_media_current_time(self):
+        if self.media_controller:
+            return self.media_controller.get_media_current_time()
+
+    def get_media_current_duration(self):
+        if self.media_controller:
+            return self.media_controller.get_media_current_duration()
+
+    def seek_media_time(self, media_time):
+        if self.media_controller:
+            self.media_controller.seek(media_time)
+
+    def get_current_playing_episode_info(self):
+        if self.media_controller:
+            if self.media_controller.media_folder_metadata_handler:
+                return self.media_controller.media_folder_metadata_handler.get_episode_info()
 
     def play_from_media_drive(self, media_folder_metadata_handler: MediaFolderMetadataHandler, media_server_url):
         self.media_server_url = media_server_url
