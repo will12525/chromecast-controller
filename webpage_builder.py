@@ -9,17 +9,32 @@ from media_folder_metadata_handler import MediaID, PathType
 
 app = Flask(__name__)
 
+webpage_title = "Media Stream"
+
+html_header_style = '.header { position: fixed; left: 0; right: 0; top: 0; width: 100%; height: 100px; background-color: black; color: white; font-size: 30px; text-align: center; }'
+html_footer_style = '.footer { position: fixed; left: 0; bottom: 0; width: 100%; background-color: black; color: white; text-align: center;}'
+html_body_style = 'html body {padding-top: 100px;}'
+html_style = f'<style>{html_header_style} {html_footer_style} {html_body_style}</style>'
+
+html_head = f'<head><title>{webpage_title}</title><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">{html_style}</head>'
+
 chromecast_button_list = [
     {"name": "connect", "value": "Connect"},
     {"name": "disconnect", "value": "Disconnect"}
 ]
-media_controller_button_list = [
-    {"name": "start", "value": "Start"},
-    {"name": "pause", "value": "Pause"},
-    {"name": "stop", "value": "Stop"},
-    {"name": "play", "value": "Play"},
-    {"name": "skip", "value": "Skip"}
-]
+
+media_controller_button_dict = {
+    # "start": {"name": "start", "value": "Start", "font_size": "50px"},
+
+    "rewind": {"name": "rewind", "value": "&#x23EE;", "font_size": "50px", "action": CommandList.CMD_REWIND},
+    "rewind_15": {"name": "rewind_15", "value": "&#x21BA;", "font_size": "50px", "action": CommandList.CMD_REWIND_15},
+    "play": {"name": "play", "value": "&#x23F5;", "font_size": "50px", "action": CommandList.CMD_PLAY},
+    "pause": {"name": "pause", "value": "&#x23F8;", "font_size": "50px", "action": CommandList.CMD_PAUSE},
+    "skip_15": {"name": "skip_15", "value": "&#x21BB;", "font_size": "50px", "action": CommandList.CMD_SKIP_15},
+    "skip": {"name": "skip", "value": "&#x23ED;", "font_size": "50px", "action": CommandList.CMD_SKIP},
+    "stop": {"name": "stop", "value": "&#x23F9;", "font_size": "50px", "action": CommandList.CMD_STOP}
+}
+
 seek_button_list = [
     {"name": "seek", "value": "Seek"}
 ]
@@ -30,7 +45,14 @@ backend_handler.start()
 
 
 def build_html_button(button_dict):
-    return f'<input type="submit" name="{button_dict.get("name")}" value="{button_dict.get("value")}" style="width: 100px; height: 50px;">'
+    name = button_dict.get("name", "Error")
+    value = button_dict.get("value", "Error")
+    font_size = button_dict.get("font_size", "10px")
+    data_action = ""
+    if action := button_dict.get("action", None):
+        data_action = f'data-action={action}'
+
+    return f'<button name="{name}" value={data_action} style="width: 100px; height: auto; align: center; font-size:{font_size};">{value}</button>'
 
 
 def build_html_button_list(button_list):
@@ -100,10 +122,10 @@ def build_episode_selector(changed_type, media_id):
 
 
 def build_media_controls():
-    chromecast_controls = f'<div style="float:left; margin:10px"><form action="{url_for("main_index")}" method="post">'
-    chromecast_controls += build_html_button_list(media_controller_button_list)
-    chromecast_controls += '</form></div>'
-    return chromecast_controls
+    media_controls = f'<div class="footer"><form action="{url_for("main_index")}" method="post">'
+    media_controls += build_html_button_list(media_controller_button_dict.values())
+    media_controls += '</form></div>'
+    return media_controls
 
 
 def build_chromecast_controls():
@@ -129,57 +151,63 @@ def main_index():
     changed_type = None
 
     if request.method == 'POST':
-        new_tv_show_id = request.form.get(f"select_{path_type_strings[PathType.TV_SHOW.value]}")
-        new_tv_show_season_id = request.form.get(f"select_{path_type_strings[PathType.TV_SHOW_SEASON.value]}")
-        new_tv_show_season_episode_id = request.form.get(
-            f"select_{path_type_strings[PathType.TV_SHOW_SEASON_EPISODE.value]}")
+        print(json.dumps(request.form, indent=4))
+        if new_tv_show_id := request.form.get(f"select_{path_type_strings[PathType.TV_SHOW.value]}"):
+            new_tv_show_season_id = request.form.get(f"select_{path_type_strings[PathType.TV_SHOW_SEASON.value]}")
+            new_tv_show_season_episode_id = request.form.get(
+                f"select_{path_type_strings[PathType.TV_SHOW_SEASON_EPISODE.value]}")
 
-        new_media_id = MediaID(new_tv_show_id, new_tv_show_season_id, new_tv_show_season_episode_id)
-        changed_type = backend_handler.update_media_id_selection(new_media_id)
+            new_media_id = MediaID(new_tv_show_id, new_tv_show_season_id, new_tv_show_season_episode_id)
+            changed_type = backend_handler.update_media_id_selection(new_media_id)
+            if changed_type == PathType.TV_SHOW_SEASON_EPISODE:
+                backend_handler.play_episode()
 
-        if request.form.get('start'):
-            print("START PRESSED")
-            backend_handler.play_episode()
+        elif request.form.get('rewind'):
+            backend_handler.send_chromecast_cmd(media_controller_button_dict['rewind'].get("action"))
+        elif request.form.get('rewind_15'):
+            backend_handler.send_chromecast_cmd(media_controller_button_dict['rewind_15'].get("action"))
         elif request.form.get('play'):
-            print("PLAY PRESSED")
-            backend_handler.send_chromecast_cmd(CommandList.CMD_PLAY)
+            backend_handler.send_chromecast_cmd(media_controller_button_dict['play'].get("action"))
         elif request.form.get('pause'):
-            print("PAUSE PRESSED")
-            backend_handler.send_chromecast_cmd(CommandList.CMD_PAUSE)
-        elif request.form.get('stop'):
-            backend_handler.send_chromecast_cmd(CommandList.CMD_STOP)
-            print("STOP PRESSED")
+            backend_handler.send_chromecast_cmd(media_controller_button_dict['pause'].get("action"))
+        elif request.form.get('skip_15'):
+            backend_handler.send_chromecast_cmd(media_controller_button_dict['skip_15'].get("action"))
         elif request.form.get('skip'):
-            print("SKIP PRESSED")
-            backend_handler.send_chromecast_cmd(CommandList.CMD_SKIP)
+            backend_handler.send_chromecast_cmd(media_controller_button_dict['skip'].get("action"))
+        elif request.form.get('stop'):
+            backend_handler.send_chromecast_cmd(media_controller_button_dict['stop'].get("action"))
+
+        # elif request.form.get('start'):
+        #     backend_handler.play_episode()
         elif request.form.get('seek'):
-            print("SEEK PRESSED")
-            print(json.dumps(request.form, indent=4))
             media_time = request.form.get('seek_input')
             if media_time:
                 backend_handler.seek_media_time(media_time)
         elif request.form.get('connect'):
-            print("CONNECT PRESSED")
             if device_id_str := request.form.get('select_scan_chromecast'):
                 backend_handler.connect_chromecast(device_id_str)
         elif request.form.get('disconnect'):
-            print("DISCONNECT PRESSED")
             if device_id_str := request.form.get('select_connected_to_chromecast'):
                 backend_handler.disconnect_chromecast()
 
-    html_form = backend_handler.get_startup_sha()
+    html_form = f'<!DOCTYPE html><html lang="en">{html_head}<body>'
+    html_form += f'<div class="header"><p>&#x1F422;&#x1F995;</p></div>'
+    html_form += '<div>'
+    html_form += f'<p>{backend_handler.get_startup_sha()}</p>'
     html_form += build_episode_selector(changed_type, backend_handler.get_media_id())
     html_form += build_chromecast_controls()
-    html_form += build_media_controls()
-    html_form += backend_handler.get_episode_url()
+    html_form += f'<p>{backend_handler.get_episode_url()}'
     html_form += build_seek_input()
     if current_playing_episode_info := backend_handler.get_current_playing_episode_info():
-        html_form += current_playing_episode_info.get("name", "")
+        html_form += f'<p>{current_playing_episode_info.get("name", "")}</p>'
+
+    html_form += build_media_controls()
+    html_form += '</div></body></html>'
 
     return html_form
 
 
 if __name__ == "__main__":
     print("--------------------Running Main--------------------")
-    app.run(debug=True)
+    # app.run(debug=True)
     app.run(debug=True, host='0.0.0.0', port=5002)

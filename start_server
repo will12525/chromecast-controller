@@ -34,5 +34,6 @@ export FLASK_APP=$WORKSPACE/webpage_builder.py
 # Start the flask server
 echo "Starting flask app"
 flask run --host=0.0.0.0 -p "$PORT"
+#flask run --host=0.0.0.0 -p "$PORT" --cert=adhoc
 
 
