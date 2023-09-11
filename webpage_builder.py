@@ -22,30 +22,21 @@ chromecast_button_list = [
     {"name": "disconnect", "value": "Disconnect", "onclick": "disconnect_chromecast()"}
 ]
 
-# media_controller_button_dict = {
-#     "rewind": {"name": "rewind", "value": "&#x23EE;", "font_size": "50px",
-#                "onclick": f"chromecast_command({CommandList.CMD_REWIND.value});"},
-#     "rewind_15": {"name": "rewind_15", "value": "&#x21BA;", "font_size": "50px",
-#                   "onclick": f"chromecast_command({CommandList.CMD_REWIND_15.value});"},
-#     "play": {"name": "play", "value": "&#x23F5;", "font_size": "50px",
-#              "onclick": f"chromecast_command({CommandList.CMD_PLAY.value});"},
-#     "pause": {"name": "pause", "value": "&#x23F8;", "font_size": "50px",
-#               "onclick": f"chromecast_command({CommandList.CMD_PAUSE.value});"},
-#     "skip_15": {"name": "skip_15", "value": "&#x21BB;", "font_size": "50px",
-#                 "onclick": f"chromecast_command({CommandList.CMD_SKIP_15.value});"},
-#     "skip": {"name": "skip", "value": "&#x23ED;", "font_size": "50px",
-#              "onclick": f"chromecast_command({CommandList.CMD_SKIP.value});"},
-#     "stop": {"name": "stop", "value": "&#x23F9;", "font_size": "50px",
-#              "onclick": f"chromecast_command({CommandList.CMD_STOP.value});"}
-# }
 media_controller_button_dict = {
-    "rewind": {"name": "rewind", "value": "&#x23EE;", "font_size": "50px"},
-    "rewind_15": {"name": "rewind_15", "value": "&#x21BA;", "font_size": "50px"},
-    "play": {"name": "play", "value": "&#x23F5;", "font_size": "50px"},
-    "pause": {"name": "pause", "value": "&#x23F8;", "font_size": "50px"},
-    "skip_15": {"name": "skip_15", "value": "&#x21BB;", "font_size": "50px"},
-    "skip": {"name": "skip", "value": "&#x23ED;", "font_size": "50px"},
-    "stop": {"name": "stop", "value": "&#x23F9;", "font_size": "50px"}
+    "rewind": {"name": "rewind", "value": "&#x23EE;", "font_size": "50px",
+               "onclick": f"chromecast_command({CommandList.CMD_REWIND.value});"},
+    "rewind_15": {"name": "rewind_15", "value": "&#x21BA;", "font_size": "50px",
+                  "onclick": f"chromecast_command({CommandList.CMD_REWIND_15.value});"},
+    "play": {"name": "play", "value": "&#x23F5;", "font_size": "50px",
+             "onclick": f"chromecast_command({CommandList.CMD_PLAY.value});"},
+    "pause": {"name": "pause", "value": "&#x23F8;", "font_size": "50px",
+              "onclick": f"chromecast_command({CommandList.CMD_PAUSE.value});"},
+    "skip_15": {"name": "skip_15", "value": "&#x21BB;", "font_size": "50px",
+                "onclick": f"chromecast_command({CommandList.CMD_SKIP_15.value});"},
+    "skip": {"name": "skip", "value": "&#x23ED;", "font_size": "50px",
+             "onclick": f"chromecast_command({CommandList.CMD_SKIP.value});"},
+    "stop": {"name": "stop", "value": "&#x23F9;", "font_size": "50px",
+             "onclick": f"chromecast_command({CommandList.CMD_STOP.value});"}
 }
 
 seek_button_list = [
@@ -72,7 +63,8 @@ def build_html_button_list(button_list):
 
 def build_chromecast_menu():
     scanned_chromecasts = '<div style="float:left; margin:10px">'
-    scanned_chromecasts += '<select name="select_scan_chromecast" id="select_scan_chromecast_id" size=4 onChange="connectChromecast(this);">'
+    scanned_chromecasts += '<select id="select_scan_chromecast_id" size=4 ' \
+                           'onChange="connectChromecast(this);">'
     scanned_chromecasts += '<option selected disabled>Scanned</option>'
     scanned_devices = backend_handler.get_chromecast_scan_list()
     if scanned_devices:
@@ -81,7 +73,7 @@ def build_chromecast_menu():
     scanned_chromecasts += '</select></div>'
 
     connected_chromecasts = '<div style="float:left; margin:10px">'
-    connected_chromecasts += f'<select name="select_connected_to_chromecast" ' \
+    connected_chromecasts += f'<select ' \
                              f'id="select_connected_to_chromecast_id" size=4 ' \
                              f'onChange="disconnectChromecast(this);">'
     connected_chromecasts += '<option selected disabled>Connected</option>'
@@ -131,23 +123,12 @@ def build_episode_selector(changed_type, media_id):
     return episode_select
 
 
-def to_hh_mm_ss(seconds):
-    seconds = seconds % (24 * 3600)
-    hour = seconds // 3600
-    seconds %= 3600
-    minutes = seconds // 60
-    seconds %= 60
-
-    return "%d:%02d:%02d" % (hour, minutes, seconds)
-
-
 def build_media_controls():
     print(url_for("main_index"))
     media_controls = '<div class="footer">'
-    media_controls += '<input type="range" id="mediaTimeInputId" onMouseUp="setMediaRuntime(this);" min=0 value=0 class="slider"><output id="mediaTimeOutputId"></output>'
-    # media_controls += f'<form action="{url_for("main_index")}" method="post">'
+    media_controls += '<input type="range" id="mediaTimeInputId" onMouseUp="setMediaRuntime(this);" min=0 value=0 class="slider">'
+    media_controls += '<output id="mediaTimeOutputId"></output>'
     media_controls += build_html_button_list(media_controller_button_dict.values())
-    # media_controls += '</form>'
     media_controls += '</div>'
     return media_controls
 
@@ -190,13 +171,9 @@ def disconnect_chromecast():
 @app.route('/chromecast_command', methods=['POST'])
 def chromecast_command():
     data = {}
-    # if json_request := request.get_json():
-    #     print(js)
-    #     if new_chromecast_command := json_request.get("chromecast_command"):
-    #         # cmd_action = media_controller_button_dict[new_chromecast_command].get("action")
-    #         print(new_chromecast_command)
-    #         backend_handler.send_chromecast_cmd(new_chromecast_command)
-    #         data = {'err_code': 0}
+    if json_request := request.get_json():
+        if chromecast_cmd_id := json_request.get("chromecast_cmd_id"):
+            backend_handler.send_chromecast_cmd(CommandList(chromecast_cmd_id))
     return data, 200
 
 
@@ -216,21 +193,6 @@ def main_index():
             changed_type = backend_handler.update_media_id_selection(new_media_id)
             if changed_type == PathType.TV_SHOW_SEASON_EPISODE:
                 backend_handler.play_episode()
-
-        # elif request.form.get('rewind'):
-        #     backend_handler.send_chromecast_cmd(media_controller_button_dict['rewind'].get("action"))
-        # elif request.form.get('rewind_15'):
-        #     backend_handler.send_chromecast_cmd(media_controller_button_dict['rewind_15'].get("action"))
-        # elif request.form.get('play'):
-        #     backend_handler.send_chromecast_cmd(media_controller_button_dict['play'].get("action"))
-        # elif request.form.get('pause'):
-        #     backend_handler.send_chromecast_cmd(media_controller_button_dict['pause'].get("action"))
-        # elif request.form.get('skip_15'):
-        #     backend_handler.send_chromecast_cmd(media_controller_button_dict['skip_15'].get("action"))
-        # elif request.form.get('skip'):
-        #     backend_handler.send_chromecast_cmd(media_controller_button_dict['skip'].get("action"))
-        # elif request.form.get('stop'):
-        #     backend_handler.send_chromecast_cmd(media_controller_button_dict['stop'].get("action"))
 
     html_form = f'<!DOCTYPE html><html lang="en">{html_head}<body>'
     html_form += f'<div class="header"><p>&#x1F422;&#x1F995;</p></div>'

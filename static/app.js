@@ -60,18 +60,18 @@ async function disconnectChromecast(sel) {
     }
 };
 
-async function chromecast_command(chromecast_command) {
-//    var url = "/chromecast_command";
-//    let data = {
-//        "chromecast_command": chromecast_command
-//    };
-//    console.log(data)
-//    // Send POST request
-//    let response = await fetch(url, {
-//        "method": "POST",
-//        "headers": {"Content-Type": "application/json"},
-//        "body": JSON.stringify(data),
-//    });
+async function chromecast_command(chromecast_cmd_id) {
+    var url = "/chromecast_command";
+    let data = {
+        "chromecast_cmd_id": chromecast_cmd_id
+    };
+    console.log(data)
+    // Send POST request
+    let response = await fetch(url, {
+        "method": "POST",
+        "headers": {"Content-Type": "application/json"},
+        "body": JSON.stringify(data),
+    });
     console.log(response.status)
 }
 async function setMediaRuntime(range) {
