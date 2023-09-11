@@ -1,6 +1,7 @@
 import json
-
-from flask import Flask, request, url_for
+import js2py
+from markupsafe import escape
+from flask import Flask, request, url_for, render_template, render_template_string
 
 # jsonify, redirect, current_app, render_template
 from backend_handler import BackEndHandler
@@ -11,16 +12,14 @@ app = Flask(__name__)
 
 webpage_title = "Media Stream"
 
-html_header_style = '.header { position: fixed; left: 0; right: 0; top: 0; width: 100%; height: 100px; background-color: black; color: white; font-size: 30px; text-align: center; }'
-html_footer_style = '.footer { position: fixed; left: 0; bottom: 0; width: 100%; background-color: black; color: white; text-align: center;}'
-html_body_style = 'html body {padding-top: 100px;}'
-html_style = f'<style>{html_header_style} {html_footer_style} {html_body_style}</style>'
+html_style = '<link rel="stylesheet" href="{{ url_for(\'static\',filename=\'style.css\') | safe }}">'
+html_scripts = '<script src="{{ url_for(\'static\', filename=\'app.js\') }}"></script>'
 
-html_head = f'<head><title>{webpage_title}</title><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">{html_style}</head>'
+html_head = f'<head><title>{webpage_title}</title><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">{html_style}{html_scripts}</head>'
 
 chromecast_button_list = [
-    {"name": "connect", "value": "Connect"},
-    {"name": "disconnect", "value": "Disconnect"}
+    {"name": "connect", "value": "Connect", "onclick": "connect_chromecast()"},
+    {"name": "disconnect", "value": "Disconnect", "onclick": "disconnect_chromecast()"}
 ]
 
 media_controller_button_dict = {
@@ -48,11 +47,13 @@ def build_html_button(button_dict):
     name = button_dict.get("name", "Error")
     value = button_dict.get("value", "Error")
     font_size = button_dict.get("font_size", "10px")
+    onclick = button_dict.get("onclick", "")
+
     data_action = ""
     if action := button_dict.get("action", None):
         data_action = f'data-action={action}'
 
-    return f'<button name="{name}" value={data_action} style="width: 100px; height: auto; align: center; font-size:{font_size};">{value}</button>'
+    return f'<button name="{name}" value="{data_action}" onclick="{onclick}" style="width: 100px; height: auto; align: center; font-size:{font_size};">{value}</button>'
 
 
 def build_html_button_list(button_list):
@@ -61,16 +62,16 @@ def build_html_button_list(button_list):
 
 def build_chromecast_menu():
     scanned_chromecasts = '<div style="float:left; margin:10px">'
-    scanned_chromecasts += f'<select name="select_scan_chromecast" id="select_scan_chromecast_id" size=4>'
+    scanned_chromecasts += f'<select name="select_scan_chromecast" id="select_scan_chromecast_id" size=4 onChange="connectChromecast(this);">'
     scanned_devices = backend_handler.get_chromecast_scan_list()
     if scanned_devices:
         for index, item_str in enumerate(scanned_devices):
             scanned_chromecasts += f'<option value="{item_str}">{item_str}</option>'
     scanned_chromecasts += '</select></div>'
 
-    chromecast_buttons = '<div style="float:left; margin:10px">'
-    chromecast_buttons += build_html_button_list(chromecast_button_list)
-    chromecast_buttons += '</div>'
+    # chromecast_buttons = '<div style="float:left; margin:10px">'
+    # chromecast_buttons += build_html_button_list(chromecast_button_list)
+    # chromecast_buttons += '</div>'
 
     connected_chromecasts = '<div style="float:left; margin:10px">'
     connected_chromecasts += f'<select name="select_connected_to_chromecast" ' \
@@ -80,7 +81,7 @@ def build_chromecast_menu():
         connected_chromecasts += f'<option value="{connected_device_id}">{connected_device_id}</option>'
     connected_chromecasts += '</select></div>'
 
-    return scanned_chromecasts + chromecast_buttons + connected_chromecasts
+    return scanned_chromecasts + connected_chromecasts
 
 
 def build_select_list(select_name, select_list, select_selected_index, add_autofocus):
@@ -121,17 +122,35 @@ def build_episode_selector(changed_type, media_id):
     return episode_select
 
 
+def to_hh_mm_ss(seconds):
+    seconds = seconds % (24 * 3600)
+    hour = seconds // 3600
+    seconds %= 3600
+    minutes = seconds // 60
+    seconds %= 60
+
+    return "%d:%02d:%02d" % (hour, minutes, seconds)
+
+
 def build_media_controls():
+    current_duration = backend_handler.get_media_current_duration()
+    current_runtime_stamp = to_hh_mm_ss(0)
+    if current_runtime := backend_handler.get_media_current_time():
+        current_runtime_stamp = to_hh_mm_ss(current_runtime)
+    print(url_for("main_index"))
     media_controls = f'<div class="footer"><form action="{url_for("main_index")}" method="post">'
+
+    media_controls += f'<input onMouseUp="print_hello();" type="range" title="{current_runtime_stamp}" min="0" max="{current_duration}" value="{current_runtime}" id="mediaTimeInputId" class="slider" oninput="update_mediaTime();"><output id="mediaTimeOutputId">{current_runtime_stamp}</output>'
     media_controls += build_html_button_list(media_controller_button_dict.values())
     media_controls += '</form></div>'
     return media_controls
 
 
 def build_chromecast_controls():
-    chromecast_controls = f'<div style="float:left; margin:10px"><form action="{url_for("main_index")}" method="post">'
+    # chromecast_controls = f'<div style="float:left; margin:10px"><form action="{url_for("main_index")}" method="post">'
+    chromecast_controls = f'<div style="float:left; margin:10px">'
     chromecast_controls += build_chromecast_menu()
-    chromecast_controls += '</form></div>'
+    chromecast_controls += '</div>'
     return chromecast_controls
 
 
@@ -140,14 +159,30 @@ def build_seek_input():
 
     seek_control = f'<div style="float:left; margin:10px"><form action="{url_for("main_index")}" method="post">'
     seek_control += f"<label for='seek_text_input'>Time, Max: {current_duration}:</label>"
-    seek_control += f"<input type='text' id='seek_text_input' name='seek_input''>"
+    seek_control += f"<input type='text' id='seek_text_input' name='seek_input'>"
     seek_control += build_html_button_list(seek_button_list)
     seek_control += '</div>'
     return seek_control
 
 
+@app.route('/get_media_current_time', methods=['GET'])
+def get_media_current_time():
+    # $.get('/get_media_current_time')
+    return f"Hello world {backend_handler} {backend_handler.get_media_current_time()}"
+
+
+@app.route('/connect_chromecast', methods=['POST'])
+def connect_chromecast():
+    print(f"Hello chromecast!")
+    print(request)
+    # print(f"Hello chromecast! {escape(chromecast_id)}")
+    # print(json.dumps(request.data, indent=4))
+    return '', 204
+
+
 @app.route('/', methods=['GET', 'POST'])
 def main_index():
+    print(backend_handler)
     changed_type = None
 
     if request.method == 'POST':
@@ -204,7 +239,7 @@ def main_index():
     html_form += build_media_controls()
     html_form += '</div></body></html>'
 
-    return html_form
+    return render_template_string(html_form)
 
 
 if __name__ == "__main__":
