@@ -47,7 +47,7 @@ class BackEndHandler:
         self.chromecast_handler.send_command(cmd)
 
     def connect_chromecast(self, device_id_str):
-        self.chromecast_handler.connect_chromecast(device_id_str)
+        return self.chromecast_handler.connect_chromecast(device_id_str)
 
     def disconnect_chromecast(self):
         self.chromecast_handler.disconnect_chromecast()

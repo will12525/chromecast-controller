@@ -202,6 +202,8 @@ class ChromecastHandler(threading.Thread):
                 self.chromecast_device = chromecast
                 self.media_controller = MyMediaDevice(chromecast.media_controller)
                 self.chromecast_browser = browser
+                return True
+        return False
 
     def disconnect_chromecast(self):
         self.chromecast_device = None
