@@ -63,6 +63,7 @@ def build_html_button_list(button_list):
 def build_chromecast_menu():
     scanned_chromecasts = '<div style="float:left; margin:10px">'
     scanned_chromecasts += f'<select name="select_scan_chromecast" id="select_scan_chromecast_id" size=4 onChange="connectChromecast(this);">'
+    scanned_chromecasts += '<option selected disabled>Scanned</option>'
     scanned_devices = backend_handler.get_chromecast_scan_list()
     if scanned_devices:
         for index, item_str in enumerate(scanned_devices):
@@ -76,6 +77,7 @@ def build_chromecast_menu():
     connected_chromecasts = '<div style="float:left; margin:10px">'
     connected_chromecasts += f'<select name="select_connected_to_chromecast" ' \
                              f'id="select_connected_to_chromecast_id" size=4>'
+    connected_chromecasts += '<option selected disabled>Connected</option>'
     connected_device_id = backend_handler.get_chromecast_device_id()
     if connected_device_id:
         connected_chromecasts += f'<option value="{connected_device_id}">{connected_device_id}</option>'
@@ -173,10 +175,11 @@ def get_media_current_time():
 
 @app.route('/connect_chromecast', methods=['POST'])
 def connect_chromecast():
-    print(f"Hello chromecast!")
-    print(request)
-    # print(f"Hello chromecast! {escape(chromecast_id)}")
-    # print(json.dumps(request.data, indent=4))
+    if json_request := request.get_json():
+        escape(json_request)
+        if chromecast_id := json_request.get("chromecast_id"):
+            print(chromecast_id)
+            backend_handler.connect_chromecast(chromecast_id)
     return '', 204
 
 

@@ -10,34 +10,32 @@ String.prototype.toHHMMSS = function () {
     return hours+":"+minutes+":"+seconds;
 };
 
-function connectChromecast(sel) {
-
-    fetch('/connect_chromecast', {
-        method: 'POST',
-        headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({a: 1, b: 'Textual content'})
+function sendPost(url, data) {
+    fetch(url, {
+        "method": "POST",
+        "headers": {"Content-Type": "application/json"},
+        "body": JSON.stringify(data),
     });
+}
 
-
-    fetch("/connect_chromecast", {
-        method: "POST" // default, so we can ignore
-
-    })
-    console.log(sel.options[sel.selectedIndex].text)
-//    console.log(select_scan_chromecast_id.options[select_scan_chromecast_id.selectedIndex].text)
+function connectChromecast(sel) {
+    let data = {
+        "chromecast_id": sel.options[sel.selectedIndex].text
+    };
+    sendPost("/connect_chromecast", data);
 };
 
-function disconnectChromecast() {
-    console.log(select_scan_chromecast_id.options[select_scan_chromecast_id.selectedIndex].text)
+function disconnectChromecast(sel) {
+    let data = {
+        "chromecast_id": sel.options[sel.selectedIndex].text
+    };
+    sendPost("/disconnect_chromecast", data);
 };
 
 function print_hello()
 {
 
-    console.log("Hello world")
+    console.log("Hello world");
 };
 
 function update_mediaTime() {
