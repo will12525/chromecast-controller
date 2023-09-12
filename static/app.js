@@ -109,7 +109,7 @@ async function updateSeekSelector() {
                     mediaTimeInputId.value = response_data?.media_runtime
                     mediaTimeInputId.title = media_runtime
 
-                    mediaTimeOutputId.value = media_runtime
+                    mediaTimeOutputId.value = media_runtime + "  " + response_data?.media_title
 
                 }
             }

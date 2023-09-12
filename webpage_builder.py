@@ -62,7 +62,8 @@ def build_html_button_list(button_list):
 
 
 def build_chromecast_menu():
-    scanned_chromecasts = '<div style="float:left; margin:10px">'
+    scanned_chromecasts = '<div style="float:right; margin:10px">'
+    scanned_chromecasts += '<div style="float:left; margin:10px">'
     scanned_chromecasts += '<select id="select_scan_chromecast_id" size=4 ' \
                            'onChange="connectChromecast(this);">'
     scanned_chromecasts += '<option selected disabled>Scanned</option>'
@@ -72,7 +73,7 @@ def build_chromecast_menu():
             scanned_chromecasts += f'<option value="{item_str}">{item_str}</option>'
     scanned_chromecasts += '</select></div>'
 
-    connected_chromecasts = '<div style="float:left; margin:10px">'
+    connected_chromecasts = '<div style="float:right; margin:10px">'
     connected_chromecasts += f'<select ' \
                              f'id="select_connected_to_chromecast_id" size=4 ' \
                              f'onChange="disconnectChromecast(this);">'
@@ -80,7 +81,7 @@ def build_chromecast_menu():
     connected_device_id = backend_handler.get_chromecast_device_id()
     if connected_device_id:
         connected_chromecasts += f'<option value="{connected_device_id}">{connected_device_id}</option>'
-    connected_chromecasts += '</select></div>'
+    connected_chromecasts += '</select></div></div>'
 
     return scanned_chromecasts + connected_chromecasts
 
@@ -124,11 +125,14 @@ def build_episode_selector(changed_type, media_id):
 
 
 def build_media_controls():
-    print(url_for("main_index"))
     media_controls = '<div class="footer">'
+    media_controls += '<div align="center">'
     media_controls += '<input type="range" id="mediaTimeInputId" onMouseUp="setMediaRuntime(this);" min=0 value=0 class="slider">'
     media_controls += '<output id="mediaTimeOutputId"></output>'
+    media_controls += '</div>'
+    media_controls += '<div align="center">'
     media_controls += build_html_button_list(media_controller_button_dict.values())
+    media_controls += '</div>'
     media_controls += '</div>'
     return media_controls
 
@@ -145,9 +149,8 @@ def set_current_media_runtime():
 @app.route('/get_current_media_runtime', methods=['GET'])
 def get_current_media_runtime():
     data = {}
-    if media_runtime := backend_handler.get_media_current_time():
-        data['media_runtime'] = media_runtime
-        data['media_duration'] = backend_handler.get_media_current_duration()
+    if media_metadata := backend_handler.get_media_controller_metadata():
+        data = media_metadata
     return data, 200
 
 
@@ -194,18 +197,24 @@ def main_index():
             if changed_type == PathType.TV_SHOW_SEASON_EPISODE:
                 backend_handler.play_episode()
 
+    chromecast_menu = build_chromecast_menu()
+
     html_form = f'<!DOCTYPE html><html lang="en">{html_head}<body>'
-    html_form += f'<div class="header"><p>&#x1F422;&#x1F995;</p></div>'
+    html_form += f'<div class="header"><p style="float:left">&#x1F422;&#x1F995;</p>{chromecast_menu}</div>'
+
     html_form += '<div>'
     html_form += f'<p>{backend_handler.get_startup_sha()}</p>'
-    html_form += build_episode_selector(changed_type, backend_handler.get_media_id())
-    html_form += build_chromecast_menu()
-    html_form += f'<p>{backend_handler.get_episode_url()}'
-    if current_playing_episode_info := backend_handler.get_current_playing_episode_info():
-        html_form += f'<p>{current_playing_episode_info.get("name", "")}</p>'
 
+    html_form += '<div id="mediaContentSelectDiv">'
+    html_form += build_episode_selector(changed_type, backend_handler.get_media_id())
+    # # html_form += build_chromecast_menu()
+    # html_form += f'<p>{backend_handler.get_episode_url()}'
+    # if current_playing_episode_info := backend_handler.get_current_playing_episode_info():
+    #     html_form += f'<p>{current_playing_episode_info.get("name", "")}</p>'
+    #
+    html_form += '</div></div>'
     html_form += build_media_controls()
-    html_form += '</div></body></html>'
+    html_form += '</body></html>'
 
     return render_template_string(html_form)
 

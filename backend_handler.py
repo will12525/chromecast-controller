@@ -61,6 +61,9 @@ class BackEndHandler:
     def get_episode_url(self):
         return self.media_folder_metadata_handler.get_url(self.SERVER_URL_TV_SHOWS)
 
+    def get_media_controller_metadata(self):
+        return self.chromecast_handler.get_media_controller_metadata()
+
     def get_current_playing_episode_info(self):
         return self.chromecast_handler.get_current_playing_episode_info()
 
