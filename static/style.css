@@ -59,6 +59,13 @@
     cursor: pointer;
 }
 
+.media_control_buttons {
+    width: 100px;
+    height: auto;
+    align: center;
+    font-size:50px;
+}
+
 html body {
     padding-top: 100px;
 }

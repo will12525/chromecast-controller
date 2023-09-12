@@ -17,31 +17,19 @@ html_scripts = '<script src="{{ url_for(\'static\', filename=\'app.js\') }}"></s
 
 html_head = f'<head><title>{webpage_title}</title><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">{html_style}{html_scripts}</head>'
 
-chromecast_button_list = [
-    {"name": "connect", "value": "Connect", "onclick": "connect_chromecast()"},
-    {"name": "disconnect", "value": "Disconnect", "onclick": "disconnect_chromecast()"}
-]
-
 media_controller_button_dict = {
-    "rewind": {"name": "rewind", "value": "&#x23EE;", "font_size": "50px",
+    "rewind": {"name": "rewind", "value": "&#x23EE;",
                "onclick": f"chromecast_command({CommandList.CMD_REWIND.value});"},
-    "rewind_15": {"name": "rewind_15", "value": "&#x21BA;", "font_size": "50px",
+    "rewind_15": {"name": "rewind_15", "value": "&#x21BA;",
                   "onclick": f"chromecast_command({CommandList.CMD_REWIND_15.value});"},
-    "play": {"name": "play", "value": "&#x23F5;", "font_size": "50px",
-             "onclick": f"chromecast_command({CommandList.CMD_PLAY.value});"},
-    "pause": {"name": "pause", "value": "&#x23F8;", "font_size": "50px",
-              "onclick": f"chromecast_command({CommandList.CMD_PAUSE.value});"},
-    "skip_15": {"name": "skip_15", "value": "&#x21BB;", "font_size": "50px",
+    "play": {"name": "play", "value": "&#x23F5;", "onclick": f"chromecast_command({CommandList.CMD_PLAY.value});"},
+    "pause": {"name": "pause", "value": "&#x23F8;", "onclick": f"chromecast_command({CommandList.CMD_PAUSE.value});"},
+    "skip_15": {"name": "skip_15", "value": "&#x21BB;",
                 "onclick": f"chromecast_command({CommandList.CMD_SKIP_15.value});"},
-    "skip": {"name": "skip", "value": "&#x23ED;", "font_size": "50px",
-             "onclick": f"chromecast_command({CommandList.CMD_SKIP.value});"},
-    "stop": {"name": "stop", "value": "&#x23F9;", "font_size": "50px",
-             "onclick": f"chromecast_command({CommandList.CMD_STOP.value});"}
+    "skip": {"name": "skip", "value": "&#x23ED;", "onclick": f"chromecast_command({CommandList.CMD_SKIP.value});"},
+    "stop": {"name": "stop", "value": "&#x23F9;", "onclick": f"chromecast_command({CommandList.CMD_STOP.value});"}
 }
 
-seek_button_list = [
-    {"name": "seek", "value": "Seek"}
-]
 path_type_strings = ["tv_show", "tv_show_season", "tv_show_season_episode"]
 
 backend_handler = BackEndHandler()
@@ -51,10 +39,9 @@ backend_handler.start()
 def build_html_button(button_dict):
     name = button_dict.get("name", "Error")
     value = button_dict.get("value", "Error")
-    font_size = button_dict.get("font_size", "10px")
     onclick = button_dict.get("onclick", "")
 
-    return f'<button name="{name}" onclick="{onclick}" style="width: 100px; height: auto; align: center; font-size:{font_size};">{value}</button>'
+    return f'<button name="{name}" class="media_control_buttons" onclick="{onclick}">{value}</button>'
 
 
 def build_html_button_list(button_list):
@@ -197,21 +184,15 @@ def main_index():
             if changed_type == PathType.TV_SHOW_SEASON_EPISODE:
                 backend_handler.play_episode()
 
-    chromecast_menu = build_chromecast_menu()
-
     html_form = f'<!DOCTYPE html><html lang="en">{html_head}<body>'
-    html_form += f'<div class="header"><p style="float:left">&#x1F422;&#x1F995;</p>{chromecast_menu}</div>'
+    html_form += f'<div class="header"><p style="float:left">&#x1F422;&#x1F995;</p>{build_chromecast_menu()}</div>'
 
     html_form += '<div>'
     html_form += f'<p>{backend_handler.get_startup_sha()}</p>'
 
     html_form += '<div id="mediaContentSelectDiv">'
     html_form += build_episode_selector(changed_type, backend_handler.get_media_id())
-    # # html_form += build_chromecast_menu()
-    # html_form += f'<p>{backend_handler.get_episode_url()}'
-    # if current_playing_episode_info := backend_handler.get_current_playing_episode_info():
-    #     html_form += f'<p>{current_playing_episode_info.get("name", "")}</p>'
-    #
+
     html_form += '</div></div>'
     html_form += build_media_controls()
     html_form += '</body></html>'
