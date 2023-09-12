@@ -92,13 +92,13 @@ class MyMediaDevice:
         if self.status:
             return self.status.title
 
-    @property
     def get_media_controller_metadata(self):
-        return {
-            "media_runtime": self.get_media_current_time(),
-            "media_duration": self.get_media_current_duration(),
-            "media_title": self.get_media_current_title()
-        }
+        if self.status:
+            return {
+                "media_runtime": self.get_media_current_time(),
+                "media_duration": self.get_media_current_duration(),
+                "media_title": self.get_media_current_title()
+            }
 
     def append_queue_url(self, url):
         self.media_controller.play_media(url, self.DEFAULT_MEDIA_TYPE, enqueue=True)
@@ -228,7 +228,7 @@ class ChromecastHandler(threading.Thread):
 
     def get_media_controller_metadata(self):
         if self.media_controller:
-            return self.media_controller.get_media_controller_metadata
+            return self.media_controller.get_media_controller_metadata()
 
     def get_chromecast_id(self) -> str:
         if self.chromecast_device:
