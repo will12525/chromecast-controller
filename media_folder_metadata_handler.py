@@ -74,28 +74,28 @@ class MediaFolderMetadataHandler:
         if episode_info := self.get_episode_info():
             return episode_info.get("name")
 
-    def increment_next_episode(self):
-        if not self.__increment_episode():
-            self.media_id.tv_show_season_episode_id = 0
-            if not self.__increment_season():
-                self.media_id.tv_show_season_id = 0
+    def increment_next_episode(self, media_id=None):
+        if not media_id:
+            media_id = self.media_id
+        if not (media_id_episode_increment := self.__increment_episode(media_id)):
+            media_id.tv_show_season_episode_id = 0
+            if not (media_id_season_increment := self.__increment_season(media_id)):
+                media_id.tv_show_season_id = 0
+            else:
+                media_id = media_id_season_increment
+        else:
+            media_id = media_id_episode_increment
+        self.media_id = media_id
 
-    def __increment_season(self):
-        media_id = self.media_id
+    def __increment_season(self, media_id):
         media_id.tv_show_season_id += 1
-        media_id.tv_show_season_episode_id = 0
         if self.get_tv_show_season_episode_metadata(media_id):
-            self.media_id = media_id
-            return True
-        return False
+            return media_id
 
-    def __increment_episode(self):
-        media_id = self.media_id
+    def __increment_episode(self, media_id):
         media_id.tv_show_season_episode_id += 1
         if self.get_tv_show_season_episode_metadata(media_id):
-            self.media_id = media_id
-            return True
-        return False
+            return media_id
 
     def get_tv_show_name_list(self):
         return get_metadata_name_list(self.media_metadata.get("tv_shows"))
