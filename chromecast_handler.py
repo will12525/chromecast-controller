@@ -1,6 +1,7 @@
 import logging
 import threading
 import time
+import os
 from enum import Enum, auto
 
 import pychromecast
@@ -164,13 +165,15 @@ class ChromecastHandler(threading.Thread):
         print("deleting ChromecastHandler")
         self.run_update = False
         self.disconnect_chromecast()
+        if self.chromecast_browser:
+            self.chromecast_browser.stop_discovery()
 
     def get_scan_list(self):
         return self.last_scanned_devices
 
     def scan_for_chromecasts(self):
         services, browser = pychromecast.discovery.discover_chromecasts()
-        browser.stop_discovery()
+        self.chromecast_browser = browser
         self.last_scanned_devices = [getattr(service, "friendly_name") for service in services]
 
     def connect_chromecast(self, chromecast_id):
@@ -181,15 +184,14 @@ class ChromecastHandler(threading.Thread):
                 chromecast.wait()
                 self.chromecast_device = chromecast
                 self.media_controller = MyMediaDevice(chromecast.media_controller)
-                self.chromecast_browser = browser
+                if not self.chromecast_browser:
+                    self.chromecast_browser = browser
                 return True
         return False
 
     def disconnect_chromecast(self):
         self.chromecast_device = None
         self.media_controller = None
-        if self.chromecast_browser:
-            self.chromecast_browser.stop_discovery()
 
     def get_media_controller(self) -> MyMediaDevice:
         return self.media_controller
@@ -228,15 +230,23 @@ class ChromecastHandler(threading.Thread):
         if self.media_controller:
             self.media_controller.interpret_enum_cmd(media_device_command)
 
+    def check_chromecast_alive(self):
+        device_uri = self.chromecast_device.uri
+        device_ip_loc = device_uri.index(':')
+        device_ip = device_uri[:device_ip_loc]
+        response = os.system(f"ping -c 1 -w2 {device_ip} > /dev/null 2>&1")
+        if 0 != response:
+            self.disconnect_chromecast()
+
     def run(self):
         self.run_update = True
-        # self.scan_for_chromecasts()
+        self.scan_for_chromecasts()
         while self.run_update:
             try:
-                # if self.media_controller:
-                #     self.media_controller.update_player(self.media_server_url)
                 if time.time() - self.last_scan_time > self.SCAN_INTERVAL:
-                    self.scan_for_chromecasts()
+                    if self.chromecast_device:
+                        self.check_chromecast_alive()
+
                     self.last_scan_time = time.time()
 
                 time.sleep(0.1)
