@@ -12,22 +12,28 @@ app = Flask(__name__)
 
 webpage_title = "Media Stream"
 
-html_style = '<link rel="stylesheet" href="{{ url_for(\'static\',filename=\'style.css\') | safe }}">'
+html_style = '<link rel="stylesheet" href="{{ url_for(\'static\',filename=\'style.css\') | safe }}"> ' \
+             '<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">'
+
 html_scripts = '<script src="{{ url_for(\'static\', filename=\'app.js\') }}"></script>'
 
 html_head = f'<head><title>{webpage_title}</title><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">{html_style}{html_scripts}</head>'
 
 media_controller_button_dict = {
-    "rewind": {"name": "rewind", "value": "&#x23EE;",
+    "rewind": {"name": "rewind", "value": "&#x23EE;", "icon": "fa-backward",
                "onclick": f"chromecast_command({CommandList.CMD_REWIND.value});"},
-    "rewind_15": {"name": "rewind_15", "value": "&#x21BA;",
+    "rewind_15": {"name": "rewind_15", "value": "&#x21BA;", "icon": "fa-rotate-left",
                   "onclick": f"chromecast_command({CommandList.CMD_REWIND_15.value});"},
-    "play": {"name": "play", "value": "&#x23F5;", "onclick": f"chromecast_command({CommandList.CMD_PLAY.value});"},
-    "pause": {"name": "pause", "value": "&#x23F8;", "onclick": f"chromecast_command({CommandList.CMD_PAUSE.value});"},
-    "skip_15": {"name": "skip_15", "value": "&#x21BB;",
+    "play": {"name": "play", "value": "&#x23F5;", "icon": "fa-play",
+             "onclick": f"chromecast_command({CommandList.CMD_PLAY.value});"},
+    "pause": {"name": "pause", "value": "&#x23F8;", "icon": "fa-pause",
+              "onclick": f"chromecast_command({CommandList.CMD_PAUSE.value});"},
+    "skip_15": {"name": "skip_15", "value": "&#x21BB;", "icon": "fa-rotate-right",
                 "onclick": f"chromecast_command({CommandList.CMD_SKIP_15.value});"},
-    "skip": {"name": "skip", "value": "&#x23ED;", "onclick": f"chromecast_command({CommandList.CMD_SKIP.value});"},
-    "stop": {"name": "stop", "value": "&#x23F9;", "onclick": f"chromecast_command({CommandList.CMD_STOP.value});"}
+    "skip": {"name": "skip", "value": "&#x23ED;", "icon": "fa-forward",
+             "onclick": f"chromecast_command({CommandList.CMD_SKIP.value});"},
+    "stop": {"name": "stop", "value": "&#x23F9;", "icon": "fa-stop",
+             "onclick": f"chromecast_command({CommandList.CMD_STOP.value});"}
 }
 
 path_type_strings = ["tv_show", "tv_show_season", "tv_show_season_episode"]
@@ -40,7 +46,8 @@ def build_html_button(button_dict):
     name = button_dict.get("name", "Error")
     value = button_dict.get("value", "Error")
     onclick = button_dict.get("onclick", "")
-
+    if button_icon := button_dict.get("icon"):
+        return f'<button name="{name}" class="media_control_buttons" onclick="{onclick}"><i class="fa {button_icon}" aria-hidden="true"></i></button>'
     return f'<button name="{name}" class="media_control_buttons" onclick="{onclick}">{value}</button>'
 
 
