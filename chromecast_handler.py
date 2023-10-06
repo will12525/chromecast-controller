@@ -143,7 +143,7 @@ class MyMediaDevice:
 
 
 class ChromecastHandler(threading.Thread):
-    SCAN_INTERVAL = 2
+    SCAN_INTERVAL = 10
 
     chromecast_device = None
     chromecast_browser = None
@@ -231,12 +231,11 @@ class ChromecastHandler(threading.Thread):
             self.media_controller.interpret_enum_cmd(media_device_command)
 
     def check_chromecast_alive(self):
-        device_uri = self.chromecast_device.uri
-        device_ip_loc = device_uri.index(':')
-        device_ip = device_uri[:device_ip_loc]
-        response = os.system(f"ping -c 1 -w2 {device_ip} > /dev/null 2>&1")
-        if 0 != response:
-            self.disconnect_chromecast()
+        if self.chromecast_device:
+            device_ip = self.chromecast_device.socket_client.host
+            response = os.system(f"ping -c 1 -w2 {device_ip} > /dev/null 2>&1")
+            if 0 != response:
+                self.disconnect_chromecast()
 
     def run(self):
         self.run_update = True
@@ -244,9 +243,8 @@ class ChromecastHandler(threading.Thread):
         while self.run_update:
             try:
                 if time.time() - self.last_scan_time > self.SCAN_INTERVAL:
-                    if self.chromecast_device:
-                        self.check_chromecast_alive()
-
+                    self.check_chromecast_alive()
+                    self.scan_for_chromecasts()
                     self.last_scan_time = time.time()
 
                 time.sleep(0.1)
