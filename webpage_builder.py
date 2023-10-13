@@ -13,7 +13,12 @@ app = Flask(__name__)
 webpage_title = "Media Stream"
 
 html_style = '<link rel="stylesheet" href="{{ url_for(\'static\',filename=\'style.css\') | safe }}"> ' \
-             '<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">'
+             '<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"> ' \
+             '<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">'
+
+bootstrap_js = '<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>' \
+               '<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r" crossorigin="anonymous"></script>' \
+               '<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.min.js" integrity="sha384-BBtl+eGJRgqQAUMxJ7pMwbEyER4l1g+O15P+16Ep7Q9Q+zqX6gSbd85u4mG4QzX+" crossorigin="anonymous"></script>'
 
 html_scripts = '<script src="{{ url_for(\'static\', filename=\'app.js\') }}"></script>'
 
@@ -56,9 +61,10 @@ def build_html_button_list(button_list):
 
 
 def build_chromecast_menu():
-    scanned_chromecasts = '<div style="float:right; margin:10px">'
-    scanned_chromecasts += '<div style="float:left; margin:10px">'
-    scanned_chromecasts += '<select id="select_scan_chromecast_id" size=4 ' \
+    scanned_chromecasts = '<div style="float:right; float:right; padding-right:10px; padding-top:10px;">'
+    scanned_chromecasts += '<div style="float:left; padding-right:10px">'
+    scanned_chromecasts += '<select id="select_scan_chromecast_id" size=3 class="form-select" ' \
+                           'aria-label="Scanned chromecasts on the network" ' \
                            'onChange="connectChromecast(this);">'
     scanned_chromecasts += '<option selected disabled>Scanned</option>'
     scanned_devices = backend_handler.get_chromecast_scan_list()
@@ -67,9 +73,10 @@ def build_chromecast_menu():
             scanned_chromecasts += f'<option value="{item_str}">{item_str}</option>'
     scanned_chromecasts += '</select></div>'
 
-    connected_chromecasts = '<div style="float:right; margin:10px">'
+    connected_chromecasts = '<div style="float:right;">'
     connected_chromecasts += f'<select ' \
-                             f'id="select_connected_to_chromecast_id" size=4 ' \
+                             f'id="select_connected_to_chromecast_id" size=3 class="form-select" ' \
+                             'aria-label="Scanned chromecasts on the network" ' \
                              f'onChange="disconnectChromecast(this);">'
     connected_chromecasts += '<option selected disabled>Connected</option>'
     connected_device_id = backend_handler.get_chromecast_device_id()
@@ -202,7 +209,7 @@ def main_index():
 
     html_form += '</div></div>'
     html_form += build_media_controls()
-    html_form += '</body></html>'
+    html_form += f'{bootstrap_js}</body></html>'
 
     return render_template_string(html_form)
 
