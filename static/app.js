@@ -10,10 +10,10 @@ String.prototype.toHHMMSS = function () {
     return hours+":"+minutes+":"+seconds;
 };
 
-async function connectChromecast(sel) {
+async function connectChromecast(chromecast_id) {
     var url = "/connect_chromecast";
     let data = {
-        "chromecast_id": sel.options[sel.selectedIndex].text
+        "chromecast_id": chromecast_id
     };
     // Send POST request
     let response = await fetch(url, {
@@ -27,25 +27,14 @@ async function connectChromecast(sel) {
     } else {
         let response_data = await response.json();
         if ("chromecast_id" in response_data) {
-            var select_connected_chromecasts = document.getElementById("select_connected_to_chromecast_id");
-            // Remove existing connection options
-            var i, L = select_connected_chromecasts.options.length - 1;
-            for(i = L; i > 0; i--) {
-                select_connected_chromecasts.remove(i);
-            }
-
-            // Add new connection option
-            var option = document.createElement("option");
-            option.text = response_data?.chromecast_id;
-            select_connected_chromecasts.add(option);
+            document.getElementById("connected_chromecast_id").innerHTML = response_data?.chromecast_id;
         }
     }
 };
 
-async function disconnectChromecast(sel) {
+async function disconnectChromecast() {
     var url = "/disconnect_chromecast";
     let data = {};
-
     let response = await fetch(url, {
         "method": "POST",
         "headers": {"Content-Type": "application/json"},
@@ -56,7 +45,7 @@ async function disconnectChromecast(sel) {
         throw new Error("HTTP status disconnectChromecast: " + response.status);
     } else {
         let response_data = await response.json();
-        sel.remove(sel.selectedIndex)
+        document.getElementById("connected_chromecast_id").innerHTML = ""
     }
 };
 

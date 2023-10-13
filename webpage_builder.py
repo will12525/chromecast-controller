@@ -1,7 +1,5 @@
 import json
-import js2py
-from markupsafe import escape
-from flask import Flask, request, url_for, render_template, render_template_string, jsonify
+from flask import Flask, request, url_for, render_template_string
 
 # jsonify, redirect, current_app, render_template
 from backend_handler import BackEndHandler
@@ -13,14 +11,15 @@ app = Flask(__name__)
 webpage_title = "Media Stream"
 
 html_style = '<link rel="stylesheet" href="{{ url_for(\'static\',filename=\'style.css\') | safe }}"> ' \
-             '<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"> ' \
+             '<script src="https://kit.fontawesome.com/fc24dd5615.js" crossorigin="anonymous"></script>' \
              '<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">'
 
-bootstrap_js = '<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>' \
+bootstrap_js = '<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>' \
                '<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r" crossorigin="anonymous"></script>' \
                '<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.min.js" integrity="sha384-BBtl+eGJRgqQAUMxJ7pMwbEyER4l1g+O15P+16Ep7Q9Q+zqX6gSbd85u4mG4QzX+" crossorigin="anonymous"></script>'
 
-html_scripts = '<script src="{{ url_for(\'static\', filename=\'app.js\') }}"></script>'
+html_scripts = '<script  type="text/javascript" language="javascript" src="{{ url_for(\'static\', filename=\'app.js\') }}"></script>'
+html_scripts += bootstrap_js
 
 html_head = f'<head><title>{webpage_title}</title><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">{html_style}{html_scripts}</head>'
 
@@ -61,30 +60,28 @@ def build_html_button_list(button_list):
 
 
 def build_chromecast_menu():
-    scanned_chromecasts = '<div style="float:right; float:right; padding-right:10px; padding-top:10px;">'
-    scanned_chromecasts += '<div style="float:left; padding-right:10px">'
-    scanned_chromecasts += '<select id="select_scan_chromecast_id" size=3 class="form-select" ' \
-                           'aria-label="Scanned chromecasts on the network" ' \
-                           'onChange="connectChromecast(this);">'
-    scanned_chromecasts += '<option selected disabled>Scanned</option>'
+    chromecast_holder = '<ul class="navbar-nav ms-auto mb-2 mb-lg-0">'
+    # Create text block to display connected chromecast
+    connected_device_id = backend_handler.get_chromecast_device_id()
+    if not connected_device_id:
+        connected_device_id = ""
+    # Create dropdown menu button
+    chromecast_holder += f'<li class="nav-item">'
+    chromecast_holder += f'<a id=connected_chromecast_id class="nav-link" aria-disabled="true">{connected_device_id}</a></li>'
+    chromecast_holder += '<li class="nav-item dropstart">'
+    chromecast_holder += '<a class="nav-link" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">'
+    chromecast_holder += '<span class="fa-brands fa-chromecast"></span></a>'
+    chromecast_holder += '<ul id="dropdown_scanned_chromecasts" class="dropdown-menu">'
+    # Create dropdown list of scanned chromecasts
     scanned_devices = backend_handler.get_chromecast_scan_list()
     if scanned_devices:
         for index, item_str in enumerate(scanned_devices):
-            scanned_chromecasts += f'<option value="{item_str}">{item_str}</option>'
-    scanned_chromecasts += '</select></div>'
+            chromecast_holder += f'<li><a class="dropdown-item" href="javascript:connectChromecast(\'{item_str}\')" value="{item_str}">{item_str}</a></li>'
+    # Add the disconnect button to the dropdown list
+    chromecast_holder += f'<li><hr class="dropdown-divider"></li><li><a class="dropdown-item" href="javascript:disconnectChromecast()">Disconnect</a></li>'
+    chromecast_holder += '</ul></li></ul>'
 
-    connected_chromecasts = '<div style="float:right;">'
-    connected_chromecasts += f'<select ' \
-                             f'id="select_connected_to_chromecast_id" size=3 class="form-select" ' \
-                             'aria-label="Scanned chromecasts on the network" ' \
-                             f'onChange="disconnectChromecast(this);">'
-    connected_chromecasts += '<option selected disabled>Connected</option>'
-    connected_device_id = backend_handler.get_chromecast_device_id()
-    if connected_device_id:
-        connected_chromecasts += f'<option value="{connected_device_id}">{connected_device_id}</option>'
-    connected_chromecasts += '</select></div></div>'
-
-    return scanned_chromecasts + connected_chromecasts
+    return chromecast_holder
 
 
 def build_select_list(select_name, select_list, select_selected_index, add_autofocus):
@@ -138,6 +135,18 @@ def build_media_controls():
     return media_controls
 
 
+# Build the bootstrap navbar
+def build_navbar():
+    navbar = '<nav class="navbar fixed-top navbar-expand-lg bg-dark" data-bs-theme="dark"> '
+    navbar += '<div class="container-fluid"><a class="navbar-brand" href="#">&#x1F422;&#x1F995;</a>'
+    navbar += '<button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">'
+    navbar += '<span class="navbar-toggler-icon"></span></button>'
+    navbar += '<div class="collapse navbar-collapse" id="navbarSupportedContent">'
+    navbar += f"{build_chromecast_menu()}"
+    navbar += '</div></div></nav>'
+    return navbar
+
+
 @app.route('/set_current_media_runtime', methods=['POST'])
 def set_current_media_runtime():
     data = {}
@@ -183,7 +192,6 @@ def chromecast_command():
 
 @app.route('/', methods=['GET', 'POST'])
 def main_index():
-    print(backend_handler)
     changed_type = None
 
     if request.method == 'POST':
@@ -198,9 +206,7 @@ def main_index():
             if changed_type == PathType.TV_SHOW_SEASON_EPISODE:
                 backend_handler.play_episode()
 
-    html_form = f'<!DOCTYPE html><html lang="en">{html_head}<body>'
-    html_form += f'<div class="header"><p style="float:left">&#x1F422;&#x1F995;</p>{build_chromecast_menu()}</div>'
-
+    html_form = f'<!DOCTYPE html><html lang="en">{html_head}<body>{build_navbar()}'
     html_form += '<div>'
     html_form += f'<p>{backend_handler.get_startup_sha()}</p>'
 
@@ -209,7 +215,7 @@ def main_index():
 
     html_form += '</div></div>'
     html_form += build_media_controls()
-    html_form += f'{bootstrap_js}</body></html>'
+    html_form += f'</body></html>'
 
     return render_template_string(html_form)
 
