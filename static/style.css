@@ -67,5 +67,6 @@
 }
 
 html body {
-    padding-top: 0px;
+    padding-top: 56px;
+    padding-bottom: 100px;
 }

@@ -79,6 +79,22 @@ async function setMediaRuntime(range) {
 
 };
 
+async function play_episode(tv_show_id, tv_show_season_id, tv_show_season_episode_id) {
+    var url = "/play_episode";
+    let data = {
+        "tv_show_id": tv_show_id,
+        "tv_show_season_id": tv_show_season_id,
+        "tv_show_season_episode_id": tv_show_season_episode_id
+    };
+    console.log(data)
+    // Send POST request
+    let response = await fetch(url, {
+        "method": "POST",
+        "headers": {"Content-Type": "application/json"},
+        "body": JSON.stringify(data),
+    });
+}
+
 async function updateSeekSelector() {
     var mediaTimeInputId = document.getElementById("mediaTimeInputId");
     if (mediaTimeInputId)

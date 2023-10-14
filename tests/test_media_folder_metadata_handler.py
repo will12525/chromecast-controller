@@ -195,6 +195,12 @@ class MediaFolderMetadataHandler(TestMediaFolderMetadataHandler):
 
 class MediaFolderMetadataHandlerUpdate(TestMediaFolderMetadataHandler):
 
+    def test_media_id_update_str(self):
+        media_id = MediaID(0, 0, 0)
+        new_tv_show_id = "1"
+        changed_type = self.media_folder_metadata_handler.update_tv_show(new_tv_show_id, media_id)
+        self.assertEqual(changed_type, media_folder_metadata_handler.PathType.TV_SHOW)
+
     def test_update_tv_show(self):
         media_id = MediaID(0, 0, 0)
         new_tv_show_id = 1

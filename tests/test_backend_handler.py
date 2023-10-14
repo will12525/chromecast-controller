@@ -109,3 +109,11 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
         self.assertTrue(tv_show_season_episode_name_list)
         self.assertEqual(type(tv_show_season_episode_name_list), list)
         self.assertEqual(len(tv_show_season_episode_name_list), tv_show_season_episode_name_count)
+
+    def test_get_tv_show_metadata(self):
+        media_id = MediaID(0, 0, 0)
+
+        self.backend_handler.set_media_id(media_id)
+
+        tv_show_metadata = self.backend_handler.get_tv_show_metadata(media_id)
+        self.assertTrue(tv_show_metadata)
