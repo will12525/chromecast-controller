@@ -96,32 +96,33 @@ def build_tv_show_season_episode_menu(tv_show_id, tv_show_season_id):
     tv_show_season_name = tv_show_season_metadata.get("name")
     tv_show_episode_count = tv_show_season_metadata.get("episode_count")
 
-    # Create the grid
-    tv_show_grid = '<div class="container"><div class="row row-cols-auto">'
-
     # Build info card for tv show info block
-    tv_show_grid += '<div class="col"><div class="card mb-3">' \
-                    '<div class="row g-0">' \
-                    '<div class="col-md-4">' \
-                    '<img src="{{ url_for(\'static\', filename=\'default.jpg\') }}" class="img-fluid rounded-start" alt="...">' \
-                    '</div>' \
-                    '<div class="col-md-8">' \
-                    '<div class="card-body">' \
-                    f'<h5 class="card-title">{tv_show_name}</h5>' \
-                    f'<p class="card-text">{tv_show_season_name}</p>' \
-                    f'<p class="card-text">Episodes: {tv_show_episode_count}</p>' \
-                    '</div>' \
-                    '</div>' \
-                    '</div>' \
-                    '</div></div>'
+    tv_show_grid = '<div class="container"><div class="row row-cols-auto">' \
+                   '<div class="card mb-3" style="width: 18rem; height: 10rem;">' \
+                   '<div class="row g-0">' \
+                   '<div class="col-md-4">' \
+                   '<!--img src="{{ url_for(\'static\', filename=\'default.jpg\') }}" class="img-fluid rounded-start" alt="..."-->' \
+                   '</div>' \
+                   '<div class="col-md-8">' \
+                   '<div class="card-body">' \
+                   f'<h5 class="card-title">{tv_show_name}</h5>' \
+                   f'<p class="card-text">{tv_show_season_name}</p>' \
+                   f'<p class="card-text">Episodes: {tv_show_episode_count}</p>' \
+                   '</div>' \
+                   '</div>' \
+                   '</div>' \
+                   '</div></div></div>'
+
+    # Create the grid
+    tv_show_grid += '<div class="container"><div class="row row-cols-auto">'
 
     # Add a card element to the grid for each tv show
     tv_show_name_list = backend_handler.get_tv_show_season_episode_name_list()
     for index, tv_show_season_name in enumerate(tv_show_name_list):
-        tv_show_grid += '<div class="col"><div class="card">' \
-                        '<img src="{{ url_for(\'static\', filename=\'default.jpg\') }}" class="card-img" alt="...">' \
-                        f'<div class="card-img-overlay" >' \
-                        f'<h5 class="card-title" style="color: white;">{tv_show_season_name}</h5>' \
+        tv_show_grid += '<div class="col"><div class="card" style="width: 18rem; height: 6rem;">' \
+                        '<!--img src="{{ url_for(\'static\', filename=\'default.jpg\') }}" class="card-img" alt="..."-->' \
+                        f'<div class="card-body" >' \
+                        f'<h5 class="card-title" style="color: black;">{tv_show_season_name}</h5>' \
                         f'<a class="stretched-link" href="javascript:play_episode(\'{tv_show_id}\', \'{tv_show_season_id}\', \'{index}\')"></a>' \
                         '</div></div></div>'
     tv_show_grid += '</div></div>'
@@ -140,32 +141,32 @@ def build_tv_show_season_menu(tv_show_id):
     tv_show_season_count = tv_show_metadata.get("season_count")
     tv_show_episode_count = tv_show_metadata.get("episode_count")
 
-    # Create the grid
-    tv_show_grid = '<div class="container"><div class="row row-cols-auto">'
-
     # Build info card for tv show info block
-    tv_show_grid += '<div class="col"><div class="card mb-3">' \
-                    '<div class="row g-0">' \
-                    '<div class="col-md-4">' \
-                    '<img src="{{ url_for(\'static\', filename=\'default.jpg\') }}" class="img-fluid rounded-start" alt="...">' \
-                    '</div>' \
-                    '<div class="col-md-8">' \
-                    '<div class="card-body">' \
-                    f'<h5 class="card-title">{tv_show_name}</h5>' \
-                    f'<p class="card-text">Seasons: {tv_show_season_count}</p>' \
-                    f'<p class="card-text">Episodes: {tv_show_episode_count}</p>' \
-                    '</div>' \
-                    '</div>' \
-                    '</div>' \
-                    '</div></div>'
+    tv_show_grid = '<div class="container"><div class="row row-cols-auto">' \
+                   '<div class="card mb-3" style="width: 18rem; height: 10rem;">' \
+                   '<div class="row g-0">' \
+                   '<div class="col-md-4">' \
+                   '<!--img src="{{ url_for(\'static\', filename=\'default.jpg\') }}" class="img-fluid rounded-start" alt="..."-->' \
+                   '</div>' \
+                   '<div class="col-md-8">' \
+                   '<div class="card-body">' \
+                   f'<h5 class="card-title">{tv_show_name}</h5>' \
+                   f'<p class="card-text">Seasons: {tv_show_season_count}</p>' \
+                   f'<p class="card-text">Episodes: {tv_show_episode_count}</p>' \
+                   '</div>' \
+                   '</div>' \
+                   '</div>' \
+                   '</div></div>'
+    # Create the grid
+    tv_show_grid += '<div class="container"><div class="row row-cols-auto">'
 
     # Add a card element to the grid for each tv show
     tv_show_name_list = backend_handler.get_tv_show_season_name_list()
     for index, tv_show_season_name in enumerate(tv_show_name_list):
-        tv_show_grid += '<div class="col"><div class="card">' \
-                        '<img src="{{ url_for(\'static\', filename=\'default.jpg\') }}" class="card-img" alt="...">' \
-                        '<div class="card-img-overlay">' \
-                        f'<h5 class="card-title" style="color: white;">{tv_show_season_name}</h5>' \
+        tv_show_grid += '<div class="col"><div class="card" style="width: 18rem; height: 6rem;">' \
+                        '<!--img src="{{ url_for(\'static\', filename=\'default.jpg\') }}" class="card-img" alt="..."-->' \
+                        '<div class="card-body">' \
+                        f'<h5 class="card-title" style="color: black;">{tv_show_season_name}</h5>' \
                         f'<a href="/tv_show_season?tv_show_id={tv_show_id}&tv_show_season_id={index}" class="stretched-link"></a>' \
                         '</div></div></div>'
     tv_show_grid += '</div></div>'
@@ -179,10 +180,10 @@ def build_tv_show_menu():
     # Add a card element to the grid for each tv show
     tv_show_name_list = backend_handler.get_tv_show_name_list()
     for index, tv_show_name in enumerate(tv_show_name_list):
-        tv_show_grid += '<div class="col"><div class="card">' \
-                        '<img src="{{ url_for(\'static\', filename=\'default.jpg\') }}" class="card-img" alt="...">' \
-                        '<div class="card-img-overlay">' \
-                        f'<h5 class="card-title" style="color: white;">{tv_show_name}</h5>' \
+        tv_show_grid += '<div class="col"><div class="card" style="width: 18rem; height: 6rem;">' \
+                        '<!--img src="{{ url_for(\'static\', filename=\'default.jpg\') }}" class="card-img" alt="..."-->' \
+                        '<div class="card-body">' \
+                        f'<h5 class="card-title" style="color: black;">{tv_show_name}</h5>' \
                         f'<a href="/tv_show?tv_show_id={index}" class="stretched-link"></a>' \
                         '</div></div></div>'
     tv_show_grid += '</div></div>'
@@ -191,12 +192,12 @@ def build_tv_show_menu():
 
 
 def build_media_controls():
-    media_controls = '<div class="footer">'
-    media_controls += '<div align="center">'
+    media_controls = '<div class="navbar fixed-bottom bg-body-tertiary">'
+    media_controls += '<div class="container-fluid" align="center">'
     media_controls += '<input type="range" id="mediaTimeInputId" onMouseUp="setMediaRuntime(this);" min=0 value=0 class="slider">'
-    media_controls += '<output id="mediaTimeOutputId"></output>'
+    media_controls += '<output id="mediaTimeOutputId" align="center"></output>'
     media_controls += '</div>'
-    media_controls += '<div align="center">'
+    media_controls += '<div class="container" align="center">'
     media_controls += build_html_button_list(media_controller_button_dict.values())
     media_controls += '</div>'
     media_controls += '</div>'
