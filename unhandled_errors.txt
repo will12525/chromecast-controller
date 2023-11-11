@@ -1,8 +1,8 @@
 from journalctl
 This error caused build up in journalctl.
 This error caused the syslog to fill the entirety of the partition
-Required use of command `truncate -s 0 /var/log/syslog`
-Find the 40 largest files in directory: `sudo du -ha . | sort -n -r | head -n 40`
+Required use of command `sudo truncate -s 0 /var/log/syslog`
+Find the 40 largest files in directory: `sudo du -ha . | sort -n -r | head -n 20`
 Find folder size: `sudo du -hs /*`
 ```
 Jul 14 20:55:09 debianPlex bash[15378]: [Family Room TV(192.168.1.185):8009] Error communicating with socket, resetting connection
@@ -31,5 +31,80 @@ Jul 14 20:55:09 debianPlex bash[15378]:            ^^^^^^^^^^^^^^^^^^^
 Jul 14 20:55:09 debianPlex bash[15378]: AssertionError
 ```
 
+```
+Sep 29 08:43:28 debianPlex bash[931681]: AssertionError
+Sep 29 08:43:28 debianPlex bash[931681]: During handling of the above exception, another exception occurred:
+Sep 29 08:43:28 debianPlex bash[931681]: Traceback (most recent call last):
+Sep 29 08:43:28 debianPlex bash[931681]:   File "/usr/lib/python3.11/logging/__init__.py", line 1114, in emit
+Sep 29 08:43:28 debianPlex bash[931681]:     self.flush()
+Sep 29 08:43:28 debianPlex bash[931681]:   File "/usr/lib/python3.11/logging/__init__.py", line 1094, in flush
+Sep 29 08:43:28 debianPlex bash[931681]:     self.stream.flush()
+Sep 29 08:43:28 debianPlex bash[931681]: OSError: [Errno 28] No space left on device
+Sep 29 08:43:28 debianPlex bash[931681]: Call stack:
+Sep 29 08:43:28 debianPlex bash[931681]:   File "/usr/lib/python3.11/threading.py", line 995, in _bootstrap
+Sep 29 08:43:28 debianPlex bash[931681]:     self._bootstrap_inner()
+Sep 29 08:43:28 debianPlex bash[931681]:   File "/usr/lib/python3.11/threading.py", line 1038, in _bootstrap_inner
+Sep 29 08:43:28 debianPlex bash[931681]:     self.run()
+Sep 29 08:43:28 debianPlex bash[931681]:   File "/home/willow/workspace/chromecast-controller/.venv/lib/python3.11/site-packages/pychromecast/socket_client.py", line 544, in run
+Sep 29 08:43:28 debianPlex bash[931681]:     self.logger.exception(
+Sep 29 08:43:28 debianPlex bash[931681]: Message: '[%s(%s):%s] Unhandled exception in worker thread, attempting reconnect'
+Sep 29 08:43:28 debianPlex bash[931681]: Arguments: ('Family Room TV', '192.168.1.185', 8009)
+Sep 29 08:43:28 debianPlex bash[931681]: --- Logging error ---
+Sep 29 08:43:28 debianPlex bash[931681]: Traceback (most recent call last):
+Sep 29 08:43:28 debianPlex bash[931681]:   File "/usr/lib/python3.11/logging/__init__.py", line 1114, in emit
+Sep 29 08:43:28 debianPlex bash[931681]:     self.flush()
+Sep 29 08:43:28 debianPlex bash[931681]:   File "/usr/lib/python3.11/logging/__init__.py", line 1094, in flush
+Sep 29 08:43:28 debianPlex bash[931681]:     self.stream.flush()
+Sep 29 08:43:28 debianPlex bash[931681]: OSError: [Errno 28] No space left on device
+Sep 29 08:43:28 debianPlex bash[931681]: Call stack:
+Sep 29 08:43:28 debianPlex bash[931681]:   File "/usr/lib/python3.11/threading.py", line 995, in _bootstrap
+Sep 29 08:43:28 debianPlex bash[931681]:     self._bootstrap_inner()
+Sep 29 08:43:28 debianPlex bash[931681]:   File "/usr/lib/python3.11/threading.py", line 1038, in _bootstrap_inner
+Sep 29 08:43:28 debianPlex bash[931681]:     self.run()
+Sep 29 08:43:28 debianPlex bash[931681]:   File "/home/willow/workspace/chromecast-controller/.venv/lib/python3.11/site-packages/pychromecast/socket_client.py", line 540, in run
+Sep 29 08:43:28 debianPlex bash[931681]:     if self.run_once(timeout=POLL_TIME_BLOCKING) == 1:
+Sep 29 08:43:28 debianPlex bash[931681]:   File "/home/willow/workspace/chromecast-controller/.venv/lib/python3.11/site-packages/pychromecast/socket_client.py", line 563, in run_once
+Sep 29 08:43:28 debianPlex bash[931681]:     if not self._check_connection():
+Sep 29 08:43:28 debianPlex bash[931681]:   File "/home/willow/workspace/chromecast-controller/.venv/lib/python3.11/site-packages/pychromecast/socket_client.py", line 669, in _check_connection
+Sep 29 08:43:28 debianPlex bash[931681]:     self.logger.warning(
+Sep 29 08:43:28 debianPlex bash[931681]: Message: '[%s(%s):%s] Error communicating with socket, resetting connection'
+Sep 29 08:43:28 debianPlex bash[931681]: Arguments: ('Family Room TV', '192.168.1.185', 8009)
+Sep 29 08:43:28 debianPlex bash[931681]: --- Logging error ---
+Sep 29 08:43:28 debianPlex bash[931681]: Traceback (most recent call last):
+Sep 29 08:43:28 debianPlex bash[931681]:   File "/usr/lib/python3.11/logging/__init__.py", line 1114, in emit
+Sep 29 08:43:28 debianPlex bash[931681]:     self.flush()
+Sep 29 08:43:28 debianPlex bash[931681]:   File "/usr/lib/python3.11/logging/__init__.py", line 1094, in flush
+Sep 29 08:43:28 debianPlex bash[931681]:     self.stream.flush()
+Sep 29 08:43:28 debianPlex bash[931681]: OSError: [Errno 28] No space left on device
+
+```
+
+```
+Exception occurred during processing of request from ('192.168.1.40', 60670)
+Traceback (most recent call last):
+  File "/home/willow/workspace/chromecast-controller/.venv/lib/python3.11/site-packages/werkzeug/serving.py", line 364, in run_wsgi
+  File "/home/willow/workspace/chromecast-controller/.venv/lib/python3.11/site-packages/werkzeug/serving.py", line 340, in execute
+  File "/usr/lib/python3.11/selectors.py", line 349, in __init__
+OSError: [Errno 24] Too many open files
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/lib/python3.11/socketserver.py", line 691, in process_request_thread
+  File "/usr/lib/python3.11/socketserver.py", line 361, in finish_request
+  File "/usr/lib/python3.11/socketserver.py", line 755, in __init__
+  File "/home/willow/workspace/chromecast-controller/.venv/lib/python3.11/site-packages/werkzeug/serving.py", line 392, in handle
+  File "/usr/lib/python3.11/http/server.py", line 432, in handle
+  File "/usr/lib/python3.11/http/server.py", line 420, in handle_one_request
+  File "/home/willow/workspace/chromecast-controller/.venv/lib/python3.11/site-packages/werkzeug/serving.py", line 384, in run_wsgi
+  File "<frozen importlib._bootstrap>", line 1178, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1149, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 690, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 936, in exec_module
+  File "<frozen importlib._bootstrap_external>", line 1073, in get_code
+  File "<frozen importlib._bootstrap_external>", line 1130, in get_data
+OSError: [Errno 24] Too many open files: '/home/willow/workspace/chromecast-controller/.venv/lib/python3.11/site-packages/werkzeug/debug/__init__.py'
+----------------------------------------
+```
 Plex taking too much space:
 https://www.reddit.com/r/PleX/comments/5trxb9/why_is_varlibplexmediaserver_95gb/

@@ -21,4 +21,5 @@ sudo systemctl restart <service>
 
 ## Sources
 
+Icons: https://fontawesome.com/v4/icons/
 Unicode character [chart](https://en.wikipedia.org/wiki/List_of_Unicode_characters).

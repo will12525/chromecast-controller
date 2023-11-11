@@ -47,19 +47,23 @@ class BackEndHandler:
         self.chromecast_handler.send_command(cmd)
 
     def connect_chromecast(self, device_id_str):
-        self.chromecast_handler.connect_chromecast(device_id_str)
+        return self.chromecast_handler.connect_chromecast(device_id_str)
 
     def disconnect_chromecast(self):
         self.chromecast_handler.disconnect_chromecast()
 
     def set_media_id(self, media_id):
-        return self.media_folder_metadata_handler.set_media_id(media_id)
+        if self.media_folder_metadata_handler:
+            return self.media_folder_metadata_handler.set_media_id(media_id)
 
     def get_media_id(self):
         return self.media_folder_metadata_handler.get_media_id()
 
     def get_episode_url(self):
         return self.media_folder_metadata_handler.get_url(self.SERVER_URL_TV_SHOWS)
+
+    def get_chromecast_media_controller_metadata(self):
+        return self.chromecast_handler.get_media_controller_metadata()
 
     def get_current_playing_episode_info(self):
         return self.chromecast_handler.get_current_playing_episode_info()
@@ -78,3 +82,14 @@ class BackEndHandler:
 
     def update_media_id_selection(self, new_media_id):
         return self.media_folder_metadata_handler.update_media_id_selection(new_media_id)
+
+    def get_media_controller_metadata(self):
+        return self.media_folder_metadata_handler.get_media_metadata()
+
+    def get_tv_show_metadata(self, media_id):
+        if self.media_folder_metadata_handler:
+            return self.media_folder_metadata_handler.get_tv_show_metadata(media_id)
+
+    def get_tv_show_season_metadata(self, media_id):
+        if self.media_folder_metadata_handler:
+            return self.media_folder_metadata_handler.get_tv_show_season_metadata(media_id)

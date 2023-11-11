@@ -1,4 +1,7 @@
-Flask
-PyChromecast
+Flask~=2.3.2
+PyChromecast~=13.0.7
 gitpython
 cryptography
+js2py~=0.74
+
+MarkupSafe~=2.1.3

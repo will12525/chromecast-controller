@@ -1,11 +1,12 @@
 import logging
 import threading
 import time
+import os
 from enum import Enum, auto
 
 import pychromecast
 
-from media_folder_metadata_handler import MediaFolderMetadataHandler
+from media_folder_metadata_handler import MediaFolderMetadataHandler, MediaID
 
 CHROMECAST_DEVICE_BED_ROOM_STR = ["Master Bedroom TV"]
 CHROMECAST_DEVICE_LIVING_ROOM_STR = "Family Room TV"
@@ -24,28 +25,17 @@ class CommandList(Enum):
     CMD_PLAY_PREV = auto()
 
 
-class PlayerState(Enum):
-    STATE_WAITING = auto()
-    STATE_NEW_EPISODE_START = auto()
-    STATE_NEW_EPISODE_BUFFERING = auto()
-    STATE_EPISODE_PLAYING = auto()
-    STATE_EPISODE_PAUSED = auto()
-    STATE_EPISODE_BUFFERING = auto()
-
-
 class MyMediaDevice:
     DEFAULT_MEDIA_TYPE = "video/mp4"
     media_folder_metadata_handler = None
-    last_time_check = 0
-    last_state = None
     cmd_data_dict = {}
-    my_last_player_state = 0
 
     status = None
+    last_playing_media_metadata = None
+    media_server_url = None
 
     def __init__(self, media_controller):
         self.media_controller = media_controller
-        self.my_last_player_state = PlayerState.STATE_WAITING
 
         self.cmd_data_dict[CommandList.CMD_REWIND] = self.media_controller.rewind
         self.cmd_data_dict[CommandList.CMD_REWIND_15] = self.rewind_15
@@ -64,21 +54,33 @@ class MyMediaDevice:
         self.media_controller = None
 
     def play_episode(self, media_folder_metadata_handler, media_server_url):
+        self.media_server_url = media_server_url
+
         self.media_folder_metadata_handler = media_folder_metadata_handler
-        self.play_url(media_server_url)
+        self.play_url()
 
-    def play_next_episode(self, media_server_url):
+    def play_next_episode(self):
+        media_id = None
+        if media_metadata := self.status.media_metadata:
+            media_id = MediaID(media_metadata.get("tv_show_id"), media_metadata.get("tv_show_season_id"),
+                               media_metadata.get("tv_show_season_episode_id"))
         if self.media_folder_metadata_handler:
-            self.media_folder_metadata_handler.increment_next_episode()
-            self.play_url(media_server_url)
+            self.media_folder_metadata_handler.increment_next_episode(media_id)
+            self.play_url()
 
-    def play_url(self, media_server_url):
-        url = self.media_folder_metadata_handler.get_url(media_server_url)
-        print(f"PLAYING URL {url}")
-        self.media_controller.play_media(url, self.DEFAULT_MEDIA_TYPE,
-                                         title=self.media_folder_metadata_handler.get_title())
-        self.media_controller.block_until_active()
-        self.my_last_player_state = PlayerState.STATE_NEW_EPISODE_START
+    def play_url(self):
+        if self.media_server_url:
+            url = self.media_folder_metadata_handler.get_url(self.media_server_url)
+            media_id = self.media_folder_metadata_handler.get_media_id()
+            media_metadata = {"tv_show_id": media_id.tv_show_id,
+                              "tv_show_season_id": media_id.tv_show_season_id,
+                              "tv_show_season_episode_id": media_id.tv_show_season_episode_id}
+
+            print(f"PLAYING URL {url}")
+            self.media_controller.play_media(url, self.DEFAULT_MEDIA_TYPE,
+                                             title=self.media_folder_metadata_handler.get_title(),
+                                             metadata=media_metadata)
+            self.media_controller.block_until_active()
 
     def get_media_current_time(self):
         if self.status:
@@ -87,6 +89,22 @@ class MyMediaDevice:
     def get_media_current_duration(self):
         if self.status:
             return self.status.duration
+
+    def get_media_current_title(self):
+        if self.status:
+            return self.status.title
+
+    def get_media_controller_metadata(self):
+        if self.status:
+            return {
+                "media_runtime": self.get_media_current_time(),
+                "media_duration": self.get_media_current_duration(),
+                "media_title": self.get_media_current_title()
+            }
+
+    def get_playing_media_metadata(self):
+        if self.status:
+            return self.status.media_metadata
 
     def append_queue_url(self, url):
         self.media_controller.play_media(url, self.DEFAULT_MEDIA_TYPE, enqueue=True)
@@ -112,57 +130,20 @@ class MyMediaDevice:
     def new_media_status(self, status):
         self.status = status
         print("----- STATUS LISTENER UPDATE -----")
-        message = ""
-        message += f'Status: {status}'
-        if self.media_folder_metadata_handler:
-            message += f'\n{self.media_folder_metadata_handler.get_title()}'
 
-        # print(message)
-        logging.info(message)
+        if self.media_controller.status.player_state == "IDLE" and self.media_controller.status.idle_reason == "FINISHED":
+            print("Playing next episode")
+            self.play_next_episode()
 
-    def update_player(self, media_server_url):
-        current_timestamp = time.time()
-        if self.media_controller:
-            player_state = self.media_controller.status.player_state
-            current_device_timestamp = self.media_controller.status.adjusted_current_time
-            if not self.last_state:
-                self.last_state = player_state
+        # print(self.status)
+        if not self.status.media_metadata:
+            print("NO NEW MEDIA METADATA")
 
-            # If we have a media object than we can auto increment to the next episode
-            if self.media_folder_metadata_handler:
-                # If we went into IDLE after playing
-                if player_state == "IDLE":
-                    if self.last_state == "PLAYING" and self.my_last_player_state == PlayerState.STATE_EPISODE_PLAYING:
-                        self.play_next_episode(media_server_url)
-                # If we started playing, print the current media url
-                if player_state == "PLAYING":
-                    self.my_last_player_state = PlayerState.STATE_EPISODE_PLAYING
-                if player_state == "PAUSED":
-                    self.my_last_player_state = PlayerState.STATE_EPISODE_PAUSED
-                if player_state == "BUFFERING":
-                    if self.my_last_player_state == PlayerState.STATE_NEW_EPISODE_START:
-                        self.my_last_player_state = PlayerState.STATE_NEW_EPISODE_BUFFERING
-                    else:
-                        self.my_last_player_state = PlayerState.STATE_EPISODE_BUFFERING
-
-            self.last_state = player_state
-            # Update every 5 seconds
-            if current_timestamp - self.last_time_check > 5:
-                print("\n----- STATUS UPDATE -----")
-                self.status = self.media_controller.status
-                current_runtime = 0
-                # current_runtime = self.media_controller.status.
-
-                print(f"\n{current_runtime}")
-                print(type(player_state))
-
-                print(f"CURRENT PLAYER STATE: {player_state}")
-                print(self.media_controller.status)
-                self.last_time_check = current_timestamp
+        # logging.info(message)
 
 
 class ChromecastHandler(threading.Thread):
-    SCAN_INTERVAL = 2
+    SCAN_INTERVAL = 10
 
     chromecast_device = None
     chromecast_browser = None
@@ -184,13 +165,15 @@ class ChromecastHandler(threading.Thread):
         print("deleting ChromecastHandler")
         self.run_update = False
         self.disconnect_chromecast()
+        if self.chromecast_browser:
+            self.chromecast_browser.stop_discovery()
 
     def get_scan_list(self):
         return self.last_scanned_devices
 
     def scan_for_chromecasts(self):
         services, browser = pychromecast.discovery.discover_chromecasts()
-        browser.stop_discovery()
+        self.chromecast_browser = browser
         self.last_scanned_devices = [getattr(service, "friendly_name") for service in services]
 
     def connect_chromecast(self, chromecast_id):
@@ -201,16 +184,21 @@ class ChromecastHandler(threading.Thread):
                 chromecast.wait()
                 self.chromecast_device = chromecast
                 self.media_controller = MyMediaDevice(chromecast.media_controller)
-                self.chromecast_browser = browser
+                if not self.chromecast_browser:
+                    self.chromecast_browser = browser
+                return True
+        return False
 
     def disconnect_chromecast(self):
         self.chromecast_device = None
         self.media_controller = None
-        if self.chromecast_browser:
-            self.chromecast_browser.stop_discovery()
 
     def get_media_controller(self) -> MyMediaDevice:
         return self.media_controller
+
+    def get_media_controller_metadata(self):
+        if self.media_controller:
+            return self.media_controller.get_media_controller_metadata()
 
     def get_chromecast_id(self) -> str:
         if self.chromecast_device:
@@ -242,14 +230,20 @@ class ChromecastHandler(threading.Thread):
         if self.media_controller:
             self.media_controller.interpret_enum_cmd(media_device_command)
 
+    def check_chromecast_alive(self):
+        if self.chromecast_device:
+            device_ip = self.chromecast_device.socket_client.host
+            response = os.system(f"ping -c 1 -w2 {device_ip} > /dev/null 2>&1")
+            if 0 != response:
+                self.disconnect_chromecast()
+
     def run(self):
         self.run_update = True
-        # self.scan_for_chromecasts()
+        self.scan_for_chromecasts()
         while self.run_update:
             try:
-                if self.media_controller:
-                    self.media_controller.update_player(self.media_server_url)
                 if time.time() - self.last_scan_time > self.SCAN_INTERVAL:
+                    self.check_chromecast_alive()
                     self.scan_for_chromecasts()
                     self.last_scan_time = time.time()
 
