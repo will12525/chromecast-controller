@@ -173,7 +173,10 @@ class ChromecastHandler(threading.Thread):
 
     def scan_for_chromecasts(self):
         services, browser = pychromecast.discovery.discover_chromecasts()
-        self.chromecast_browser = browser
+        if not self.chromecast_browser:
+            self.chromecast_browser = browser
+        else:
+            browser.stop_discovery()
         self.last_scanned_devices = [getattr(service, "friendly_name") for service in services]
 
     def connect_chromecast(self, chromecast_id):
