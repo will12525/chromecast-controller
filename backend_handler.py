@@ -1,5 +1,6 @@
 import git
 
+# from database_handler.database_handler import DatabaseHandler
 import media_folder_metadata_handler
 from chromecast_handler import ChromecastHandler
 
@@ -19,6 +20,9 @@ class BackEndHandler:
         self.startup_sha = repo.head.object.hexsha
         print(self.startup_sha)
         self.chromecast_handler = ChromecastHandler()
+
+        # self.db_handler = DatabaseHandler("media_folder_sample/")
+
         self.media_folder_metadata_handler = media_folder_metadata_handler.MediaFolderMetadataHandler(
             self.MEDIA_METADATA_FILE, self.MEDIA_FOLDER_PATH)
 
