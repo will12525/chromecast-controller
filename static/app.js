@@ -63,6 +63,7 @@ async function chromecast_command(chromecast_cmd_id) {
     });
     console.log(response.status)
 }
+
 async function setMediaRuntime(range) {
     document.activeElement.blur()
 
@@ -79,12 +80,10 @@ async function setMediaRuntime(range) {
 
 };
 
-async function play_episode(tv_show_id, tv_show_season_id, tv_show_season_episode_id) {
+async function play_episode(media_id) {
     var url = "/play_episode";
     let data = {
-        "tv_show_id": tv_show_id,
-        "tv_show_season_id": tv_show_season_id,
-        "tv_show_season_episode_id": tv_show_season_episode_id
+        "media_id": media_id
     };
     console.log(data)
     // Send POST request

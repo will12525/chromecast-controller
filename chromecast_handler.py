@@ -3,13 +3,9 @@ import threading
 import time
 import os
 from enum import Enum, auto
+from database_handler.database_handler import DatabaseHandler
 
 import pychromecast
-
-from media_folder_metadata_handler import MediaFolderMetadataHandler, MediaID
-
-CHROMECAST_DEVICE_BED_ROOM_STR = ["Master Bedroom TV"]
-CHROMECAST_DEVICE_LIVING_ROOM_STR = "Family Room TV"
 
 
 class CommandList(Enum):
@@ -31,8 +27,8 @@ class MyMediaDevice:
     cmd_data_dict = {}
 
     status = None
-    last_playing_media_metadata = None
     media_server_url = None
+    media_folder_path = None
 
     def __init__(self, media_controller):
         self.media_controller = media_controller
@@ -53,58 +49,38 @@ class MyMediaDevice:
     def __del__(self):
         self.media_controller = None
 
-    def play_episode(self, media_folder_metadata_handler, media_server_url):
+    def play_episode_from_sql(self, media_id, media_server_url, media_folder_path):
         self.media_server_url = media_server_url
+        self.media_folder_path = media_folder_path
+        db_handler = DatabaseHandler()
+        if db_handler:
+            media_info = db_handler.get_url(media_server_url, media_folder_path, media_id)
+            if media_info:
+                self.play_url(media_info)
 
-        self.media_folder_metadata_handler = media_folder_metadata_handler
-        self.play_url()
+    def play_next_episode(self, status):
+        if self.media_folder_path and (media_metadata := status.media_metadata):
+            db_handler = DatabaseHandler()
+            if db_handler:
+                media_info = db_handler.get_next_url(self.media_server_url, self.media_folder_path,
+                                                     media_metadata.get("media_id"), media_metadata.get("playlist_id"))
+                if media_info:
+                    self.play_url(media_info)
 
-    def play_next_episode(self):
-        media_id = None
-        if media_metadata := self.status.media_metadata:
-            media_id = MediaID(media_metadata.get("tv_show_id"), media_metadata.get("tv_show_season_id"),
-                               media_metadata.get("tv_show_season_episode_id"))
-        if self.media_folder_metadata_handler:
-            self.media_folder_metadata_handler.increment_next_episode(media_id)
-            self.play_url()
-
-    def play_url(self):
-        if self.media_server_url:
-            url = self.media_folder_metadata_handler.get_url(self.media_server_url)
-            media_id = self.media_folder_metadata_handler.get_media_id()
-            media_metadata = {"tv_show_id": media_id.tv_show_id,
-                              "tv_show_season_id": media_id.tv_show_season_id,
-                              "tv_show_season_episode_id": media_id.tv_show_season_episode_id}
-
-            print(f"PLAYING URL {url}")
-            self.media_controller.play_media(url, self.DEFAULT_MEDIA_TYPE,
-                                             title=self.media_folder_metadata_handler.get_title(),
-                                             metadata=media_metadata)
+    def play_url(self, media_info=None):
+        if media_info:
+            self.media_controller.play_media(media_info["url"], self.DEFAULT_MEDIA_TYPE,
+                                             title=media_info["title"],
+                                             metadata=media_info)
             self.media_controller.block_until_active()
-
-    def get_media_current_time(self):
-        if self.status:
-            return self.status.adjusted_current_time
-
-    def get_media_current_duration(self):
-        if self.status:
-            return self.status.duration
-
-    def get_media_current_title(self):
-        if self.status:
-            return self.status.title
 
     def get_media_controller_metadata(self):
         if self.status:
             return {
-                "media_runtime": self.get_media_current_time(),
-                "media_duration": self.get_media_current_duration(),
-                "media_title": self.get_media_current_title()
+                "media_runtime": self.status.adjusted_current_time,
+                "media_duration": self.status.duration,
+                "media_title": self.status.title
             }
-
-    def get_playing_media_metadata(self):
-        if self.status:
-            return self.status.media_metadata
 
     def append_queue_url(self, url):
         self.media_controller.play_media(url, self.DEFAULT_MEDIA_TYPE, enqueue=True)
@@ -116,9 +92,6 @@ class MyMediaDevice:
         if cmd := self.cmd_data_dict.get(cmd_enum):
             cmd()
 
-    def get_current_media_status(self):
-        return self.status
-
     def rewind_15(self):
         if self.status:
             self.seek(self.status.adjusted_current_time - 15)
@@ -129,17 +102,9 @@ class MyMediaDevice:
 
     def new_media_status(self, status):
         self.status = status
-        print("----- STATUS LISTENER UPDATE -----")
 
         if self.media_controller.status.player_state == "IDLE" and self.media_controller.status.idle_reason == "FINISHED":
-            print("Playing next episode")
-            self.play_next_episode()
-
-        # print(self.status)
-        if not self.status.media_metadata:
-            print("NO NEW MEDIA METADATA")
-
-        # logging.info(message)
+            self.play_next_episode(status)
 
 
 class ChromecastHandler(threading.Thread):
@@ -151,8 +116,6 @@ class ChromecastHandler(threading.Thread):
 
     last_scanned_devices = []
     last_scan_time = 0
-
-    media_server_url = None
 
     run_update = False
 
@@ -207,27 +170,13 @@ class ChromecastHandler(threading.Thread):
         if self.chromecast_device:
             return self.chromecast_device.name
 
-    def get_media_current_time(self):
-        if self.media_controller:
-            return self.media_controller.get_media_current_time()
-
-    def get_media_current_duration(self):
-        if self.media_controller:
-            return self.media_controller.get_media_current_duration()
-
     def seek_media_time(self, media_time):
         if self.media_controller:
             self.media_controller.seek(media_time)
 
-    def get_current_playing_episode_info(self):
+    def play_from_sql(self, media_id, media_server_url, media_folder_path):
         if self.media_controller:
-            if self.media_controller.media_folder_metadata_handler:
-                return self.media_controller.media_folder_metadata_handler.get_episode_info()
-
-    def play_from_media_drive(self, media_folder_metadata_handler: MediaFolderMetadataHandler, media_server_url):
-        if self.media_controller:
-            self.media_server_url = media_server_url
-            self.media_controller.play_episode(media_folder_metadata_handler, media_server_url)
+            self.media_controller.play_episode_from_sql(media_id, media_server_url, media_folder_path)
 
     def send_command(self, media_device_command):
         if self.media_controller:

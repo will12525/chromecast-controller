@@ -21,10 +21,10 @@ def sort_season_dir_list(tv_show_path):
 
                 tv_show_season_name_dict[tv_show_season_name_id_int] = tv_show_season_name_str
 
-            except ValueError:
-                print(f"ERROR: {tv_show_season_name_str}")
-            except Exception:
-                print(f"ERROR READING: {unsorted_tv_show_season_name_list}")
+            except ValueError as e:
+                print(f"ERROR: {tv_show_season_name_str}\n{e}")
+            except Exception as e:
+                print(f"ERROR READING: {unsorted_tv_show_season_name_list}\n{e}")
                 print(traceback.format_exc())
 
     sorted_tv_show_season_name_dict_keys = list(tv_show_season_name_dict.keys())

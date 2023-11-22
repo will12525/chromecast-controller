@@ -3,7 +3,7 @@ import traceback
 import sys
 import sqlite3
 from sqlite3 import Error
-from media_metadata_collector import collect_tv_shows
+from .media_metadata_collector import collect_tv_shows
 
 # playlist_info and media_info are the sources
 
@@ -62,18 +62,22 @@ sql_create_playlist_media_list_table = """CREATE TABLE IF NOT EXISTS playlist_me
 
 sql_insert_playlist_media_list_table = ''' INSERT INTO playlist_media_list(playlist_id, media_id, list_index) VALUES(?, ?, ?) '''
 
+sql_create_media_folder_table = """CREATE TABLE IF NOT EXISTS media_folder (
+                                id integer PRIMARY KEY,
+                                media_folder_path integer NOT NULL
+                            );"""
+
+sql_insert_media_folder_table = ''' INSERT INTO media_folder(media_folder_path) VALUES(?) '''
+
 db_table_creation_list = [sql_create_tv_show_info_table, sql_create_season_info_table, sql_create_media_info_table,
-                          sql_create_playlist_info_table, sql_create_playlist_media_list_table]
+                          sql_create_playlist_info_table, sql_create_playlist_media_list_table,
+                          sql_create_media_folder_table]
 
 
 class SqliteDatabaseHandler:
     db_connection = None
 
     def __init__(self, media_scan_path=None):
-        # ----------------- Remove for final -----------------
-        if os.path.exists(MEDIA_METADATA_DB_NAME):
-            os.remove(MEDIA_METADATA_DB_NAME)
-
         if not os.path.exists(MEDIA_METADATA_DB_NAME):
             self.create_connection(MEDIA_METADATA_DB_NAME)
             self.create_tables(db_table_creation_list)
@@ -83,6 +87,9 @@ class SqliteDatabaseHandler:
             self.create_connection(MEDIA_METADATA_DB_NAME)
 
     def __del__(self):
+        self.close()
+
+    def close(self):
         if self.db_connection:
             self.db_connection.close()
 
@@ -157,6 +164,9 @@ class SqliteDatabaseHandler:
 
     def add_playlist(self, name):
         return self.add_data_to_db(sql_insert_playlist_info_table, (name,))
+
+    def add_media_folder_path(self, media_folder_path):
+        return self.add_data_to_db(sql_insert_media_folder_table, (media_folder_path,))
 
     def add_media_to_playlist(self, playlist_id, media_id, list_index=None):
         if not list_index:

@@ -3,7 +3,6 @@ from flask import Flask, request, render_template_string
 # jsonify, redirect, current_app, render_template
 from backend_handler import BackEndHandler
 from chromecast_handler import CommandList
-from media_folder_metadata_handler import MediaID
 
 app = Flask(__name__)
 
@@ -38,8 +37,6 @@ media_controller_button_dict = {
     "stop": {"name": "stop", "value": "&#x23F9;", "icon": "fa-stop",
              "onclick": f"chromecast_command({CommandList.CMD_STOP.value});"}
 }
-
-path_type_strings = ["tv_show", "tv_show_season", "tv_show_season_episode"]
 
 backend_handler = BackEndHandler()
 backend_handler.start()
@@ -83,18 +80,13 @@ def build_chromecast_menu():
     return chromecast_holder
 
 
-def build_tv_show_season_episode_menu(tv_show_id, tv_show_season_id):
-    # Update the selected media id
-    new_media_id = MediaID(tv_show_id, tv_show_season_id)
-    backend_handler.update_media_id_selection(new_media_id)
-
+def build_tv_show_season_episode_menu(season_id):
     # Collect info for selected tv show info block
-    tv_show_metadata = backend_handler.get_tv_show_metadata(new_media_id)
-    tv_show_season_metadata = backend_handler.get_tv_show_season_metadata(new_media_id)
+    tv_show_metadata = backend_handler.get_tv_show_season_metadata(season_id)
 
-    tv_show_name = tv_show_metadata.get("name")
-    tv_show_season_name = tv_show_season_metadata.get("name")
-    tv_show_episode_count = tv_show_season_metadata.get("episode_count")
+    tv_show_name = tv_show_metadata.get("show_name")
+    tv_show_season_name = tv_show_metadata.get("season_name")
+    tv_show_episode_count = tv_show_metadata.get("episode_count")
 
     # Build info card for tv show info block
     tv_show_grid = '<div class="container"><div class="row row-cols-auto">' \
@@ -108,6 +100,7 @@ def build_tv_show_season_episode_menu(tv_show_id, tv_show_season_id):
                    f'<h5 class="card-title">{tv_show_name}</h5>' \
                    f'<p class="card-text">{tv_show_season_name}</p>' \
                    f'<p class="card-text">Episodes: {tv_show_episode_count}</p>' \
+                   f'<a href="/tv_show?media_id={tv_show_metadata.get("tv_show_id")}" class="stretched-link"></a>' \
                    '</div>' \
                    '</div>' \
                    '</div>' \
@@ -117,13 +110,13 @@ def build_tv_show_season_episode_menu(tv_show_id, tv_show_season_id):
     tv_show_grid += '<div class="container"><div class="row row-cols-auto">'
 
     # Add a card element to the grid for each tv show
-    tv_show_name_list = backend_handler.get_tv_show_season_episode_name_list()
-    for index, tv_show_season_name in enumerate(tv_show_name_list):
+    tv_show_name_list = backend_handler.get_tv_show_season_episode_name_list(season_id)
+    for tv_show_season_name in tv_show_name_list:
         tv_show_grid += '<div class="col"><div class="card" style="width: 18rem; height: 6rem;">' \
                         '<!--img src="{{ url_for(\'static\', filename=\'default.jpg\') }}" class="card-img" alt="..."-->' \
                         f'<div class="card-body" >' \
-                        f'<h5 class="card-title" style="color: black;">{tv_show_season_name}</h5>' \
-                        f'<a class="stretched-link" href="javascript:play_episode(\'{tv_show_id}\', \'{tv_show_season_id}\', \'{index}\')"></a>' \
+                        f'<h5 class="card-title" style="color: black;">{tv_show_season_name[1]}</h5>' \
+                        f'<a class="stretched-link" href="javascript:play_episode(\'{tv_show_season_name[0]}\')"></a>' \
                         '</div></div></div>'
     tv_show_grid += '</div></div>'
 
@@ -131,13 +124,10 @@ def build_tv_show_season_episode_menu(tv_show_id, tv_show_season_id):
 
 
 def build_tv_show_season_menu(tv_show_id):
-    # Update the selected media id
-    new_media_id = MediaID(tv_show_id)
-    backend_handler.update_media_id_selection(new_media_id)
-
     # Collect info for selected tv show info block
-    tv_show_metadata = backend_handler.get_tv_show_metadata(new_media_id)
-    tv_show_name = tv_show_metadata.get("name")
+    tv_show_metadata = backend_handler.get_tv_show_metadata(tv_show_id)
+
+    tv_show_name = tv_show_metadata.get("show_name")
     tv_show_season_count = tv_show_metadata.get("season_count")
     tv_show_episode_count = tv_show_metadata.get("episode_count")
 
@@ -161,13 +151,13 @@ def build_tv_show_season_menu(tv_show_id):
     tv_show_grid += '<div class="container"><div class="row row-cols-auto">'
 
     # Add a card element to the grid for each tv show
-    tv_show_name_list = backend_handler.get_tv_show_season_name_list()
-    for index, tv_show_season_name in enumerate(tv_show_name_list):
+    tv_show_name_list = backend_handler.get_tv_show_season_name_list(tv_show_id)
+    for tv_show_season_name in tv_show_name_list:
         tv_show_grid += '<div class="col"><div class="card" style="width: 18rem; height: 6rem;">' \
                         '<!--img src="{{ url_for(\'static\', filename=\'default.jpg\') }}" class="card-img" alt="..."-->' \
                         '<div class="card-body">' \
-                        f'<h5 class="card-title" style="color: black;">{tv_show_season_name}</h5>' \
-                        f'<a href="/tv_show_season?tv_show_id={tv_show_id}&tv_show_season_id={index}" class="stretched-link"></a>' \
+                        f'<h5 class="card-title" style="color: black;">{tv_show_season_name[1]}</h5>' \
+                        f'<a href="/tv_show_season?media_id={tv_show_season_name[0]}&tv_show_id={tv_show_id}" class="stretched-link"></a>' \
                         '</div></div></div>'
     tv_show_grid += '</div></div>'
 
@@ -179,12 +169,12 @@ def build_tv_show_menu():
     tv_show_grid = '<div class="container"><div class="row row-cols-auto">'
     # Add a card element to the grid for each tv show
     tv_show_name_list = backend_handler.get_tv_show_name_list()
-    for index, tv_show_name in enumerate(tv_show_name_list):
+    for tv_show_name in tv_show_name_list:
         tv_show_grid += '<div class="col"><div class="card" style="width: 18rem; height: 6rem;">' \
                         '<!--img src="{{ url_for(\'static\', filename=\'default.jpg\') }}" class="card-img" alt="..."-->' \
                         '<div class="card-body">' \
-                        f'<h5 class="card-title" style="color: black;">{tv_show_name}</h5>' \
-                        f'<a href="/tv_show?tv_show_id={index}" class="stretched-link"></a>' \
+                        f'<h5 class="card-title" style="color: black;">{tv_show_name[1]}</h5>' \
+                        f'<a href="/tv_show?media_id={tv_show_name[0]}" class="stretched-link"></a>' \
                         '</div></div></div>'
     tv_show_grid += '</div></div>'
 
@@ -263,25 +253,19 @@ def chromecast_command():
 def play_episode():
     data = {}
     if json_request := request.get_json():
-        if tv_show_id := json_request.get("tv_show_id", 0):
-            tv_show_season_id = json_request.get('tv_show_season_id', 0)
-            tv_show_season_episode_id = json_request.get('tv_show_season_episode_id', 0)
-
-            backend_handler.update_media_id_selection(
-                MediaID(int(tv_show_id), int(tv_show_season_id), int(tv_show_season_episode_id)))
-            backend_handler.play_episode()
+        if media_id := json_request.get("media_id", 0):
+            backend_handler.play_episode(media_id)
     return data, 200
 
 
 @app.route('/tv_show_season')
 def tv_show_season_menu():
-    tv_show_id = request.args.get('tv_show_id', None)
-    tv_show_season_id = request.args.get('tv_show_season_id', None)
+    media_id = request.args.get('media_id', None)
 
     html_form = f'<!DOCTYPE html><html lang="en">{html_head}<body>{build_navbar()}<div>'
     html_form += f'<p>{backend_handler.get_startup_sha()}</p>'
     html_form += '<div id="mediaContentSelectDiv">'
-    html_form += build_tv_show_season_episode_menu(int(tv_show_id), int(tv_show_season_id))
+    html_form += build_tv_show_season_episode_menu(int(media_id))
     html_form += '</div></div>'
     html_form += build_media_controls()
     html_form += f'</body></html>'
@@ -291,12 +275,12 @@ def tv_show_season_menu():
 
 @app.route('/tv_show')
 def tv_show_menu():
-    tv_show_id = request.args.get('tv_show_id', None)
+    media_id = request.args.get('media_id', None)
 
     html_form = f'<!DOCTYPE html><html lang="en">{html_head}<body>{build_navbar()}<div>'
     html_form += f'<p>{backend_handler.get_startup_sha()}</p>'
     html_form += '<div id="mediaContentSelectDiv">'
-    html_form += build_tv_show_season_menu(int(tv_show_id))
+    html_form += build_tv_show_season_menu(int(media_id))
     html_form += '</div></div>'
     html_form += build_media_controls()
     html_form += f'</body></html>'
@@ -306,13 +290,10 @@ def tv_show_menu():
 
 @app.route('/', methods=['GET', 'POST'])
 def main_index():
-    html_form = f'<!DOCTYPE html><html lang="en">{html_head}<body>{build_navbar()}'
-    html_form += '<div>'
+    html_form = f'<!DOCTYPE html><html lang="en">{html_head}<body>{build_navbar()}<div>'
     html_form += f'<p>{backend_handler.get_startup_sha()}</p>'
-
     html_form += '<div id="mediaContentSelectDiv">'
     html_form += build_tv_show_menu()
-
     html_form += '</div></div>'
     html_form += build_media_controls()
     html_form += f'</body></html>'
