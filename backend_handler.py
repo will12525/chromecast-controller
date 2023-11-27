@@ -1,13 +1,16 @@
 import git
 
 from database_handler.database_handler import DatabaseHandler
+from database_handler.create_database import MediaType
 from chromecast_handler import ChromecastHandler
 
 
 class BackEndHandler:
     SERVER_URL = "http://192.168.1.200:8000/"
     SERVER_URL_TV_SHOWS = SERVER_URL + "tv_shows/"
+    SERVER_URL_MOVIES = SERVER_URL + "movies/"
     MEDIA_FOLDER_PATH = "/media/hdd1/plex_media/tv_shows/"
+    MEDIA_FOLDER_PATH_MOVIES = "/media/hdd1/plex_media/movies/"
     MEDIA_METADATA_FILE = "tv_show_metadata.json"
 
     startup_sha = None
@@ -19,7 +22,10 @@ class BackEndHandler:
         print(self.startup_sha)
         self.chromecast_handler = ChromecastHandler()
         # Build database if it doesn't exist
-        DatabaseHandler(self.MEDIA_FOLDER_PATH)
+        media_paths = [{"type": MediaType.TV_SHOW, "path": self.MEDIA_FOLDER_PATH, "url": self.SERVER_URL_TV_SHOWS},
+                       {"type": MediaType.MOVIE, "path": self.MEDIA_FOLDER_PATH_MOVIES, "url": self.SERVER_URL_MOVIES}
+                       ]
+        DatabaseHandler(media_paths)
 
     def get_startup_sha(self):
         return self.startup_sha
@@ -48,13 +54,18 @@ class BackEndHandler:
     def get_chromecast_media_controller_metadata(self):
         return self.chromecast_handler.get_media_controller_metadata()
 
-    def play_episode(self, media_id):
-        self.chromecast_handler.play_from_sql(media_id, self.SERVER_URL_TV_SHOWS, self.MEDIA_FOLDER_PATH)
+    def play_media_on_chromecast(self, media_id, playlist_id=None):
+        self.chromecast_handler.play_from_sql(media_id, playlist_id)
 
     def get_tv_show_name_list(self):
         db_handler = DatabaseHandler(self.MEDIA_FOLDER_PATH)
         if db_handler:
             return db_handler.get_tv_show_name_list()
+
+    def get_movie_name_list(self):
+        db_handler = DatabaseHandler(self.MEDIA_FOLDER_PATH)
+        if db_handler:
+            return db_handler.get_movie_name_list()
 
     def get_tv_show_season_name_list(self, tv_show_id):
         db_handler = DatabaseHandler(self.MEDIA_FOLDER_PATH)

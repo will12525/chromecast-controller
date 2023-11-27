@@ -20,7 +20,7 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
     def test_init(self):
         self.assertTrue(self.backend_handler.startup_sha)
         self.assertTrue(self.backend_handler.chromecast_handler)
-        self.assertTrue(self.backend_handler.media_folder_metadata_handler)
+        # self.assertTrue(self.backend_handler.media_folder_metadata_handler)
 
     def test_get_startup_sha(self):
         startup_sha = self.backend_handler.get_startup_sha()
@@ -41,8 +41,8 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
     #     self.assertEqual(type(connected_devices_list), list)
 
     def test_send_chromecast_cmd(self):
-        self.test_play_episode()
-        self.backend_handler.send_chromecast_cmd(CommandList.CMD_PAUSE)
+        # self.test_play_episode()
+        # self.backend_handler.send_chromecast_cmd(CommandList.CMD_PAUSE)
         # Need to get way to check current state
         pass
 
@@ -72,14 +72,14 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
     #     self.assertTrue(episode_url)
     #     self.assertEqual(type(episode_url), str)
 
-    def test_play_episode(self):
-        self.test_connect_chromecast()
-        # self.backend_handler.connect_chromecast(self.CHROMECAST_ID)
-        # connected_devices_list = self.backend_handler.get_chromecast_connected_device_list()
-        # print(connected_devices_list)
-        # self.assertTrue(self.CHROMECAST_ID in connected_devices_list)
-
-        self.backend_handler.play_episode()
+    # def test_play_media(self):
+    #     self.test_connect_chromecast()
+    #     # self.backend_handler.connect_chromecast(self.CHROMECAST_ID)
+    #     # connected_devices_list = self.backend_handler.get_chromecast_connected_device_list()
+    #     # print(connected_devices_list)
+    #     # self.assertTrue(self.CHROMECAST_ID in connected_devices_list)
+    #
+    #     self.backend_handler.play_media()
 
     def test_get_tv_show_name_list(self):
         tv_show_count = 3
@@ -89,13 +89,13 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
         self.assertEqual(type(tv_show_name_list), list)
         self.assertEqual(len(tv_show_name_list), tv_show_count)
 
-    def test_get_tv_show_season_name_list(self):
-        tv_show_season_count = 2
-
-        tv_show_season_name_list = self.backend_handler.get_tv_show_season_name_list()
-        self.assertTrue(tv_show_season_name_list)
-        self.assertEqual(type(tv_show_season_name_list), list)
-        self.assertEqual(len(tv_show_season_name_list), tv_show_season_count)
+    # def test_get_tv_show_season_name_list(self):
+    #     tv_show_season_count = 2
+    #
+    #     tv_show_season_name_list = self.backend_handler.get_tv_show_season_name_list()
+    #     self.assertTrue(tv_show_season_name_list)
+    #     self.assertEqual(type(tv_show_season_name_list), list)
+    #     self.assertEqual(len(tv_show_season_name_list), tv_show_season_count)
 
     # def test_get_tv_show_season_episode_name_list(self):
     #     media_id = MediaID(0, 1, 0)

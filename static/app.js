@@ -80,10 +80,11 @@ async function setMediaRuntime(range) {
 
 };
 
-async function play_episode(media_id) {
-    var url = "/play_episode";
+async function play_media(media_id, playlist_id=null) {
+    var url = "/play_media";
     let data = {
-        "media_id": media_id
+        "media_id": media_id,
+        "playlist_id": playlist_id
     };
     console.log(data)
     // Send POST request

@@ -23,12 +23,9 @@ class CommandList(Enum):
 
 class MyMediaDevice:
     DEFAULT_MEDIA_TYPE = "video/mp4"
-    media_folder_metadata_handler = None
     cmd_data_dict = {}
 
     status = None
-    media_server_url = None
-    media_folder_path = None
 
     def __init__(self, media_controller):
         self.media_controller = media_controller
@@ -49,29 +46,37 @@ class MyMediaDevice:
     def __del__(self):
         self.media_controller = None
 
-    def play_episode_from_sql(self, media_id, media_server_url, media_folder_path):
-        self.media_server_url = media_server_url
-        self.media_folder_path = media_folder_path
+    def play_episode_from_sql(self, media_id, playlist_id=None):
         db_handler = DatabaseHandler()
         if db_handler:
-            media_info = db_handler.get_url(media_server_url, media_folder_path, media_id)
+            media_info = db_handler.get_media_metadata(media_id)
+            if playlist_id:
+                media_info["user_selected_playlist_id"] = playlist_id
             if media_info:
-                self.play_url(media_info)
+                self.play_media_info(media_info)
 
     def play_next_episode(self, status):
-        if self.media_folder_path and (media_metadata := status.media_metadata):
+        if media_metadata := status.media_metadata:
             db_handler = DatabaseHandler()
             if db_handler:
-                media_info = db_handler.get_next_url(self.media_server_url, self.media_folder_path,
-                                                     media_metadata.get("media_id"), media_metadata.get("playlist_id"))
+                media_info = db_handler.get_next_media_metadata(media_metadata.get("media_id"),
+                                                                media_metadata.get("user_selected_playlist_id",
+                                                                                   media_metadata.get("playlist_id",
+                                                                                                      0)))
                 if media_info:
-                    self.play_url(media_info)
+                    self.play_media_info(media_info)
 
-    def play_url(self, media_info=None):
+    def play_media_info(self, media_info=None):
         if media_info:
-            self.media_controller.play_media(media_info["url"], self.DEFAULT_MEDIA_TYPE,
-                                             title=media_info["title"],
-                                             metadata=media_info)
+            media_url = f"{media_info.get('media_folder_url')}{media_info.get('path')}"
+            media_title = media_info.get('name')
+            if media_path := media_info.get('path'):
+                media_title_list = media_path.split("/")
+                if 2 == len(media_title_list):
+                    media_title_list[2] = media_info.get('name')
+                    media_title = ' '.join(media_title_list)
+
+            self.media_controller.play_media(media_url, self.DEFAULT_MEDIA_TYPE, title=media_title, metadata=media_info)
             self.media_controller.block_until_active()
 
     def get_media_controller_metadata(self):
@@ -83,7 +88,8 @@ class MyMediaDevice:
             }
 
     def append_queue_url(self, url):
-        self.media_controller.play_media(url, self.DEFAULT_MEDIA_TYPE, enqueue=True)
+        pass
+        # self.media_controller.play_media(url, self.DEFAULT_MEDIA_TYPE, enqueue=True)
 
     def seek(self, position):
         self.media_controller.seek(position)
@@ -174,9 +180,9 @@ class ChromecastHandler(threading.Thread):
         if self.media_controller:
             self.media_controller.seek(media_time)
 
-    def play_from_sql(self, media_id, media_server_url, media_folder_path):
+    def play_from_sql(self, media_id, playlist_id=None):
         if self.media_controller:
-            self.media_controller.play_episode_from_sql(media_id, media_server_url, media_folder_path)
+            self.media_controller.play_episode_from_sql(media_id, playlist_id)
 
     def send_command(self, media_device_command):
         if self.media_controller:
