@@ -56,33 +56,3 @@ class BackEndHandler:
 
     def play_media_on_chromecast(self, media_id, playlist_id=None):
         self.chromecast_handler.play_from_sql(media_id, playlist_id)
-
-    def get_tv_show_name_list(self):
-        db_handler = DatabaseHandler(self.MEDIA_FOLDER_PATH)
-        if db_handler:
-            return db_handler.get_tv_show_name_list()
-
-    def get_movie_name_list(self):
-        db_handler = DatabaseHandler(self.MEDIA_FOLDER_PATH)
-        if db_handler:
-            return db_handler.get_movie_name_list()
-
-    def get_tv_show_season_name_list(self, tv_show_id):
-        db_handler = DatabaseHandler(self.MEDIA_FOLDER_PATH)
-        if db_handler:
-            return db_handler.get_tv_show_season_name_list(tv_show_id)
-
-    def get_tv_show_season_episode_name_list(self, season_id):
-        db_handler = DatabaseHandler(self.MEDIA_FOLDER_PATH)
-        if db_handler:
-            return db_handler.get_tv_show_season_episode_name_list(season_id=season_id)
-
-    def get_tv_show_metadata(self, media_id):
-        db_handler = DatabaseHandler(self.MEDIA_FOLDER_PATH)
-        if db_handler:
-            return db_handler.get_tv_show_metadata(media_id)
-
-    def get_tv_show_season_metadata(self, media_id):
-        db_handler = DatabaseHandler(self.MEDIA_FOLDER_PATH)
-        if db_handler:
-            return db_handler.get_tv_show_season_metadata(media_id)

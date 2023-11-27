@@ -81,13 +81,13 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
     #
     #     self.backend_handler.play_media()
 
-    def test_get_tv_show_name_list(self):
-        tv_show_count = 3
-
-        tv_show_name_list = self.backend_handler.get_tv_show_name_list()
-        self.assertTrue(tv_show_name_list)
-        self.assertEqual(type(tv_show_name_list), list)
-        self.assertEqual(len(tv_show_name_list), tv_show_count)
+    # def test_get_tv_show_name_list(self):
+    #     tv_show_count = 3
+    #
+    #     tv_show_name_list = self.backend_handler.get_tv_show_name_list()
+    #     self.assertTrue(tv_show_name_list)
+    #     self.assertEqual(type(tv_show_name_list), list)
+    #     self.assertEqual(len(tv_show_name_list), tv_show_count)
 
     # def test_get_tv_show_season_name_list(self):
     #     tv_show_season_count = 2
