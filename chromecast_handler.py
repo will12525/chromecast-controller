@@ -59,7 +59,7 @@ class MyMediaDevice:
         if media_metadata := status.media_metadata:
             db_handler = DatabaseHandler()
             if db_handler:
-                media_info = db_handler.get_next_media_metadata(media_metadata.get("media_id"),
+                media_info = db_handler.get_next_media_metadata(media_metadata.get("id"),
                                                                 media_metadata.get("user_selected_playlist_id",
                                                                                    media_metadata.get("playlist_id",
                                                                                                       0)))
@@ -72,7 +72,7 @@ class MyMediaDevice:
             media_title = media_info.get('name')
             if media_path := media_info.get('path'):
                 media_title_list = media_path.split("/")
-                if 2 == len(media_title_list):
+                if 3 == len(media_title_list):
                     media_title_list[2] = media_info.get('name')
                     media_title = ' '.join(media_title_list)
 

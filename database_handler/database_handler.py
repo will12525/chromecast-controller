@@ -85,4 +85,4 @@ class DatabaseHandler:
                 if next_media_query_result:
                     return self.get_media_metadata(next_media_query_result[0].get("media_id"))
         else:
-            print("Empty query")
+            print(f"get_next_media_metadata failed: {media_id}, {playlist_id}")
