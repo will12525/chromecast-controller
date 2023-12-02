@@ -187,6 +187,11 @@ document.addEventListener("DOMContentLoaded", function(event){
     {
         chromecast_disconnect_button.addEventListener("click", disconnectChromecast.bind(null));
     }
+    var scan_media_button = document.getElementById("scan_media_button");
+    if (scan_media_button !== null)
+    {
+        scan_media_button.addEventListener("click", scan_media_directories.bind(null));
+    }
 });
 
 

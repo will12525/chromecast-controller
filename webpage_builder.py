@@ -6,11 +6,13 @@ from chromecast_handler import CommandList
 from database_handler.database_handler import DatabaseHandler
 from database_handler.create_database import DBCreator
 
+# TODO: Add to DB: Add media title from ffmpeg extraction
+# TODO: Add to DB: Track if media was previously watched
+# TODO: Update media grid to dynamically update rather than page reload
 # TODO: Extract default values to json config file
 # TODO: Update chromecast menu auto populate to remove missing chromecasts
 # TODO: Extract HTML building functions and REST endpoints
 # TODO: Update DB to remove media that no longer exists
-# TODO: Update movie collector
 # TODO: Update all js function references to eventlisteneres on js side
 # TODO: Add notification when media scan completes
 # TODO: Convert chromecast name strings to id values and use ID values to refer to chromecasts
@@ -70,7 +72,7 @@ def build_chromecast_menu():
     chromecast_holder = '<ul class="navbar-nav me-auto mb-2 mb-lg-0">'
     chromecast_holder += '<li class="nav-item"><a class="nav-link" aria-current="page" href="/">TV Shows</a></li>' \
                          '<li class="nav-item"><a class="nav-link" aria-current="page" href="/movie">Movies</a></li>' \
-                         '<li class="nav-item"><a id=scan_media_button class="nav-link" aria-current="page" href="javascript:scan_media_directories()">Scan Media</a></li>' \
+                         '<li class="nav-item"><a id=scan_media_button class="nav-link" aria-current="page">Scan Media</a></li>' \
                          '</ul>'
     chromecast_holder += '<ul class="navbar-nav ml-auto mb-2 mb-lg-0">'
     # Create text block to display connected chromecast

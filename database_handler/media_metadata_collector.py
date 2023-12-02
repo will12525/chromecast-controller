@@ -37,26 +37,17 @@ def collect_tv_shows(media_directory_info):
     return media_directory_content
 
 
-def recursive_mp4_search(media_folder_path, file_name):
-    ret_list = []
-    if os.path.exists(media_folder_path):
-        if os.path.isdir(media_folder_path):
-            for sub_dir in os.listdir(media_folder_path):
-                ret_list.extend(recursive_mp4_search(f"{media_folder_path}/{sub_dir}", sub_dir))
-        elif ".mp4" == pathlib.Path(media_folder_path).suffix:
-            ret_list.append({"path": media_folder_path, "title": file_name})
-        else:
-            print(f"Unknown file type: {media_folder_path}")
-    return ret_list
-
-
-def collect_movies(media_folder):
-    movie_path_list = []
-    # Get list of all tv shows
-    if movie_dir_path_list := get_dir_list(media_folder):
-        # Iterate over each tv show in the list
-        for movie_dir_name in movie_dir_path_list:
-            # Build a path for the tv show
-            movie_path = f"{media_folder}{movie_dir_name}"
-            movie_path_list.extend(recursive_mp4_search(movie_path, movie_dir_name))
-    return movie_path_list
+def collect_movies(media_directory_info):
+    media_directory_content = []
+    media_folder_path = pathlib.Path(media_directory_info.get("media_folder_path"))
+    media_folder_mp4_content = list(media_folder_path.rglob("*.mp4"))
+    for media_folder_mp4 in media_folder_mp4_content:
+        try:
+            mp4_file_url = str(media_folder_mp4).replace(str(media_folder_path), "")
+            mp4_file_name = media_folder_mp4.name
+            mp4_movie_title = mp4_file_name.replace(".mp4", "")
+            media_directory_content.append(
+                {"mp4_show_title": mp4_movie_title, "mp4_file_url": str(mp4_file_url)})
+        except ValueError as e:
+            print(f"\nNEW MEDIA ERROR: expected: '<show_name> - sXXeXXX.mp4', Actual: {media_folder_mp4}")
+    return media_directory_content

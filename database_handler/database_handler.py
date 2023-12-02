@@ -10,7 +10,7 @@ class DatabaseHandler(DBConnection):
             return query_result[0].get("title")
 
     def get_movie_title_list(self) -> list[dict]:
-        query = "SELECT id, title FROM media_info WHERE tv_show_id is NULL"
+        query = "SELECT id, title FROM media_info WHERE tv_show_id is NULL ORDER BY title GLOB '[A-Za-z]*' DESC, title"
         return self.get_data_from_db(query)
 
     def get_tv_show_title_list(self) -> list[dict]:
@@ -58,7 +58,7 @@ class DatabaseHandler(DBConnection):
         return tv_show_season_metadata
 
     def get_media_metadata(self, media_id) -> dict:
-        query = "SELECT * FROM media_info INNER JOIN media_folder_path ON media_info.media_folder_path_id = media_folder_path.id INNER JOIN tv_show_info ON media_info.tv_show_id = tv_show_info.id WHERE media_info.id=?"
+        query = "SELECT * FROM media_info INNER JOIN media_folder_path ON media_info.media_folder_path_id = media_folder_path.id LEFT JOIN tv_show_info ON media_info.tv_show_id = tv_show_info.id WHERE media_info.id=?"
         query_result = self.get_data_from_db(query, (media_id,))
         if query_result:
             media_metadata = query_result[0]

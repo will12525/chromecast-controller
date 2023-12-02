@@ -107,9 +107,9 @@ class DBCreator(DBConnection):
             tv_show_list = collect_tv_shows(media_directory_info)
             self.add_tv_show_data(media_directory_info, tv_show_list)
         elif media_directory_info.get("media_type") == MediaType.MOVIE.value:
-            movie_list = collect_movies(media_directory_info.get("media_folder_path"))
+            movie_list = collect_movies(media_directory_info)
             for movie in movie_list:
-                self.add_media(media_directory_info.get("id"), movie.get("title"), movie.get("path"))
+                self.add_media(media_directory_info.get("id"), movie.get("mp4_show_title"), movie.get("mp4_file_url"))
 
     def scan_all_media_directories(self):
         db_handler = DatabaseHandler()
