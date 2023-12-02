@@ -32,6 +32,44 @@ async function connectChromecast(chromecast_id) {
     }
 };
 
+async function getChromecastList() {
+    var url = "/get_chromecast_list";
+    let data = {};
+    let response = await fetch(url, {
+        "method": "POST",
+        "headers": {"Content-Type": "application/json"},
+        "body": JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+        throw new Error("HTTP status disconnectChromecast: " + response.status);
+    } else {
+        let response_data = await response.json();
+        if (response_data["devices"] !== undefined)
+        {
+            const chromecasts = [];
+            const dropdown_list = document.getElementById("dropdown_scanned_chromecasts");
+            const listItems = dropdown_list.getElementsByTagName('li');
+            // The dropdown list has a divider and disconnect button
+            for (let i = 0; i <= listItems.length - 3; i++) {
+                chromecasts.push(listItems[i].textContent);
+            }
+            for (const device of response_data["devices"]) {
+               if (!chromecasts.includes(device)) {
+                   var li = document.createElement("li");
+                   var a_element = document.createElement("a");
+                   a_element.appendChild(document.createTextNode(device));
+                   a_element.setAttribute("class", "dropdown-item")
+                   a_element.setAttribute("value", device)
+                   a_element.addEventListener("click", connectChromecast.bind(null, device));
+                   li.appendChild(a_element)
+                   dropdown_list.prepend(li);
+               }
+            }
+        }
+    }
+};
+
 async function disconnectChromecast() {
     var url = "/disconnect_chromecast";
     let data = {};
@@ -54,14 +92,12 @@ async function chromecast_command(chromecast_cmd_id) {
     let data = {
         "chromecast_cmd_id": chromecast_cmd_id
     };
-    console.log(data)
     // Send POST request
     let response = await fetch(url, {
         "method": "POST",
         "headers": {"Content-Type": "application/json"},
         "body": JSON.stringify(data),
     });
-    console.log(response.status)
 }
 
 async function setMediaRuntime(range) {
@@ -86,13 +122,29 @@ async function play_media(media_id, playlist_id=null) {
         "media_id": media_id,
         "playlist_id": playlist_id
     };
-    console.log(data)
     // Send POST request
     let response = await fetch(url, {
         "method": "POST",
         "headers": {"Content-Type": "application/json"},
         "body": JSON.stringify(data),
     });
+}
+
+async function scan_media_directories() {
+    var url = "/scan_media_directories";
+    let data = {};
+    var disable_class = "disabled";
+    var button_id = "scan_media_button";
+    var button_element = document.getElementById(button_id);
+
+    button_element.classList.add(disable_class);
+    // Send POST request
+    let response = await fetch(url, {
+        "method": "POST",
+        "headers": {"Content-Type": "application/json"},
+        "body": JSON.stringify(data),
+    });
+    button_element.classList.remove(disable_class);
 }
 
 async function updateSeekSelector() {
@@ -123,3 +175,19 @@ async function updateSeekSelector() {
 }
 
 setInterval(updateSeekSelector, 1000);
+
+document.addEventListener("DOMContentLoaded", function(event){
+    var chromecast_menu = document.getElementById("chromecast_menu");
+    if (chromecast_menu !== null)
+    {
+        chromecast_menu.addEventListener("click", getChromecastList.bind(null));
+    }
+    var chromecast_disconnect_button = document.getElementById("chromecast_disconnect_button");
+    if (chromecast_disconnect_button !== null)
+    {
+        chromecast_disconnect_button.addEventListener("click", disconnectChromecast.bind(null));
+    }
+});
+
+
+

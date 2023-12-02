@@ -1,7 +1,6 @@
 import git
 
-from database_handler.database_handler import DatabaseHandler
-from database_handler.create_database import MediaType
+from database_handler.create_database import DBCreator, MediaType
 from chromecast_handler import ChromecastHandler
 
 
@@ -9,7 +8,7 @@ class BackEndHandler:
     SERVER_URL = "http://192.168.1.200:8000/"
     SERVER_URL_TV_SHOWS = SERVER_URL + "tv_shows/"
     SERVER_URL_MOVIES = SERVER_URL + "movies/"
-    MEDIA_FOLDER_PATH = "/media/hdd1/plex_media/tv_shows/"
+    MEDIA_FOLDER_PATH = "/media/hdd1/plex_media/tv_shows"
     MEDIA_FOLDER_PATH_MOVIES = "/media/hdd1/plex_media/movies/"
     MEDIA_METADATA_FILE = "tv_show_metadata.json"
 
@@ -22,10 +21,14 @@ class BackEndHandler:
         print(self.startup_sha)
         self.chromecast_handler = ChromecastHandler()
         # Build database if it doesn't exist
-        media_paths = [{"type": MediaType.TV_SHOW, "path": self.MEDIA_FOLDER_PATH, "url": self.SERVER_URL_TV_SHOWS},
-                       {"type": MediaType.MOVIE, "path": self.MEDIA_FOLDER_PATH_MOVIES, "url": self.SERVER_URL_MOVIES}
+        media_paths = [{"media_type": MediaType.TV_SHOW.value, "media_folder_path": self.MEDIA_FOLDER_PATH,
+                        "media_folder_url": self.SERVER_URL_TV_SHOWS},
+                       {"media_type": MediaType.MOVIE.value, "media_folder_path": self.MEDIA_FOLDER_PATH_MOVIES,
+                        "media_folder_url": self.SERVER_URL_MOVIES}
                        ]
-        DatabaseHandler(media_paths)
+        db_creator = DBCreator()
+        for media_path in media_paths:
+            db_creator.setup_media_directory(media_path)
 
     def get_startup_sha(self):
         return self.startup_sha

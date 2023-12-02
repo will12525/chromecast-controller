@@ -1,15 +1,30 @@
-import os
-import traceback
-import sys
-import sqlite3
-from sqlite3 import Error
 from enum import Enum, auto
+
+from . import DBConnection
+from .database_handler import DatabaseHandler
 from .media_metadata_collector import collect_tv_shows, collect_movies
 
 # playlist_info and media_info are the sources
 
-VERSION = 1
-MEDIA_METADATA_DB_NAME = r"media_metadata.db"
+
+sql_create_playlist_info_table = """CREATE TABLE IF NOT EXISTS playlist_info (
+                                id integer PRIMARY KEY,
+                                title text NOT NULL UNIQUE
+                                );"""
+
+sql_insert_playlist_info_table = '''INSERT OR IGNORE INTO playlist_info (title) VALUES(?)'''
+
+sql_create_playlist_media_list_table = """CREATE TABLE IF NOT EXISTS playlist_media_list (
+                                          id integer PRIMARY KEY,
+                                          playlist_id integer NOT NULL,
+                                          media_id integer NOT NULL,
+                                          list_index integer NOT NULL,
+                                          FOREIGN KEY (media_id) REFERENCES media_info (id),
+                                          FOREIGN KEY (playlist_id) REFERENCES playlist_info (id),
+                                          UNIQUE (playlist_id, media_id, list_index)
+                                        );"""
+
+sql_insert_playlist_media_list_table = '''INSERT INTO playlist_media_list (playlist_id, media_id, list_index) VALUES (?, ?, ?)'''
 
 sql_create_tv_show_info_table = """CREATE TABLE IF NOT EXISTS tv_show_info (
                                 id integer PRIMARY KEY,
@@ -17,59 +32,38 @@ sql_create_tv_show_info_table = """CREATE TABLE IF NOT EXISTS tv_show_info (
                                 FOREIGN KEY (playlist_id) REFERENCES playlist_info (id)
                             );"""
 
-sql_insert_tv_show_info_table = ''' INSERT INTO tv_show_info(playlist_id) VALUES(?) '''
+sql_insert_tv_show_info_table = '''INSERT INTO tv_show_info (playlist_id) VALUES (?)'''
 
 sql_create_season_info_table = """CREATE TABLE IF NOT EXISTS season_info (
                                 id integer PRIMARY KEY,
                                 tv_show_id integer NOT NULL,
-                                start_list_index integer,
-                                end_list_index integer,
-                                name text NOT NULL,
-                                list_index integer NOT NULL,
+                                tv_show_season_index integer NOT NULL,
                                 FOREIGN KEY (tv_show_id) REFERENCES tv_show_info (id),
-                                FOREIGN KEY (start_list_index) REFERENCES playlist_media_list (list_index),
-                                FOREIGN KEY (end_list_index) REFERENCES playlist_media_list (list_index)
+                                UNIQUE(tv_show_id, tv_show_season_index)
                             );"""
 
-sql_insert_season_info_table = ''' INSERT INTO season_info(tv_show_id, start_list_index, end_list_index, name, list_index) VALUES(?, ?, ?, ?, ?) '''
+sql_insert_season_info_table = '''INSERT INTO season_info (tv_show_id, tv_show_season_index) VALUES (?, ?)'''
 
 sql_create_media_info_table = """CREATE TABLE IF NOT EXISTS media_info (
                                 id integer PRIMARY KEY,
-                                season_id integer,
                                 tv_show_id integer,
-                                name text NOT NULL,
-                                media_folder_path_id, 
-                                path text NOT NULL,
+                                season_id integer,
+                                media_folder_path_id NOT NULL,
+                                title text NOT NULL,
+                                path text NOT NULL UNIQUE,
+                                FOREIGN KEY (tv_show_id) REFERENCES season_info (id),
                                 FOREIGN KEY (season_id) REFERENCES season_info (id),
-                                FOREIGN KEY (tv_show_id) REFERENCES tv_show_info (id)
-                                FOREIGN KEY (media_folder_path_id) REFERENCES media_folder_path_id (id)
+                                FOREIGN KEY (media_folder_path_id) REFERENCES media_folder_path_id (id),
+                                UNIQUE(media_folder_path_id, title, path)
                             );"""
 
-sql_insert_media_info_table = ''' INSERT INTO media_info(season_id, tv_show_id, name, media_folder_path_id, path) VALUES(?, ?, ?, ?, ?) '''
-
-sql_create_playlist_info_table = """CREATE TABLE IF NOT EXISTS playlist_info (
-                                id integer PRIMARY KEY,
-                                name text NOT NULL UNIQUE
-                                );"""
-
-sql_insert_playlist_info_table = ''' INSERT INTO playlist_info(name) VALUES(?) '''
-
-sql_create_playlist_media_list_table = """CREATE TABLE IF NOT EXISTS playlist_media_list (
-                                id integer PRIMARY KEY,
-                                playlist_id integer NOT NULL,
-                                media_id integer NOT NULL,
-                                list_index integer NOT NULL,
-                                FOREIGN KEY (media_id) REFERENCES media_info (id),
-                                FOREIGN KEY (playlist_id) REFERENCES playlist_info (id)
-                            );"""
-
-sql_insert_playlist_media_list_table = ''' INSERT INTO playlist_media_list(playlist_id, media_id, list_index) VALUES(?, ?, ?) '''
+sql_insert_media_info_table = '''INSERT INTO media_info (tv_show_id, season_id, media_folder_path_id, title, path) VALUES (?, ?, ?, ?, ?)'''
 
 sql_create_media_folder_path_table = """CREATE TABLE IF NOT EXISTS media_folder_path (
                                 id integer PRIMARY KEY,
                                 media_type integer NOT NULL,
-                                media_folder_path text NOT NULL,
-                                media_folder_url text NOT NULL
+                                media_folder_path text NOT NULL UNIQUE,
+                                media_folder_url text NOT NULL UNIQUE
                             );"""
 
 sql_insert_media_folder_path_table = ''' INSERT INTO media_folder_path(media_type, media_folder_path, media_folder_url) VALUES(?, ?, ?) '''
@@ -84,143 +78,93 @@ class MediaType(Enum):
     MOVIE = auto()
 
 
-class SqliteDatabaseHandler:
-    db_connection = None
+class DBCreator(DBConnection):
 
-    def __init__(self, media_paths=None):
-        if not os.path.exists(MEDIA_METADATA_DB_NAME):
-            self.create_connection(MEDIA_METADATA_DB_NAME)
-            self.create_tables(db_table_creation_list)
-            if media_paths:
-                for media_path in media_paths:
-                    self.populate_db(media_path)
-        else:
-            self.create_connection(MEDIA_METADATA_DB_NAME)
+    def __init__(self):
+        super().__init__(db_table_creation_list)
 
-    def __del__(self):
-        self.close()
+    def add_tv_show_data(self, media_directory_info, tv_show_list):
+        db_handler = DatabaseHandler()
+        tv_show_ids = {}
+        for tv_show in tv_show_list:
+            if tv_show_tile := tv_show.get("mp4_show_title"):
+                if db_handler.get_media_path_id(tv_show.get("mp4_file_url")):
+                    continue
+                if playlist_tv_show_id := tv_show_ids.get(tv_show_tile):
+                    (playlist_id, tv_show_id) = playlist_tv_show_id
+                else:
+                    (playlist_id, tv_show_id) = self.add_tv_show(tv_show_tile)
 
-    def close(self):
-        if self.db_connection:
-            self.db_connection.close()
+                season_id = self.add_season(tv_show_id, tv_show.get("season_index"))
+                media_id = self.add_media(media_directory_info.get("id"),
+                                          f"Episode {(tv_show.get('episode_index'))}",
+                                          tv_show.get("mp4_file_url"), season_id, tv_show_id)
+                list_index = (1000 * tv_show.get("season_index")) + tv_show.get("episode_index")
+                self.add_media_to_playlist(playlist_id, media_id, list_index)
 
-    def create_connection(self, db_file):
-        """ create a database connection to a SQLite database """
-        if not self.db_connection:
-            try:
-                self.db_connection = sqlite3.connect(db_file)
-                self.db_connection.row_factory = sqlite3.Row
-                print(f"SqlLite version: {sqlite3.version}")
-            except Error as e:
-                print(f"Connection error: {e}")
-
-    def create_table(self, create_table_sql):
-        """ create a table from the create_table_sql statement
-        :param create_table_sql: a CREATE TABLE statement
-        :return:
-        """
-        c = None
-        if self.db_connection:
-            try:
-                c = self.db_connection.cursor()
-                c.execute(create_table_sql)
-            except Error as e:
-                print(f"Error creating table:\n{create_table_sql}")
-                print(e)
-            finally:
-                if c:
-                    c.close()
-
-    def create_tables(self, create_table_sql_list):
-        """ create a table from the create_table_sql statement
-        :param create_table_sql_list: a CREATE TABLE statement
-        :return:
-        """
-        for table in create_table_sql_list:
-            self.create_table(table)
-
-    def add_data_to_db(self, query, params):
-        cur = None
-        if self.db_connection:
-            try:
-                cur = self.db_connection.cursor()
-                cur.execute(query, params)
-                self.db_connection.commit()
-                return cur.lastrowid
-            except sqlite3.Error as er:
-                print('SQLite error: %s' % (' '.join(er.args)))
-                print("Exception class is: ", er.__class__)
-                print('SQLite traceback: ')
-                exc_type, exc_value, exc_tb = sys.exc_info()
-                print(traceback.format_exception(exc_type, exc_value, exc_tb))
-                print(f"Query: {query}\nParams: {params}")
-            finally:
-                if cur:
-                    cur.close()
-
-    def get_data_from_db(self, query, params=()):
-        c = None
-        if self.db_connection:
-            try:
-                c = self.db_connection.cursor()
-                c.execute(query, params)
-                query_result = c.fetchall()
-                query_result_dict_list = []
-                for result in query_result:
-                    query_result_dict_list.append(dict(result))
-                return query_result_dict_list
-            except Error as e:
-                print(f"Error querying db:\n{query}")
-                print(e)
-            finally:
-                if c:
-                    c.close()
-
-    def populate_db(self, media_path):
-        media_folder_path_id = self.add_media_folder_path(media_path)
-        if media_path.get("type") == MediaType.TV_SHOW:
-            collect_tv_shows(self, media_folder_path_id, media_path.get("path"))
-        elif media_path.get("type") == MediaType.MOVIE:
-            movie_list = collect_movies(media_path.get("path"))
+    def scan_media_directory(self, media_directory_info):
+        if media_directory_info.get("media_type") == MediaType.TV_SHOW.value:
+            tv_show_list = collect_tv_shows(media_directory_info)
+            self.add_tv_show_data(media_directory_info, tv_show_list)
+        elif media_directory_info.get("media_type") == MediaType.MOVIE.value:
+            movie_list = collect_movies(media_directory_info.get("media_folder_path"))
             for movie in movie_list:
-                self.add_media(movie.get("title"), media_folder_path_id, movie.get("path"))
-        else:
-            print(f"Unknown media type: {media_path.get('type')}")
+                self.add_media(media_directory_info.get("id"), movie.get("title"), movie.get("path"))
 
-    def add_playlist(self, name):
-        return self.add_data_to_db(sql_insert_playlist_info_table, (name,))
+    def scan_all_media_directories(self):
+        db_handler = DatabaseHandler()
+        if db_handler:
+            media_directories = db_handler.get_all_media_directories()
+            for media_directory in media_directories:
+                self.scan_media_directory(media_directory)
 
-    def add_media_folder_path(self, media_folder_path_info):
+    def add_media_directory(self, media_directory_info):
         return self.add_data_to_db(sql_insert_media_folder_path_table, (
-            media_folder_path_info.get("type").value, media_folder_path_info.get("path"),
-            media_folder_path_info.get("url"),))
+            media_directory_info.get("media_type"), media_directory_info.get("media_folder_path"),
+            media_directory_info.get("media_folder_url"),))
 
-    def update_playlist_end_season_index(self, season_info_id, list_index):
-        sql = ''' UPDATE season_info SET end_list_index = ? WHERE id = ?'''
-        self.add_data_to_db(sql, (list_index, season_info_id))
+    def setup_media_directory(self, media_directory_info):
+        media_directory_id = self.add_media_directory(media_directory_info)
+        if media_directory_id:
+            media_directory_info["id"] = media_directory_id
+            self.scan_media_directory(media_directory_info)
+        return media_directory_id
 
-    def add_media_to_playlist(self, playlist_id, season_info_id, media_id):
-        list_index = self.get_playlist_end_index(playlist_id) + 1
-        self.update_playlist_end_season_index(season_info_id, list_index)
-        return self.add_data_to_db(sql_insert_playlist_media_list_table, (playlist_id, media_id, list_index))
+    def add_playlist(self, title):
+        db_handler = DatabaseHandler()
+        playlist_id = db_handler.get_playlist_id(title)
+        if not playlist_id:
+            playlist_id = self.add_data_to_db(sql_insert_playlist_info_table, (title,))
+        return playlist_id
 
-    def add_media(self, media_name, media_folder_path_id, media_path, season_id=None, tv_show_id=None):
-        return self.add_data_to_db(sql_insert_media_info_table,
-                                   (season_id, tv_show_id, media_name, media_folder_path_id, media_path))
+    def add_media_to_playlist(self, playlist_id, media_id, list_index):
+        db_handler = DatabaseHandler()
+        playlist_media_id = self.add_data_to_db(sql_insert_playlist_media_list_table,
+                                                (playlist_id, media_id, list_index))
+        if not playlist_media_id:
+            playlist_media_id = db_handler.get_playlist_media_id(playlist_id, media_id, list_index)
+        return playlist_media_id
 
-    def add_season(self, playlist_id, tv_show_id, season_name, end_list_index=None, list_index=None):
-        start_list_index = self.get_playlist_end_index(playlist_id) + 1
-        return self.add_data_to_db(sql_insert_season_info_table,
-                                   (tv_show_id, start_list_index, end_list_index, season_name, list_index))
+    def add_media(self, media_folder_path_id, title, media_path, season_id=None, tv_show_id=None):
+        db_handler = DatabaseHandler()
+        media_id = self.add_data_to_db(sql_insert_media_info_table,
+                                       (tv_show_id, season_id, media_folder_path_id, title, media_path))
+        if not media_id:
+            media_id = db_handler.get_media_id(title, media_path)
+        return media_id
 
-    def add_tv_show(self, tv_show_dir_name):
-        playlist_id = self.add_playlist(tv_show_dir_name)
-        return playlist_id, self.add_data_to_db(sql_insert_tv_show_info_table, (playlist_id,))
+    def add_season(self, tv_show_id, tv_show_season_index):
+        db_handler = DatabaseHandler()
+        season_id = self.add_data_to_db(sql_insert_season_info_table, (tv_show_id, tv_show_season_index))
+        if not season_id:
+            season_id = db_handler.get_season_id(tv_show_id, tv_show_season_index)
+        return season_id
 
-    def get_playlist_end_index(self, playlist_id):
-        query = "SELECT list_index FROM playlist_media_list WHERE playlist_id=? ORDER BY list_index DESC LIMIT 1"
-        playlist_rows = self.get_data_from_db(query, (playlist_id,))
-        if playlist_rows:
-            if playlist_row := playlist_rows[0]:
-                return playlist_row.get("list_index")
-        return 0
+    def add_tv_show(self, tv_show_title):
+        db_handler = DatabaseHandler()
+        playlist_id = self.add_playlist(tv_show_title)
+        tv_show_id = self.add_data_to_db(sql_insert_tv_show_info_table, (playlist_id,))
+        if not tv_show_id:
+            tv_show_id = db_handler.get_tv_show_id(playlist_id)
+
+        return playlist_id, tv_show_id

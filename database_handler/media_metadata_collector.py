@@ -1,6 +1,6 @@
 import os
-import traceback
 import pathlib
+import ffmpeg
 
 
 def get_dir_list(dir_path):
@@ -8,74 +8,33 @@ def get_dir_list(dir_path):
         return sorted(os.listdir(dir_path))
 
 
-def sort_season_dir_list(tv_show_path):
-    unsorted_tv_show_season_name_list = get_dir_list(tv_show_path)
-    tv_show_season_name_dict = {}
-    title_str = "n "
-    for tv_show_season_name_str in unsorted_tv_show_season_name_list:
-        if title_str in tv_show_season_name_str:
-            try:
-                tv_show_season_name_id_str = tv_show_season_name_str[
-                                             tv_show_season_name_str.index(title_str) + len(title_str):
-                                             ]
-                tv_show_season_name_id_int = int(tv_show_season_name_id_str) + -1
+def collect_tv_shows(media_directory_info):
+    media_directory_content = []
+    media_folder_path = pathlib.Path(media_directory_info.get("media_folder_path"))
+    media_folder_mp4_content = list(media_folder_path.rglob("*.mp4"))
+    mp4_index_content_index_search_string = " - s"
+    for media_folder_mp4 in media_folder_mp4_content:
 
-                tv_show_season_name_dict[tv_show_season_name_id_int] = tv_show_season_name_str
-
-            except ValueError as e:
-                print(f"ERROR: {tv_show_season_name_str}\n{e}")
-            except Exception as e:
-                print(f"ERROR READING: {unsorted_tv_show_season_name_list}\n{e}")
-                print(traceback.format_exc())
-
-    sorted_tv_show_season_name_dict_keys = list(tv_show_season_name_dict.keys())
-    sorted_tv_show_season_name_dict_keys.sort()
-    return [tv_show_season_name_dict[i] for i in sorted_tv_show_season_name_dict_keys]
-
-
-def collect_episodes(db_handler, playlist_id, tv_show_id, season_info_id, media_folder_path_id, tv_show_season_path,
-                     media_folder_base):
-    # Get list of all episodes in a tv show
-    if tv_show_seasons_dir_path_list := get_dir_list(tv_show_season_path):
-        # Iterate over each episode in the list
-        for episode_id, tv_show_season_episode_dir_name in enumerate(tv_show_seasons_dir_path_list):
-            # Build a path for the tv show season episode
-            tv_show_season_episode_path = f"{tv_show_season_path}{tv_show_season_episode_dir_name}"
-            if os.path.exists(tv_show_season_episode_path) and os.path.isfile(tv_show_season_episode_path):
-                tv_show_url = tv_show_season_episode_path.replace(media_folder_base, "")
-                episode_1_id = db_handler.add_media(f"Episode {(episode_id + 1)}", media_folder_path_id,
-                                                    tv_show_url,
-                                                    season_info_id, tv_show_id)
-                db_handler.add_media_to_playlist(playlist_id, season_info_id, episode_1_id)
-
-
-def collect_seasons(db_handler, playlist_id, tv_show_id, media_folder_path_id, tv_show_path, media_folder_base):
-    # Get list of all seasons in a tv show
-    if tv_show_seasons_dir_path_list := sort_season_dir_list(tv_show_path):
-        # Iterate over each season in the list
-        for season_index, tv_show_season_dir_name in enumerate(tv_show_seasons_dir_path_list):
-            # Get the start index for the season
-            season_info_id = db_handler.add_season(playlist_id, tv_show_id, tv_show_season_dir_name,
-                                                   list_index=(season_index + 1))
-            # Build a path for the tv show season
-            tv_show_season_path = f"{tv_show_path}{tv_show_season_dir_name}/"
-            # Get list of all episodes in a tv show
-            collect_episodes(db_handler, playlist_id, tv_show_id, season_info_id, media_folder_path_id,
-                             tv_show_season_path, media_folder_base)
-
-
-def collect_tv_shows(db_handler, media_folder_path_id, media_folder_base):
-    # Get list of all tv shows
-    if tv_shows_dir_path_list := get_dir_list(media_folder_base):
-        # Iterate over each tv show in the list
-        for tv_show_dir_name in tv_shows_dir_path_list:
-            # Build a path for the tv show
-            tv_show_path = f"{media_folder_base}{tv_show_dir_name}/"
-            if os.path.exists(tv_show_path):
-                # Add show to playlist and show tracking
-                (playlist_id, tv_show_id) = db_handler.add_tv_show(tv_show_dir_name)
-                collect_seasons(db_handler, playlist_id, tv_show_id, media_folder_path_id, tv_show_path,
-                                media_folder_base)
+        # ffmpeg_probe_result = ffmpeg.probe(str(media_folder_mp4))
+        # runtime = ffmpeg_probe_result["format"]["duration"]
+        # media_title = ffmpeg_probe_result["format"]["tags"]["title"]
+        # print(float(runtime) / 60, media_title)
+        try:
+            mp4_file_url = str(media_folder_mp4).replace(str(media_folder_path), "")
+            mp4_file_name = media_folder_mp4.name
+            mp4_index_content_index = mp4_file_name.rindex(mp4_index_content_index_search_string)
+            mp4_index_content = mp4_file_name[mp4_index_content_index + len(
+                mp4_index_content_index_search_string):-4]
+            mp4_episode_start_index = mp4_index_content.index("e")
+            season_index = int(mp4_index_content[:mp4_episode_start_index])
+            episode_index = int(mp4_index_content[mp4_episode_start_index + 1:])
+            mp4_show_title = mp4_file_name[:mp4_index_content_index]
+            media_directory_content.append(
+                {"mp4_show_title": mp4_show_title, "season_index": season_index, "episode_index": episode_index,
+                 "mp4_file_url": str(mp4_file_url)})
+        except ValueError as e:
+            print(f"\nNEW MEDIA ERROR: expected: '<show_name> - sXXeXXX.mp4', Actual: {media_folder_mp4}")
+    return media_directory_content
 
 
 def recursive_mp4_search(media_folder_path, file_name):

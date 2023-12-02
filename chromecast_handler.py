@@ -30,7 +30,7 @@ class MyMediaDevice:
     def __init__(self, media_controller):
         self.media_controller = media_controller
 
-        self.cmd_data_dict[CommandList.CMD_REWIND] = self.media_controller.rewind
+        self.cmd_data_dict[CommandList.CMD_REWIND] = self.rewind
         self.cmd_data_dict[CommandList.CMD_REWIND_15] = self.rewind_15
         self.cmd_data_dict[CommandList.CMD_PLAY] = self.media_controller.play
         self.cmd_data_dict[CommandList.CMD_PAUSE] = self.media_controller.pause
@@ -55,26 +55,30 @@ class MyMediaDevice:
             if media_info:
                 self.play_media_info(media_info)
 
-    def play_next_episode(self, status):
-        if media_metadata := status.media_metadata:
-            db_handler = DatabaseHandler()
-            if db_handler:
-                media_info = db_handler.get_next_media_metadata(media_metadata.get("id"),
-                                                                media_metadata.get("user_selected_playlist_id",
-                                                                                   media_metadata.get("playlist_id",
-                                                                                                      0)))
-                if media_info:
-                    self.play_media_info(media_info)
+    def play_increment_episode(self, db_function):
+        if self.status:
+            if media_metadata := self.status.media_metadata:
+                if playlist_id := media_metadata.get("user_selected_playlist_id",
+                                                     media_metadata.get("playlist_id", None)):
+                    if media_info := db_function(media_metadata.get("id"), playlist_id):
+                        self.play_media_info(media_info)
+
+    def play_next_episode(self):
+        if db_handler := DatabaseHandler():
+            self.play_increment_episode(db_handler.get_next_media_metadata)
+
+    def play_previous_episode(self):
+        if db_handler := DatabaseHandler():
+            self.play_increment_episode(db_handler.get_previous_media_metadata)
 
     def play_media_info(self, media_info=None):
         if media_info:
             media_url = f"{media_info.get('media_folder_url')}{media_info.get('path')}"
-            media_title = media_info.get('name')
-            if media_path := media_info.get('path'):
-                media_title_list = media_path.split("/")
-                if 3 == len(media_title_list):
-                    media_title_list[2] = media_info.get('name')
-                    media_title = ' '.join(media_title_list)
+            media_title = media_info.get('title')
+            if season_title := media_info.get('season_title'):
+                media_title = f"{season_title} {media_title}"
+            if tv_show_title := media_info.get('tv_show_title'):
+                media_title = f"{tv_show_title} {media_title}"
 
             self.media_controller.play_media(media_url, self.DEFAULT_MEDIA_TYPE, title=media_title, metadata=media_info)
             self.media_controller.block_until_active()
@@ -98,6 +102,12 @@ class MyMediaDevice:
         if cmd := self.cmd_data_dict.get(cmd_enum):
             cmd()
 
+    def rewind(self):
+        if self.status and self.status.adjusted_current_time <= 30:
+            self.play_previous_episode()
+        else:
+            self.media_controller.rewind()
+
     def rewind_15(self):
         if self.status:
             self.seek(self.status.adjusted_current_time - 15)
@@ -110,7 +120,7 @@ class MyMediaDevice:
         self.status = status
 
         if self.media_controller.status.player_state == "IDLE" and self.media_controller.status.idle_reason == "FINISHED":
-            self.play_next_episode(status)
+            self.play_next_episode()
 
 
 class ChromecastHandler(threading.Thread):
@@ -131,7 +141,6 @@ class ChromecastHandler(threading.Thread):
                             level=logging.DEBUG)
 
     def __del__(self):
-        print("deleting ChromecastHandler")
         self.run_update = False
         self.disconnect_chromecast()
         if self.chromecast_browser:
