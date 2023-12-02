@@ -137,3 +137,9 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
         assert result.get("title")
         assert result.get("sub_title")
         assert result.get("episode_count")
+
+    def test_get_season_list_index(self):
+        result = self.db_handler.get_season_list_index(1)
+        assert result
+        assert isinstance(result, int)
+        assert result == 1

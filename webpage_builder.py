@@ -6,6 +6,8 @@ from chromecast_handler import CommandList
 from database_handler.database_handler import DatabaseHandler
 from database_handler.create_database import DBCreator
 
+# TODO: Extract default values to json config file
+# TODO: Update chromecast menu auto populate to remove missing chromecasts
 # TODO: Extract HTML building functions and REST endpoints
 # TODO: Update DB to remove media that no longer exists
 # TODO: Update movie collector
@@ -262,7 +264,6 @@ def get_chromecast_list():
     data = {
         "devices": backend_handler.get_chromecast_scan_list()
     }
-    print(data)
     return data, 200
 
 

@@ -123,7 +123,8 @@ class DatabaseHandler(DBConnection):
 
     def get_season_list_index(self, season_id) -> int:
         query = "SELECT tv_show_season_index FROM season_info WHERE id=?"
-        return self.query_id(query, (season_id,))
+        if query_result := self.get_data_from_db(query, (season_id,)):
+            return query_result[0].get("tv_show_season_index")
 
     def get_media_id(self, title, path) -> int:
         query = "SELECT id FROM media_info WHERE title=? AND path=?"
