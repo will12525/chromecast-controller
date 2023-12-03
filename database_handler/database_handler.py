@@ -31,16 +31,13 @@ class DatabaseHandler(DBConnection):
         season_count_query = "SELECT COUNT(*) AS season_count FROM season_info WHERE tv_show_id = ?;"
         episode_count_query = "SELECT COUNT(*) as episode_count FROM media_info WHERE tv_show_id = ?;"
 
-        query_result = self.get_data_from_db(tv_show_info_query, (tv_show_id,))
-        if query_result:
+        if query_result := self.get_data_from_db(tv_show_info_query, (tv_show_id,)):
             tv_show_metadata = query_result[0]
 
-        query_result = self.get_data_from_db(season_count_query, (tv_show_id,))
-        if query_result:
+        if query_result := self.get_data_from_db(season_count_query, (tv_show_id,)):
             tv_show_metadata.update(query_result[0])
 
-        query_result = self.get_data_from_db(episode_count_query, (tv_show_id,))
-        if query_result:
+        if query_result := self.get_data_from_db(episode_count_query, (tv_show_id,)):
             tv_show_metadata.update(query_result[0])
 
         return tv_show_metadata
@@ -50,10 +47,11 @@ class DatabaseHandler(DBConnection):
         tv_show_info_query = "SELECT *, 'Season' || ' ' || tv_show_season_index AS sub_title FROM season_info INNER JOIN tv_show_info ON season_info.tv_show_id = tv_show_info.id INNER JOIN playlist_info ON tv_show_info.playlist_id = playlist_info.id WHERE season_info.id = ?"
         episode_count_query = "SELECT COUNT(*) AS episode_count FROM media_info WHERE season_id = ?;"
 
-        tv_show_info_result = self.get_data_from_db(tv_show_info_query, (season_id,))
-        tv_show_season_metadata.update(tv_show_info_result[0])
+        if query_result := self.get_data_from_db(tv_show_info_query, (season_id,)):
+            tv_show_season_metadata.update(query_result[0])
 
-        tv_show_season_metadata.update(self.get_data_from_db(episode_count_query, (season_id,))[0])
+        if query_result := self.get_data_from_db(episode_count_query, (season_id,)):
+            tv_show_season_metadata.update(query_result[0])
 
         return tv_show_season_metadata
 

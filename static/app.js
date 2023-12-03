@@ -45,7 +45,7 @@ async function getChromecastList() {
         throw new Error("HTTP status disconnectChromecast: " + response.status);
     } else {
         let response_data = await response.json();
-        if (response_data["devices"] !== undefined)
+        if (response_data["scanned_devices"] !== undefined)
         {
             const chromecasts = [];
             const dropdown_list = document.getElementById("dropdown_scanned_chromecasts");
@@ -54,7 +54,7 @@ async function getChromecastList() {
             for (let i = 0; i <= listItems.length - 3; i++) {
                 chromecasts.push(listItems[i].textContent);
             }
-            for (const device of response_data["devices"]) {
+            for (const device of response_data["scanned_devices"]) {
                if (!chromecasts.includes(device)) {
                    var li = document.createElement("li");
                    var a_element = document.createElement("a");
@@ -66,6 +66,10 @@ async function getChromecastList() {
                    dropdown_list.prepend(li);
                }
             }
+        }
+        if (response_data["connected_device"] !== undefined)
+        {
+            document.getElementById("connected_chromecast_id").innerHTML = response_data["connected_device"];
         }
     }
 };
@@ -174,7 +178,49 @@ async function updateSeekSelector() {
     }
 }
 
-setInterval(updateSeekSelector, 1000);
+async function setNavbarLinks() {
+    var tv_show_select_button = document.getElementById("tv_show_select_button");
+    var movie_select_button = document.getElementById("movie_select_button");
+    var scan_media_button = document.getElementById("scan_media_button");
+
+    var url = "/get_media_content_types";
+    let response = await fetch(url);
+
+    if (!response.ok) {
+        throw new Error("HTTP status setNavbarLinks: " + response.status);
+    } else {
+        let response_data = await response.json();
+        if (tv_show_select_button !== null)
+        {
+            tv_show_select_button.setAttribute('href', "?content_type=" + response_data["TV_SHOW"]);
+        }
+        if (movie_select_button !== null)
+        {
+            movie_select_button.setAttribute('href', "?content_type=" + response_data["MOVIE"]);
+        }
+        if (scan_media_button !== null)
+        {
+            scan_media_button.addEventListener("click", scan_media_directories.bind(null));
+        }
+    }
+}
+
+async function setMediaControlButtons() {
+    var url = "/get_chromecast_controls";
+    let response = await fetch(url);
+
+    if (!response.ok) {
+        throw new Error("HTTP status setMediaControlButtons: " + response.status);
+    } else {
+        let response_data = await response.json();
+        for (const [key, value] of Object.entries(response_data["chromecast_controls"])) {
+            button_element = document.getElementById(key + "_media_button")
+            if (button_element !== null) {
+                button_element.addEventListener("click", chromecast_command.bind(null, value));
+            }
+        }
+    }
+}
 
 document.addEventListener("DOMContentLoaded", function(event){
     var chromecast_menu = document.getElementById("chromecast_menu");
@@ -187,11 +233,12 @@ document.addEventListener("DOMContentLoaded", function(event){
     {
         chromecast_disconnect_button.addEventListener("click", disconnectChromecast.bind(null));
     }
-    var scan_media_button = document.getElementById("scan_media_button");
-    if (scan_media_button !== null)
-    {
-        scan_media_button.addEventListener("click", scan_media_directories.bind(null));
-    }
+
+    setInterval(updateSeekSelector, 1000);
+    getChromecastList();
+    setNavbarLinks();
+    setMediaControlButtons();
+
 });
 
 
