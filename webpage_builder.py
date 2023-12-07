@@ -1,11 +1,11 @@
-from enum import Enum, auto
+from enum import Enum
 
-from flask import Flask, request, render_template_string, redirect, url_for
+from flask import Flask, request, render_template_string
 
 # jsonify, redirect, current_app, render_template
 from backend_handler import BackEndHandler
 from chromecast_handler import CommandList
-from database_handler.database_handler import DatabaseHandler
+from database_handler.database_handler import DatabaseHandler, ContentType
 from database_handler.create_database import DBCreator
 
 
@@ -35,30 +35,7 @@ class APIEndpoints(Enum):
     GET_MEDIA_MENU_DATA = "/get_media_menu_data"
 
 
-class ContentType(Enum):
-    MEDIA = auto()
-    TV_SHOW = auto()
-    SEASON = auto()
-    MOVIE = auto()
-    PLAYLIST = auto()
-
-
 app = Flask(__name__)
-
-webpage_title = "Media Stream"
-
-html_style = '<link rel="stylesheet" href="{{ url_for(\'static\',filename=\'style.css\') | safe }}"> '
-html_style += '<script src="https://kit.fontawesome.com/fc24dd5615.js" crossorigin="anonymous"></script>'
-html_style += '<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">'
-
-bootstrap_js = '<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>'
-bootstrap_js += '<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r" crossorigin="anonymous"></script>'
-bootstrap_js += '<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.min.js" integrity="sha384-BBtl+eGJRgqQAUMxJ7pMwbEyER4l1g+O15P+16Ep7Q9Q+zqX6gSbd85u4mG4QzX+" crossorigin="anonymous"></script>'
-
-html_scripts = '<script type="text/javascript" language="javascript" src="{{ url_for(\'static\', filename=\'app.js\') }}"></script>'
-html_scripts += bootstrap_js
-
-html_head = f'<head><title>{webpage_title}</title><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">{html_style}{html_scripts}</head>'
 
 media_controller_button_dict = {
     "rewind": {"icon": "fa-backward", "id": f"{CommandList.CMD_REWIND.name}_media_button"},
@@ -74,11 +51,45 @@ backend_handler = BackEndHandler()
 backend_handler.start()
 
 
-def build_media_menu_header(media_metadata):
+def build_media_menu_content(media_metadata):
     tv_show_grid = ""
 
+    tv_show_grid += f'<!DOCTYPE html><html lang="en">'
+    tv_show_grid += f'<head><title>Media Stream</title><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">'
+    tv_show_grid += '<link rel="stylesheet" href="{{ url_for(\'static\',filename=\'style.css\') | safe }}"> '
+    tv_show_grid += '<script src="https://kit.fontawesome.com/fc24dd5615.js" crossorigin="anonymous"></script>'
+    tv_show_grid += '<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">'
+    tv_show_grid += '<script type="text/javascript" language="javascript" src="{{ url_for(\'static\', filename=\'app.js\') }}"></script>'
+    tv_show_grid += '<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>'
+    tv_show_grid += '<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r" crossorigin="anonymous"></script>'
+    tv_show_grid += '<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.min.js" integrity="sha384-BBtl+eGJRgqQAUMxJ7pMwbEyER4l1g+O15P+16Ep7Q9Q+zqX6gSbd85u4mG4QzX+" crossorigin="anonymous"></script>'
+    tv_show_grid += '</head>'
+    tv_show_grid += '<body>'
+    tv_show_grid += '<nav class="navbar fixed-top navbar-expand-lg bg-dark" data-bs-theme="dark">'
+    tv_show_grid += '<div class="container-fluid"><a class="navbar-brand" href="/">&#x1F422;&#x1F995;</a>'
+    tv_show_grid += '<button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">'
+    tv_show_grid += '<span class="navbar-toggler-icon"></span></button>'
+    tv_show_grid += '<div class="collapse navbar-collapse" id="navbarSupportedContent">'
+    tv_show_grid += '<ul class="navbar-nav me-auto mb-2 mb-lg-0">'
+    tv_show_grid += '<li class="nav-item"><a id=tv_show_select_button class="nav-link" aria-current="page">TV Shows</a></li>'
+    tv_show_grid += '<li class="nav-item"><a id=movie_select_button class="nav-link" aria-current="page">Movies</a></li>'
+    tv_show_grid += '<li class="nav-item"><a id=scan_media_button class="nav-link" aria-current="page">Scan Media</a></li>'
+    tv_show_grid += '</ul>'
+    tv_show_grid += '<ul class="navbar-nav ml-auto mb-2 mb-lg-0">'
+    tv_show_grid += '<li class="nav-item">'
+    tv_show_grid += '<a id=connected_chromecast_id class="nav-link" aria-disabled="true"></a></li>'
+    tv_show_grid += '<li class="nav-item dropstart">'
+    tv_show_grid += '<a id="chromecast_menu" class="nav-link" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">'
+    tv_show_grid += '<span class="fa-brands fa-chromecast"></span></a>'
+    tv_show_grid += '<ul id="dropdown_scanned_chromecasts" class="dropdown-menu">'
+    tv_show_grid += '<li><hr class="dropdown-divider"></li><li><a id="chromecast_disconnect_button" class="dropdown-item">Disconnect</a></li>'
+    tv_show_grid += '</ul></li></ul>'
+    tv_show_grid += '</div></div></nav>'
+    tv_show_grid += '<div style="margin-bottom: 40%;">'
+    tv_show_grid += f'<p>{backend_handler.get_startup_sha()}</p>'
+    tv_show_grid += '<div id="mediaContentSelectDiv">'
+
     if media_metadata:
-        # Build info card for tv show info block
         tv_show_grid += '<div class="container">'
         tv_show_grid += '<div class="row row-cols-auto">'
         tv_show_grid += '<div class="card mb-3" style="width: 18rem; height: 10rem;">'
@@ -100,118 +111,60 @@ def build_media_menu_header(media_metadata):
         if tv_show_id := media_metadata.get("tv_show_id"):
             tv_show_grid += f'<a href="?content_type={ContentType.SEASON.value}&media_id={tv_show_id}" class="stretched-link"></a>'
         tv_show_grid += '</div></div></div></div></div></div>'
-    return tv_show_grid
 
+    if media_list := media_metadata.get("media_list"):
+        tv_show_grid += '<div class="container"><div class="row row-cols-auto">'
+        # Add a card element to the grid for each tv show
+        for media_item in media_list:
+            tv_show_grid += '<div class="col"><div class="card" style="width: 18rem; height: 6rem;">'
+            tv_show_grid += '<!--img src="{{ url_for(\'static\', filename=\'default.jpg\') }}" class="card-img" alt="..."-->'
+            tv_show_grid += f'<div class="card-body" >'
+            tv_show_grid += f'<h5 class="card-title" style="color: black;">{media_item.get("title")}</h5>'
+            if next_content_type := media_metadata.get("next_content_type"):
+                tv_show_grid += f'<a href="?content_type={next_content_type}&media_id={media_item.get("id")}" class="stretched-link"></a>'
+            else:
+                tv_show_grid += f'<a class="stretched-link" href="javascript:play_media(\'{media_item.get("id")}\')"></a>'
+            tv_show_grid += '</div></div></div>'
+        tv_show_grid += '</div></div>'
 
-def build_media_menu_grid(media_list, media_metadata_href_content_type=None):
-    tv_show_grid = ""
-    # Create the grid
-    tv_show_grid += '<div class="container"><div class="row row-cols-auto">'
-    # Add a card element to the grid for each tv show
-    for media_item in media_list:
-        tv_show_grid += '<div class="col"><div class="card" style="width: 18rem; height: 6rem;">'
-        tv_show_grid += '<!--img src="{{ url_for(\'static\', filename=\'default.jpg\') }}" class="card-img" alt="..."-->'
-        tv_show_grid += f'<div class="card-body" >'
-        tv_show_grid += f'<h5 class="card-title" style="color: black;">{media_item.get("title")}</h5>'
-        if media_metadata_href_content_type:
-            tv_show_grid += f'<a href="?content_type={media_metadata_href_content_type}&media_id={media_item.get("id")}" class="stretched-link"></a>'
-        else:
-            tv_show_grid += f'<a class="stretched-link" href="javascript:play_media(\'{media_item.get("id")}\')"></a>'
-        tv_show_grid += '</div></div></div>'
     tv_show_grid += '</div></div>'
-    return tv_show_grid
-
-
-def build_top_navbar():
-    navbar = '<nav class="navbar fixed-top navbar-expand-lg bg-dark" data-bs-theme="dark">'
-    navbar += '<div class="container-fluid"><a class="navbar-brand" href="/">&#x1F422;&#x1F995;</a>'
-    navbar += '<button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">'
-    navbar += '<span class="navbar-toggler-icon"></span></button>'
-    navbar += '<div class="collapse navbar-collapse" id="navbarSupportedContent">'
-    navbar += '<ul class="navbar-nav me-auto mb-2 mb-lg-0">'
-    navbar += '<li class="nav-item"><a id=tv_show_select_button class="nav-link" aria-current="page">TV Shows</a></li>'
-    navbar += '<li class="nav-item"><a id=movie_select_button class="nav-link" aria-current="page">Movies</a></li>'
-    navbar += '<li class="nav-item"><a id=scan_media_button class="nav-link" aria-current="page">Scan Media</a></li>'
-    navbar += '</ul>'
-    navbar += '<ul class="navbar-nav ml-auto mb-2 mb-lg-0">'
-    navbar += '<li class="nav-item">'
-    navbar += '<a id=connected_chromecast_id class="nav-link" aria-disabled="true"></a></li>'
-    navbar += '<li class="nav-item dropstart">'
-    navbar += '<a id="chromecast_menu" class="nav-link" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">'
-    navbar += '<span class="fa-brands fa-chromecast"></span></a>'
-    navbar += '<ul id="dropdown_scanned_chromecasts" class="dropdown-menu">'
-    navbar += '<li><hr class="dropdown-divider"></li><li><a id="chromecast_disconnect_button" class="dropdown-item">Disconnect</a></li>'
-    navbar += '</ul></li></ul>'
-    navbar += '</div></div></nav>'
-    return navbar
-
-
-def build_bottom_navbar():
-    media_controls = '<nav class="navbar fixed-bottom navbar-expand-xl bg-dark bg-body-tertiary" data-bs-theme="light" style="height: 10%">'
-    media_controls += '<div class="container-fluid" align="center">'
-    media_controls += '<input type="range" id="mediaTimeInputId" onMouseUp="setMediaRuntime(this);" min=0 value=0 class="slider">'
-    media_controls += '<output id="mediaTimeOutputId" align="center"></output>'
-    media_controls += '</div>'
-    media_controls += '<div class="container" align="center">'
+    tv_show_grid += '<nav class="navbar fixed-bottom navbar-expand-xl bg-dark bg-body-tertiary" data-bs-theme="light" style="height: 10%">'
+    tv_show_grid += '<div class="container-fluid" align="center">'
+    tv_show_grid += '<input type="range" id="mediaTimeInputId" onMouseUp="setMediaRuntime(this);" min=0 value=0 class="slider">'
+    tv_show_grid += '<output id="mediaTimeOutputId" align="center"></output>'
+    tv_show_grid += '</div>'
+    tv_show_grid += '<div class="container-fluid" align="center">'
     for button_info in media_controller_button_dict.values():
-        media_controls += f'<button id="{button_info.get("id")}" class="btn"><i class="fa-solid {button_info.get("icon")} fa-2xl"></i></button>'
-    media_controls += '</div></nav>'
-    return media_controls
-
-
-def build_media_menu_content(content_type, media_id_str=None):
-    media_id = None
-    tv_show_grid = ""
-    media_metadata = None
-    media_list = None
-    next_content_type = None
-    db_handler = DatabaseHandler()
-
-    if db_handler:
-        if media_id_str:
-            media_id = int(media_id_str)
-        if content_type == ContentType.MEDIA:
-            media_metadata = db_handler.get_tv_show_season_metadata(media_id)
-            media_list = db_handler.get_tv_show_season_episode_title_list(media_id)
-        elif content_type == ContentType.SEASON:
-            media_metadata = db_handler.get_tv_show_metadata(media_id)
-            media_list = db_handler.get_tv_show_season_title_list(media_id)
-            next_content_type = ContentType.MEDIA.value
-
-        elif content_type == ContentType.MOVIE:
-            media_list = db_handler.get_movie_title_list()
-        elif content_type == ContentType.TV_SHOW:
-            media_list = db_handler.get_tv_show_title_list()
-            next_content_type = ContentType.SEASON.value
-        else:
-            print(f"Unknown content type provided: {content_type}")
-
-    tv_show_grid += f'<!DOCTYPE html><html lang="en">{html_head}<body>{build_top_navbar()}<div style="margin-bottom: 40%;">'
-    tv_show_grid += f'<p>{backend_handler.get_startup_sha()}</p>'
-    tv_show_grid += '<div id="mediaContentSelectDiv">'
-    try:
-        tv_show_grid += build_media_menu_header(media_metadata)
-        tv_show_grid += build_media_menu_grid(media_list, next_content_type)
-    except ValueError as e:
-        print(f"Error building media page content\n{e}")
-    tv_show_grid += '</div></div>'
-    tv_show_grid += build_bottom_navbar()
+        tv_show_grid += f'<button id="{button_info.get("id")}" class="btn"><i class="fa-solid {button_info.get("icon")} fa-2xl"></i></button>'
+    tv_show_grid += '</div></nav>'
     tv_show_grid += '</body></html>'
 
     return tv_show_grid
 
 
 def build_main_content(request_args):
+    media_id = None
+    content_type = ContentType.TV_SHOW
     media_id_str = request_args.get('media_id', None)
     content_type_value = request_args.get('content_type', None)
-    content_type = ContentType.TV_SHOW
     if content_type_value:
         try:
             content_type = ContentType(int(content_type_value))
         except Exception as e:
             print(e)
+    if media_id_str:
+        try:
+            media_id = int(media_id_str)
+        except ValueError as e:
+            print(e)
 
-    return build_media_menu_content(content_type=content_type, media_id_str=media_id_str)
+    media_metadata = {}
+    db_handler = DatabaseHandler()
+
+    if db_handler:
+        media_metadata = db_handler.get_media_content(content_type, media_id)
+
+    return build_media_menu_content(media_metadata)
 
 
 @app.route(APIEndpoints.MAIN.value)

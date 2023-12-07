@@ -1,4 +1,13 @@
+from enum import Enum, auto
 from . import DBConnection
+
+
+class ContentType(Enum):
+    MEDIA = auto()
+    TV_SHOW = auto()
+    SEASON = auto()
+    MOVIE = auto()
+    PLAYLIST = auto()
 
 
 class DatabaseHandler(DBConnection):
@@ -65,6 +74,25 @@ class DatabaseHandler(DBConnection):
             if season_id := media_metadata.get("season_id"):
                 media_metadata["season_title"] = f"Season {self.get_season_list_index(season_id)}"
             return media_metadata
+
+    def get_media_content(self, content_type, media_id=None):
+        media_metadata = {}
+        if content_type == ContentType.MEDIA and media_id:
+            media_metadata.update(self.get_tv_show_season_metadata(media_id))
+            media_metadata["media_list"] = self.get_tv_show_season_episode_title_list(media_id)
+        elif content_type == ContentType.SEASON and media_id:
+            media_metadata.update(self.get_tv_show_metadata(media_id))
+            media_metadata["media_list"] = self.get_tv_show_season_title_list(media_id)
+            media_metadata["next_content_type"] = ContentType.MEDIA.value
+
+        elif content_type == ContentType.MOVIE:
+            media_metadata["media_list"] = self.get_movie_title_list()
+        elif content_type == ContentType.TV_SHOW:
+            media_metadata["media_list"] = self.get_tv_show_title_list()
+            media_metadata["next_content_type"] = ContentType.SEASON.value
+        else:
+            print(f"Unknown content type provided: {content_type}")
+        return media_metadata
 
     def get_increment_episode_metadata(self, media_id, playlist_id, query_list):
         list_index_query_result = self.get_data_from_db(query_list[0], (playlist_id, media_id,))
