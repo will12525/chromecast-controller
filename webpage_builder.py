@@ -74,7 +74,7 @@ def build_main_content(request_args, template="index.html"):
 
         if db_handler:
             media_metadata = db_handler.get_media_content(content_type, media_id)
-            print(media_metadata)
+
         return render_template(template, homepage_url="/", sha=backend_handler.get_startup_sha(),
                                button_dict=media_controller_button_dict, media_metadata=media_metadata,
                                media_list=media_metadata.get("media_list"))
