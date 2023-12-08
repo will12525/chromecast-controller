@@ -7,14 +7,21 @@ from database_handler.database_handler import DatabaseHandler
 class TestDBCreatorInit(TestCase):
     SERVER_URL_TV_SHOWS = "http://192.168.1.200:8000/tv_shows/"
     MEDIA_FOLDER_PATH = "../media_folder_sample"
+    SERVER_URL_MOVIES = "http://192.168.1.200:8000/movies/"
+    MOVIE_FOLDER_PATH = "../media_folder_movie"
     DB_PATH = "media_metadata.db"
 
     def setUp(self) -> None:
         if os.path.exists(self.DB_PATH):
             os.remove(self.DB_PATH)
         self.media_paths = [
-            {"media_type": MediaType.TV_SHOW.value, "media_folder_path": self.MEDIA_FOLDER_PATH,
-             "media_folder_url": self.SERVER_URL_TV_SHOWS}]
+            {"media_type": MediaType.TV_SHOW.value,
+             "media_folder_path": self.MEDIA_FOLDER_PATH,
+             "media_folder_url": self.SERVER_URL_TV_SHOWS},
+            {"media_type": MediaType.MOVIE.value,
+             "media_folder_path": self.MOVIE_FOLDER_PATH,
+             "media_folder_url": self.SERVER_URL_MOVIES}
+        ]
 
         self.db_handler = DatabaseHandler()
 
@@ -35,6 +42,8 @@ class TestDBCreator(TestDBCreatorInit):
         assert set_media_info.get("media_type") == media_directory_info.get("media_type")
         assert set_media_info.get("media_folder_path") == media_directory_info.get("media_folder_path")
         assert set_media_info.get("media_folder_url") == media_directory_info.get("media_folder_url")
+        media_directory_id = db_creator.setup_media_directory(self.media_paths[1])
+        assert media_directory_id == 2
 
     def test_add_media_directory(self):
         db_creator = DBCreator()

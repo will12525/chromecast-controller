@@ -2,25 +2,36 @@ import json
 import time
 from unittest import TestCase
 import os
-from database_handler.database_handler import DatabaseHandler
+from database_handler.database_handler import DatabaseHandler, ContentType
 from database_handler.create_database import MediaType, DBCreator
 
 
 class TestDatabaseHandler(TestCase):
     SERVER_URL_TV_SHOWS = "http://192.168.1.200:8000/tv_shows/"
-    MEDIA_FOLDER_PATH = "../media_folder_sample/"
+    MEDIA_FOLDER_PATH = "../media_folder_sample"
+    SERVER_URL_MOVIES = "http://192.168.1.200:8000/movies/"
+    MOVIE_FOLDER_PATH = "../media_folder_movie"
     DB_PATH = "media_metadata.db"
 
     db_handler = None
+
+    # media_path_data = None
 
     def setUp(self) -> None:
         # time.sleep(2)
         # if os.path.exists(self.DB_PATH):
         #     os.remove(self.DB_PATH)
+
+        # media_path_data = config_file.load_js_file()
+        # print(media_path_data)
         media_paths = [{"media_type": MediaType.TV_SHOW.value, "media_folder_path": self.MEDIA_FOLDER_PATH,
-                        "media_folder_url": self.SERVER_URL_TV_SHOWS}]
+                        "media_folder_url": self.SERVER_URL_TV_SHOWS},
+                       {"media_type": MediaType.MOVIE.value,
+                        "media_folder_path": self.MOVIE_FOLDER_PATH,
+                        "media_folder_url": self.SERVER_URL_MOVIES}]
         db_creator = DBCreator()
         db_creator.setup_media_directory(media_paths[0])
+        db_creator.setup_media_directory(media_paths[1])
 
         self.db_handler = DatabaseHandler()
 
@@ -179,3 +190,31 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
         assert result
         assert isinstance(result, int)
         assert result == 1
+
+    def test_get_movie_media_content(self):
+        content_type = ContentType.MOVIE
+        media_id = 14
+        metadata = self.db_handler.get_media_content(content_type, media_id)
+        print(metadata)
+        assert metadata
+
+    def test_get_tv_show_media_content(self):
+        content_type = ContentType.TV_SHOW
+        media_id = 1
+        metadata = self.db_handler.get_media_content(content_type, media_id)
+        print(metadata)
+        assert metadata
+
+    def test_get_season_media_content(self):
+        content_type = ContentType.SEASON
+        media_id = 1
+        metadata = self.db_handler.get_media_content(content_type, media_id)
+        print(metadata)
+        assert metadata
+
+    def test_get_media_content(self):
+        content_type = ContentType.MEDIA
+        media_id = 1
+        metadata = self.db_handler.get_media_content(content_type, media_id)
+        print(metadata)
+        assert metadata

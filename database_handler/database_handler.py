@@ -80,6 +80,7 @@ class DatabaseHandler(DBConnection):
         if content_type == ContentType.MEDIA and media_id:
             media_metadata.update(self.get_tv_show_season_metadata(media_id))
             media_metadata["media_list"] = self.get_tv_show_season_episode_title_list(media_id)
+            media_metadata["content_type"] = ContentType.SEASON.value
         elif content_type == ContentType.SEASON and media_id:
             media_metadata.update(self.get_tv_show_metadata(media_id))
             media_metadata["media_list"] = self.get_tv_show_season_title_list(media_id)

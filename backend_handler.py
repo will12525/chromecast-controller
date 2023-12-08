@@ -10,7 +10,6 @@ class BackEndHandler:
     SERVER_URL_MOVIES = SERVER_URL + "movies/"
     MEDIA_FOLDER_PATH = "/media/hdd1/plex_media/tv_shows"
     MEDIA_FOLDER_PATH_MOVIES = "/media/hdd1/plex_media/movies"
-    MEDIA_METADATA_FILE = "tv_show_metadata.json"
 
     startup_sha = None
     chromecast_handler = None
