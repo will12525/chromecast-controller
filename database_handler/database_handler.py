@@ -27,13 +27,15 @@ class DatabaseHandler(DBConnection):
         query = "SELECT tv_show_info.id, title FROM tv_show_info INNER JOIN playlist_info ON tv_show_info.playlist_id = playlist_info.id ORDER BY title GLOB '[A-Za-z]*' DESC, title"
         return self.get_data_from_db(query)
 
-    def get_tv_show_season_title_list(self, tv_show_id) -> list[dict]:
+    def get_tv_show_season_title_list(self, content_id) -> dict:
         query = "SELECT id, 'Season' || ' ' || tv_show_season_index AS title, tv_show_season_index FROM season_info WHERE tv_show_id = ? ORDER BY tv_show_season_index ASC"
-        return self.get_data_from_db(query, (tv_show_id,))
+        return {"media_list_content_type": ContentType.SEASON.value,
+                "media_list": self.get_data_from_db(query, (content_id,))}
 
-    def get_tv_show_season_episode_title_list(self, season_id) -> list[dict]:
+    def get_tv_show_season_episode_title_list(self, content_id) -> dict:
         query = "SELECT media_info.id, title FROM media_info INNER JOIN playlist_media_list ON media_info.id = playlist_media_list.media_id WHERE season_id = ? ORDER BY list_index ASC, title"
-        return self.get_data_from_db(query, (season_id,))
+        return {"media_list_content_type": ContentType.MEDIA.value,
+                "media_list": self.get_data_from_db(query, (content_id,))}
 
     def get_tv_show_metadata(self, tv_show_id) -> dict:
         tv_show_metadata = {}
@@ -76,18 +78,16 @@ class DatabaseHandler(DBConnection):
                 media_metadata["season_title"] = f"Season {self.get_season_list_index(season_id)}"
             return media_metadata
 
-    def get_media_content(self, content_type, media_id=None):
+    def get_media_content(self, content_type, content_id=None):
         media_metadata = {}
-        if content_type == ContentType.SEASON and media_id:
-            media_metadata.update(self.get_tv_show_season_metadata(media_id))
+        if content_type == ContentType.SEASON and content_id:
+            media_metadata.update(self.get_tv_show_season_metadata(content_id))
             media_metadata["content_type"] = ContentType.TV_SHOW.value
-            media_metadata["media_list"] = self.get_tv_show_season_episode_title_list(media_id)
-            media_metadata["media_list_content_type"] = ContentType.MEDIA.value
-        elif content_type == ContentType.TV_SHOW and media_id:
-            media_metadata.update(self.get_tv_show_metadata(media_id))
+            media_metadata.update(self.get_tv_show_season_episode_title_list(content_id))
+        elif content_type == ContentType.TV_SHOW and content_id:
+            media_metadata.update(self.get_tv_show_metadata(content_id))
             media_metadata["content_type"] = ContentType.TV.value
-            media_metadata["media_list"] = self.get_tv_show_season_title_list(media_id)
-            media_metadata["media_list_content_type"] = ContentType.SEASON.value
+            media_metadata.update(self.get_tv_show_season_title_list(content_id))
 
         elif content_type == ContentType.MOVIE:
             media_metadata["media_list"] = self.get_movie_title_list()

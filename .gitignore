@@ -5,11 +5,11 @@ config.cfg
 # PyCharm
 .idea/
 venv/
-tv_show_metadata.json
 
 # Test
 media_folder_sample/
-/tests/status_change.log
+media_folder_movie/
 
 # media database
 media_metadata.db
+config.json
