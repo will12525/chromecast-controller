@@ -1,5 +1,5 @@
 from enum import Enum
-
+import traceback
 from flask import Flask, request, render_template_string, render_template
 
 # jsonify, redirect, current_app, render_template
@@ -76,11 +76,12 @@ def build_main_content(request_args, template="index.html"):
             media_metadata = db_handler.get_media_content(content_type, media_id)
 
         return render_template(template, homepage_url="/", sha=backend_handler.get_startup_sha(),
-                               button_dict=media_controller_button_dict, media_metadata=media_metadata,
-                               media_list=media_metadata.get("media_list"))
+                               button_dict=media_controller_button_dict, media_metadata=media_metadata)
     except Exception as e:
         print("Exception class: ", e.__class__)
         print(f"ERROR: {e}")
+        print(traceback.print_exc())
+        return str(traceback.print_exc())
 
 
 @app.route(APIEndpoints.MAIN.value)
@@ -88,7 +89,8 @@ def main_index():
     try:
         return build_main_content(request.args)
     except Exception as e:
-        return str(e)
+        print(traceback.print_exc())
+        return str(traceback.print_exc())
 
 
 @app.route(APIEndpoints.GET_MEDIA_CONTENT_TYPES.value, methods=['GET'])
