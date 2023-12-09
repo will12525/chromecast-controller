@@ -192,7 +192,7 @@ async function setNavbarLinks() {
         let response_data = await response.json();
         if (tv_show_select_button !== null)
         {
-            tv_show_select_button.setAttribute('href', "?content_type=" + response_data["TV_SHOW"]);
+            tv_show_select_button.setAttribute('href', "?content_type=" + response_data["TV"]);
         }
         if (movie_select_button !== null)
         {

@@ -18,7 +18,7 @@
 </head>
 <body>
 <nav class="navbar fixed-top navbar-expand-lg bg-dark" data-bs-theme="dark">
-    <div class="container-fluid"><a class="navbar-brand" href="{{homepage_url}}">&#x1F422;&#x1F995;</a>
+    <div class="container-fluid"><a class="navbar-brand" href="{{ homepage_url }}">&#x1F422;&#x1F995;</a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent"
                 aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span></button>
@@ -47,9 +47,9 @@
     </div>
 </nav>
 <div style="margin-bottom: 40%;">
-    <p>{{sha}}</p>
+    <p>{{ sha }}</p>
     <div id="mediaContentSelectDiv">
-        {% if media_metadata: %}
+        {% if 'content_type' in media_metadata %}
         <div class="container">
             <div class="row row-cols-auto">
                 <div class="card mb-3" style="width: 18rem; height: 10rem;">
@@ -65,13 +65,16 @@
                                 <p class="card-text">{{ media_metadata['sub_title'] }}</p>
                                 {% endif %}
                                 {% if 'season_count' in media_metadata %}
-                                <p class="card-text">Seasons: {{ media_metadata['season_count']}}</p>
+                                <p class="card-text">Seasons: {{ media_metadata['season_count'] }}</p>
                                 {% endif %}
                                 {% if 'episode_count' in media_metadata %}
                                 <p class="card-text">Episodes: {{ media_metadata['episode_count'] }}</p>
                                 {% endif %}
                                 {% if 'tv_show_id' in media_metadata %}
-                                <a href="?content_type={{media_metadata['content_type'] }}&media_id={{media_metadata['tv_show_id'] }}"
+                                <a href="?content_type={{ media_metadata['content_type'] }}&media_id={{ media_metadata['tv_show_id'] }}"
+                                   class="stretched-link"></a>
+                                {% else %}
+                                <a href="?content_type={{ media_metadata['content_type'] }}"
                                    class="stretched-link"></a>
                                 {% endif %}
                             </div>
@@ -89,11 +92,13 @@
                     <div class="card" style="width: 18rem; height: 6rem;">
                         <div class="card-body">
                             <h5 class="card-title" style="color: black;">{{ media_item["title"] }}</h5>
-                            {% if 'next_content_type' in media_metadata %}
-                            <a href="?content_type={{ media_metadata['next_content_type'] }}&media_id={{ media_item.get('id') }}"
-                               class="stretched-link"></a>
-                            {% else %}
+                            {% if 'media_list_content_type' in media_metadata %}
+                            {% if media_metadata['media_list_content_type'] == 1 %}
                             <a class="stretched-link" href="javascript:play_media({{ media_item.get('id') }})"></a>
+                            {% else %}
+                            <a href="?content_type={{ media_metadata['media_list_content_type'] }}&media_id={{ media_item.get('id') }}"
+                               class="stretched-link"></a>
+                            {% endif %}
                             {% endif %}
                         </div>
                     </div>
@@ -105,14 +110,16 @@
     </div>
 </div>
 <nav class="navbar fixed-bottom navbar-expand-xl bg-dark bg-body-tertiary" data-bs-theme="light" style="height: 10%">
-    <div class="container-fluid" align="center">
-        <input type="range" id="mediaTimeInputId" onMouseUp="setMediaRuntime(this);" min=0 value=0 class="slider">
-        <output id="mediaTimeOutputId"></output>
-    </div>
-    <div class="container" align="center">
-        {% for key, value in button_dict.items() %}
-        <button id="{{ value['id'] }}" class="btn"><i class="fa-solid {{ value['icon'] }} fa-2xl"></i></button>
-        {% endfor %}
+    <div class="col">
+        <div class="container-fluid" align="center">
+            <input type="range" id="mediaTimeInputId" onMouseUp="setMediaRuntime(this);" min=0 value=0 class="slider">
+            <output id="mediaTimeOutputId"></output>
+        </div>
+        <div class="container" align="center">
+            {% for key, value in button_dict.items() %}
+            <button id="{{ value['id'] }}" class="btn"><i class="fa-solid {{ value['icon'] }} fa-2xl"></i></button>
+            {% endfor %}
+        </div>
     </div>
 </nav>
 </body>

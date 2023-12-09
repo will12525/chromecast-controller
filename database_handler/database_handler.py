@@ -4,9 +4,10 @@ from . import DBConnection
 
 class ContentType(Enum):
     MEDIA = auto()
-    TV_SHOW = auto()
-    SEASON = auto()
     MOVIE = auto()
+    SEASON = auto()
+    TV_SHOW = auto()
+    TV = auto()
     PLAYLIST = auto()
 
 
@@ -41,7 +42,7 @@ class DatabaseHandler(DBConnection):
         episode_count_query = "SELECT COUNT(*) as episode_count FROM media_info WHERE tv_show_id = ?;"
 
         if query_result := self.get_data_from_db(tv_show_info_query, (tv_show_id,)):
-            tv_show_metadata = query_result[0]
+            tv_show_metadata.update(query_result[0])
 
         if query_result := self.get_data_from_db(season_count_query, (tv_show_id,)):
             tv_show_metadata.update(query_result[0])
@@ -77,20 +78,23 @@ class DatabaseHandler(DBConnection):
 
     def get_media_content(self, content_type, media_id=None):
         media_metadata = {}
-        if content_type == ContentType.MEDIA and media_id:
+        if content_type == ContentType.SEASON and media_id:
             media_metadata.update(self.get_tv_show_season_metadata(media_id))
+            media_metadata["content_type"] = ContentType.TV_SHOW.value
             media_metadata["media_list"] = self.get_tv_show_season_episode_title_list(media_id)
-            media_metadata["content_type"] = ContentType.SEASON.value
-        elif content_type == ContentType.SEASON and media_id:
+            media_metadata["media_list_content_type"] = ContentType.MEDIA.value
+        elif content_type == ContentType.TV_SHOW and media_id:
             media_metadata.update(self.get_tv_show_metadata(media_id))
+            media_metadata["content_type"] = ContentType.TV.value
             media_metadata["media_list"] = self.get_tv_show_season_title_list(media_id)
-            media_metadata["next_content_type"] = ContentType.MEDIA.value
+            media_metadata["media_list_content_type"] = ContentType.SEASON.value
 
         elif content_type == ContentType.MOVIE:
             media_metadata["media_list"] = self.get_movie_title_list()
-        elif content_type == ContentType.TV_SHOW:
+            media_metadata["media_list_content_type"] = ContentType.MEDIA.value
+        elif content_type == ContentType.TV:
             media_metadata["media_list"] = self.get_tv_show_title_list()
-            media_metadata["next_content_type"] = ContentType.SEASON.value
+            media_metadata["media_list_content_type"] = ContentType.TV_SHOW.value
         else:
             print(f"Unknown content type provided: {content_type}")
         return media_metadata

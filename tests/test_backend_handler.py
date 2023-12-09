@@ -1,7 +1,6 @@
 from unittest import TestCase
 
 from backend_handler import BackEndHandler
-from chromecast_handler import CommandList
 
 
 class TestBackEndHandler(TestCase):
@@ -10,7 +9,7 @@ class TestBackEndHandler(TestCase):
     MEDIA_METADATA_FILE = "tv_show_metadata.json"
     # CHROMECAST_ID = "Family Room TV"
 
-    CHROMECAST_ID = "Master Bedroom TV"
+    CHROMECAST_ID = "Test Cast"
 
     def setUp(self):
         self.backend_handler = BackEndHandler()

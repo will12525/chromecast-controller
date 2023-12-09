@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from chromecast_handler import ChromecastHandler, CommandList
+from chromecast_handler import ChromecastHandler
 
 
 class TestChromecastHandler(TestCase):
@@ -9,7 +9,7 @@ class TestChromecastHandler(TestCase):
     MEDIA_METADATA_FILE = "tv_show_metadata.json"
     # CHROMECAST_ID = "Family Room TV"
 
-    CHROMECAST_ID = "Master Bedroom TV"
+    CHROMECAST_ID = "Test Cast"
 
     def setUp(self):
         self.chromecast_handler = ChromecastHandler()

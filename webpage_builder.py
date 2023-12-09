@@ -1,6 +1,6 @@
 from enum import Enum
 import traceback
-from flask import Flask, request, render_template_string, render_template
+from flask import Flask, request, render_template
 
 # jsonify, redirect, current_app, render_template
 from backend_handler import BackEndHandler
@@ -54,7 +54,7 @@ backend_handler.start()
 def build_main_content(request_args, template="index.html"):
     try:
         media_id = None
-        content_type = ContentType.TV_SHOW
+        content_type = ContentType.TV
         media_id_str = request_args.get('media_id', None)
         content_type_value = request_args.get('content_type', None)
         if content_type_value:

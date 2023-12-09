@@ -15,10 +15,10 @@ class Test(TestWebpageBuilder):
 
     def test_build_media_menu_content(self):
         with self.app.app_context(), self.app.test_request_context():
-            print(webpage_builder.build_main_content({"content_type": webpage_builder.ContentType.SEASON.value,
+            print(webpage_builder.build_main_content({"content_type": webpage_builder.ContentType.TV_SHOW.value,
                                                       "media_id": 1}))
             print(webpage_builder.build_main_content({"content_type": webpage_builder.ContentType.MOVIE.value}))
-            print(webpage_builder.build_main_content({"content_type": webpage_builder.ContentType.TV_SHOW.value}))
+            print(webpage_builder.build_main_content({"content_type": webpage_builder.ContentType.TV.value}))
 
     def test_build_movie_menu_content(self):
         with self.app.app_context(), self.app.test_request_context():
@@ -38,21 +38,21 @@ class Test(TestWebpageBuilder):
 
     def test_build_TV_SHOW_content(self):
         with self.app.app_context(), self.app.test_request_context():
-            request_args = {'content_type': webpage_builder.ContentType.TV_SHOW.value}
+            request_args = {'content_type': webpage_builder.ContentType.TV.value}
             main_content = webpage_builder.build_main_content(request_args)
             print(main_content)
             assert main_content
 
     def test_build_SEASON_content(self):
         with self.app.app_context(), self.app.test_request_context():
-            request_args = {'media_id': 1, 'content_type': webpage_builder.ContentType.SEASON.value}
+            request_args = {'media_id': 1, 'content_type': webpage_builder.ContentType.TV_SHOW.value}
             main_content = webpage_builder.build_main_content(request_args)
             print(main_content)
             assert main_content
 
     def test_build_MEDIA_content(self):
         with self.app.app_context(), self.app.test_request_context():
-            request_args = {'media_id': 1, 'content_type': webpage_builder.ContentType.MEDIA.value}
+            request_args = {'media_id': 1, 'content_type': webpage_builder.ContentType.SEASON.value}
             main_content = webpage_builder.build_main_content(request_args)
             print(main_content)
             assert main_content
