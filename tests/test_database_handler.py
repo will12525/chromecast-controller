@@ -117,7 +117,7 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
         assert result == "Vampire"
 
     def test_get_movie_title_list(self):
-        result = self.db_handler.get_movie_title_list()
+        result = self.db_handler.get_movie_titles()
         print(json.dumps(result, indent=4))
         assert result
         assert isinstance(result, dict)
@@ -132,7 +132,7 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
             assert isinstance(movie["title"], str)
 
     def test_get_tv_show_title_list(self):
-        result = self.db_handler.get_tv_show_title_list()
+        result = self.db_handler.get_tv_show_titles()
         print(json.dumps(result, indent=4))
         assert result
         assert isinstance(result, dict)
@@ -142,12 +142,12 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
         for movie in result.get("media_list"):
             assert isinstance(movie, dict)
             assert "id" in movie
-            assert "title" in movie
+            assert "playlist_title" in movie
             assert isinstance(movie["id"], int)
-            assert isinstance(movie["title"], str)
+            assert isinstance(movie["playlist_title"], str)
 
     def test_get_tv_show_season_title_list(self):
-        result = self.db_handler.get_tv_show_season_title_list(1)
+        result = self.db_handler.get_tv_show_season_titles(1)
         print(json.dumps(result, indent=4))
         assert result
         assert isinstance(result, dict)
@@ -162,7 +162,7 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
             assert isinstance(movie["title"], str)
 
     def test_get_tv_show_season_episode_title_list(self):
-        result = self.db_handler.get_tv_show_season_episode_title_list(1)
+        result = self.db_handler.get_tv_show_season_episode_titles(1)
         print(json.dumps(result, indent=4))
         assert result
         assert isinstance(result, dict)
@@ -183,7 +183,7 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
         assert isinstance(result, dict)
         assert result.get("container_content_type") == ContentType.TV.value
         assert result.get("id") == 1
-        assert result.get("title") == "Vampire"
+        assert result.get("playlist_title") == "Vampire"
         assert result.get("season_count") == 2
         assert result.get("episode_count") == 5
 
@@ -197,7 +197,7 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
         assert result.get("tv_show_id") == 1
         assert result.get("tv_show_season_index") == 1
         assert result.get("playlist_id") == 1
-        assert result.get("title") == "Vampire"
+        assert result.get("playlist_title") == "Vampire"
         assert result.get("sub_title") == "Season 1"
         assert result.get("episode_count") == 2
 
@@ -237,9 +237,9 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
         for movie in metadata.get("media_list"):
             assert isinstance(movie, dict)
             assert "id" in movie
-            assert "title" in movie
+            assert "playlist_title" in movie
             assert isinstance(movie["id"], int)
-            assert isinstance(movie["title"], str)
+            assert isinstance(movie["playlist_title"], str)
         assert metadata.get("media_list_content_type") == ContentType.TV_SHOW.value
 
     def test_get_season_media_content(self):
@@ -250,7 +250,7 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
         assert metadata
         assert isinstance(metadata, dict)
         assert metadata.get("id") == 1
-        assert metadata.get("title") == "Vampire"
+        assert metadata.get("playlist_title") == "Vampire"
         assert metadata.get("season_count") == 2
         assert metadata.get("episode_count") == 5
         assert metadata.get("container_content_type") == ContentType.TV.value
@@ -276,7 +276,7 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
         assert metadata.get("tv_show_id") == 1
         assert metadata.get("tv_show_season_index") == 1
         assert metadata.get("playlist_id") == 1
-        assert metadata.get("title") == "Vampire"
+        assert metadata.get("playlist_title") == "Vampire"
         assert metadata.get("sub_title") == "Season 1"
         assert metadata.get("episode_count") == 2
         assert metadata.get("container_content_type") == ContentType.TV_SHOW.value

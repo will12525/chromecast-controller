@@ -58,9 +58,8 @@
                         </div>
                         <div class="col-md-8">
                             <div id="metadata_card_body" class="card-body">
-                                {% if 'title' in media_metadata %}
-                                <h5 class="card-title">{{ media_metadata['title'] }}</h5>
-                                {% endif %}
+                                <h5 class="card-title">{{ media_metadata.get("playlist_title",
+                                    media_metadata.get("title")) }}</h5>
                                 {% if 'sub_title' in media_metadata %}
                                 <p class="card-text">{{ media_metadata['sub_title'] }}</p>
                                 {% endif %}
@@ -91,7 +90,8 @@
                 <div class="col">
                     <div class="card" style="width: 18rem; height: 6rem;">
                         <div class="card-body">
-                            <h5 class="card-title" style="color: black;">{{ media_item["title"] }}</h5>
+                            <h5 class="card-title" style="color: black;">{{ media_item.get("playlist_title",
+                                media_item.get("title")) }}</h5>
                             {% if 'media_list_content_type' in media_metadata %}
                             {% if media_metadata['media_list_content_type'] == 1 %}
                             <a class="stretched-link" href="javascript:play_media({{ media_item.get('id') }})"></a>

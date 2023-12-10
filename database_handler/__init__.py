@@ -104,6 +104,9 @@ class DBConnection:
             return query_result[0]
         return {}
 
+    def get_row_id(self, query: str, params: tuple):
+        return self.get_data_from_db_first_result(query, params).get("id")
+
     def __set_version(self, version):
         return self.add_data_to_db(self.__sql_insert_version_info_table, (version,))
 

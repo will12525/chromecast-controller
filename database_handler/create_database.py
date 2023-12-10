@@ -9,10 +9,10 @@ from .media_metadata_collector import collect_tv_shows, collect_movies
 
 sql_create_playlist_info_table = """CREATE TABLE IF NOT EXISTS playlist_info (
                                 id integer PRIMARY KEY,
-                                title text NOT NULL UNIQUE
+                                playlist_title text NOT NULL UNIQUE
                                 );"""
 
-sql_insert_playlist_info_table = '''INSERT OR IGNORE INTO playlist_info (title) VALUES(?)'''
+sql_insert_playlist_info_table = '''INSERT OR IGNORE INTO playlist_info (playlist_title) VALUES(?)'''
 
 sql_create_playlist_media_list_table = """CREATE TABLE IF NOT EXISTS playlist_media_list (
                                           id integer PRIMARY KEY,

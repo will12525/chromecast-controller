@@ -36,6 +36,8 @@ class APIEndpoints(Enum):
 
 
 app = Flask(__name__)
+app.jinja_env.lstrip_blocks = True
+app.jinja_env.trim_blocks = True
 
 media_controller_button_dict = {
     "rewind": {"icon": "fa-backward", "id": f"{CommandList.CMD_REWIND.name}_media_button"},
