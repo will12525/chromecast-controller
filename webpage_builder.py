@@ -53,19 +53,19 @@ backend_handler.start()
 
 def build_main_content(request_args, template="index.html"):
     try:
-        media_id = None
-        content_type = ContentType.TV
-        media_id_str = request_args.get('media_id', None)
-        content_type_value = request_args.get('content_type', None)
+        content_id = None
+        content_type = ContentType.TV.value
+        content_id_str = request_args.get('media_id', None)
+        content_type_value = request_args.get("content_type", None)
         if content_type_value:
             try:
-                content_type = ContentType(int(content_type_value))
+                content_type = int(content_type_value)
             except Exception as e:
                 print(e)
                 print("Content_type error")
-        if media_id_str:
+        if content_id_str:
             try:
-                media_id = int(media_id_str)
+                content_id = int(content_id_str)
             except ValueError as e:
                 print(e)
 
@@ -73,7 +73,7 @@ def build_main_content(request_args, template="index.html"):
         db_handler = DatabaseHandler()
 
         if db_handler:
-            media_metadata = db_handler.get_media_content(content_type, media_id)
+            media_metadata = db_handler.get_media_content(content_type, content_id)
 
         return render_template(template, homepage_url="/", sha=backend_handler.get_startup_sha(),
                                button_dict=media_controller_button_dict, media_metadata=media_metadata)

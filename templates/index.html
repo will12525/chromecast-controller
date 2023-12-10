@@ -49,7 +49,7 @@
 <div style="margin-bottom: 40%;">
     <p>{{ sha }}</p>
     <div id="mediaContentSelectDiv">
-        {% if 'content_type' in media_metadata %}
+        {% if 'container_content_type' in media_metadata %}
         <div class="container">
             <div class="row row-cols-auto">
                 <div class="card mb-3" style="width: 18rem; height: 10rem;">
@@ -71,10 +71,10 @@
                                 <p class="card-text">Episodes: {{ media_metadata['episode_count'] }}</p>
                                 {% endif %}
                                 {% if 'tv_show_id' in media_metadata %}
-                                <a href="?content_type={{ media_metadata['content_type'] }}&media_id={{ media_metadata['tv_show_id'] }}"
+                                <a href="?content_type={{ media_metadata['container_content_type'] }}&media_id={{ media_metadata['tv_show_id'] }}"
                                    class="stretched-link"></a>
                                 {% else %}
-                                <a href="?content_type={{ media_metadata['content_type'] }}"
+                                <a href="?content_type={{ media_metadata['container_content_type'] }}"
                                    class="stretched-link"></a>
                                 {% endif %}
                             </div>

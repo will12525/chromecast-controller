@@ -94,9 +94,15 @@ class DBConnection:
             except Error as e:
                 print(f"Error querying db:\n{query}")
                 print(e)
+                return []
             finally:
                 if c:
                     c.close()
+
+    def get_data_from_db_first_result(self, query, params=()):
+        if query_result := self.get_data_from_db(query, params):
+            return query_result[0]
+        return {}
 
     def __set_version(self, version):
         return self.add_data_to_db(self.__sql_insert_version_info_table, (version,))

@@ -120,9 +120,11 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
         result = self.db_handler.get_movie_title_list()
         print(json.dumps(result, indent=4))
         assert result
-        assert isinstance(result, list)
-        assert len(result) == 5
-        for movie in result:
+        assert isinstance(result, dict)
+        assert result.get("media_list_content_type") == ContentType.MEDIA.value
+        assert isinstance(result.get("media_list"), list)
+        assert len(result.get("media_list")) == 5
+        for movie in result.get("media_list"):
             assert isinstance(movie, dict)
             assert "id" in movie
             assert "title" in movie
@@ -133,9 +135,11 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
         result = self.db_handler.get_tv_show_title_list()
         print(json.dumps(result, indent=4))
         assert result
-        assert isinstance(result, list)
-        assert len(result) == 3
-        for movie in result:
+        assert isinstance(result, dict)
+        assert result.get("media_list_content_type") == ContentType.TV_SHOW.value
+        assert isinstance(result.get("media_list"), list)
+        assert len(result.get("media_list")) == 3
+        for movie in result.get("media_list"):
             assert isinstance(movie, dict)
             assert "id" in movie
             assert "title" in movie
@@ -177,6 +181,7 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
         print(json.dumps(result, indent=4))
         assert result
         assert isinstance(result, dict)
+        assert result.get("container_content_type") == ContentType.TV.value
         assert result.get("id") == 1
         assert result.get("title") == "Vampire"
         assert result.get("season_count") == 2
@@ -187,6 +192,7 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
         print(json.dumps(result, indent=4))
         assert result
         assert isinstance(result, dict)
+        assert result.get("container_content_type") == ContentType.TV_SHOW.value
         assert result.get("id") == 1
         assert result.get("tv_show_id") == 1
         assert result.get("tv_show_season_index") == 1
@@ -197,19 +203,30 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
 
     def test_get_season_list_index(self):
         result = self.db_handler.get_season_list_index(1)
+        print(result)
         assert result
         assert isinstance(result, int)
         assert result == 1
 
     def test_get_movie_media_content(self):
-        content_type = ContentType.MOVIE
+        content_type = ContentType.MOVIE.value
         media_id = 14
         metadata = self.db_handler.get_media_content(content_type, media_id)
         print(json.dumps(metadata, indent=4))
         assert metadata
+        assert metadata.get("media_list")
+        assert isinstance(metadata.get("media_list"), list)
+        assert len(metadata.get("media_list")) == 5
+        for movie in metadata.get("media_list"):
+            assert isinstance(movie, dict)
+            assert "id" in movie
+            assert "title" in movie
+            assert isinstance(movie["id"], int)
+            assert isinstance(movie["title"], str)
+        assert metadata.get("media_list_content_type") == ContentType.MEDIA.value
 
     def test_get_tv_show_media_content(self):
-        content_type = ContentType.TV
+        content_type = ContentType.TV.value
         media_id = 1
         metadata = self.db_handler.get_media_content(content_type, media_id)
         print(json.dumps(metadata, indent=4))
@@ -226,7 +243,7 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
         assert metadata.get("media_list_content_type") == ContentType.TV_SHOW.value
 
     def test_get_season_media_content(self):
-        content_type = ContentType.TV_SHOW
+        content_type = ContentType.TV_SHOW.value
         media_id = 1
         metadata = self.db_handler.get_media_content(content_type, media_id)
         print(json.dumps(metadata, indent=4))
@@ -236,7 +253,7 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
         assert metadata.get("title") == "Vampire"
         assert metadata.get("season_count") == 2
         assert metadata.get("episode_count") == 5
-        assert metadata.get("content_type") == ContentType.TV.value
+        assert metadata.get("container_content_type") == ContentType.TV.value
         assert metadata.get("media_list")
         assert isinstance(metadata.get("media_list"), list)
         assert len(metadata.get("media_list")) == 2
@@ -249,7 +266,7 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
         assert metadata.get("media_list_content_type") == ContentType.SEASON.value
 
     def test_get_media_content(self):
-        content_type = ContentType.SEASON
+        content_type = ContentType.SEASON.value
         media_id = 1
         metadata = self.db_handler.get_media_content(content_type, media_id)
         print(json.dumps(metadata, indent=4))
@@ -262,7 +279,7 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
         assert metadata.get("title") == "Vampire"
         assert metadata.get("sub_title") == "Season 1"
         assert metadata.get("episode_count") == 2
-        assert metadata.get("content_type") == ContentType.TV_SHOW.value
+        assert metadata.get("container_content_type") == ContentType.TV_SHOW.value
         assert metadata.get("media_list")
         assert isinstance(metadata.get("media_list"), list)
         assert len(metadata.get("media_list")) == 2
