@@ -58,10 +58,9 @@
                         </div>
                         <div class="col-md-8">
                             <div id="metadata_card_body" class="card-body">
-                                <h5 class="card-title">{{ media_metadata.get("playlist_title",
-                                    media_metadata.get("title")) }}</h5>
-                                {% if 'sub_title' in media_metadata %}
-                                <p class="card-text">{{ media_metadata['sub_title'] }}</p>
+                                <h5 class="card-title">{{ media_metadata.get("playlist_title") }}</h5>
+                                {% if 'season_title' in media_metadata %}
+                                <p class="card-text">{{ media_metadata['season_title'] }}</p>
                                 {% endif %}
                                 {% if 'season_count' in media_metadata %}
                                 <p class="card-text">Seasons: {{ media_metadata['season_count'] }}</p>
@@ -91,7 +90,7 @@
                     <div class="card" style="width: 18rem; height: 6rem;">
                         <div class="card-body">
                             <h5 class="card-title" style="color: black;">{{ media_item.get("playlist_title",
-                                media_item.get("title")) }}</h5>
+                                media_item.get("season_title", media_item.get("media_title"))) }}</h5>
                             {% if 'media_list_content_type' in media_metadata %}
                             {% if media_metadata['media_list_content_type'] == 1 %}
                             <a class="stretched-link" href="javascript:play_media({{ media_item.get('id') }})"></a>

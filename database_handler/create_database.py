@@ -1,7 +1,5 @@
-from enum import Enum, auto
-
-from . import DBConnection
-from .database_handler import DatabaseHandler
+from . import DBConnection, MediaType
+from .database_handler import GET_ALL_MEDIA_DIRECTORIES
 from .media_metadata_collector import collect_tv_shows, collect_movies
 
 # playlist_info and media_info are the sources
@@ -49,15 +47,15 @@ sql_create_media_info_table = """CREATE TABLE IF NOT EXISTS media_info (
                                 tv_show_id integer,
                                 season_id integer,
                                 media_folder_path_id NOT NULL,
-                                title text NOT NULL,
+                                media_title text NOT NULL,
                                 path text NOT NULL UNIQUE,
                                 FOREIGN KEY (tv_show_id) REFERENCES season_info (id),
                                 FOREIGN KEY (season_id) REFERENCES season_info (id),
                                 FOREIGN KEY (media_folder_path_id) REFERENCES media_folder_path_id (id),
-                                UNIQUE(media_folder_path_id, title, path)
+                                UNIQUE(media_folder_path_id, media_title, path)
                             );"""
 
-sql_insert_media_info_table = '''INSERT INTO media_info (tv_show_id, season_id, media_folder_path_id, title, path) VALUES (?, ?, ?, ?, ?)'''
+sql_insert_media_info_table = '''INSERT INTO media_info (tv_show_id, season_id, media_folder_path_id, media_title, path) VALUES (?, ?, ?, ?, ?)'''
 
 sql_create_media_folder_path_table = """CREATE TABLE IF NOT EXISTS media_folder_path (
                                 id integer PRIMARY KEY,
@@ -72,10 +70,14 @@ db_table_creation_list = [sql_create_tv_show_info_table, sql_create_season_info_
                           sql_create_playlist_info_table, sql_create_playlist_media_list_table,
                           sql_create_media_folder_path_table]
 
-
-class MediaType(Enum):
-    TV_SHOW = auto()
-    MOVIE = auto()
+# Get row ID's from various contents
+GET_ID = "SELECT id FROM "
+GET_PLAYLIST_ID_FROM_TITLE = f"{GET_ID} playlist_info WHERE playlist_title=?"
+GET_PLAYLIST_ID_FROM_PLAYLIST_MEDIA_INFO = f"{GET_ID} playlist_media_list WHERE playlist_id=? AND media_id=? AND list_index=?"
+GET_TV_SHOW_ID_FROM_PLAYLIST_ID = f"{GET_ID} tv_show_info WHERE playlist_id=?"
+GET_SEASON_ID_FROM_TV_SHOW_ID_SEASON_INDEX = f"{GET_ID} season_info WHERE tv_show_id=? AND tv_show_season_index=?"
+GET_MEDIA_ID_FROM_TITLE_PATH = f"{GET_ID} media_info WHERE media_title=? AND path=?"
+GET_MEDIA_ID_FROM_PATH = f"{GET_ID} media_info WHERE path=?"
 
 
 class DBCreator(DBConnection):
@@ -84,11 +86,10 @@ class DBCreator(DBConnection):
         super().__init__(db_table_creation_list)
 
     def add_tv_show_data(self, media_directory_info, tv_show_list):
-        db_handler = DatabaseHandler()
         tv_show_ids = {}
         for tv_show in tv_show_list:
             if tv_show_tile := tv_show.get("mp4_show_title"):
-                if db_handler.get_media_path_id(tv_show.get("mp4_file_url")):
+                if self.get_row_id(GET_MEDIA_ID_FROM_PATH, (tv_show.get("mp4_file_url"),)):
                     continue
                 if playlist_tv_show_id := tv_show_ids.get(tv_show_tile):
                     (playlist_id, tv_show_id) = playlist_tv_show_id
@@ -112,11 +113,9 @@ class DBCreator(DBConnection):
                 self.add_media(media_directory_info.get("id"), movie.get("mp4_show_title"), movie.get("mp4_file_url"))
 
     def scan_all_media_directories(self):
-        db_handler = DatabaseHandler()
-        if db_handler:
-            media_directories = db_handler.get_all_media_directories()
-            for media_directory in media_directories:
-                self.scan_media_directory(media_directory)
+        media_directories = self.get_data_from_db(GET_ALL_MEDIA_DIRECTORIES)
+        for media_directory in media_directories:
+            self.scan_media_directory(media_directory)
 
     def add_media_directory(self, media_directory_info):
         return self.add_data_to_db(sql_insert_media_folder_path_table, (
@@ -130,41 +129,36 @@ class DBCreator(DBConnection):
             self.scan_media_directory(media_directory_info)
         return media_directory_id
 
-    def add_playlist(self, title):
-        db_handler = DatabaseHandler()
-        playlist_id = db_handler.get_playlist_id(title)
+    def add_playlist(self, playlist_title):
+        playlist_id = self.get_row_id(GET_PLAYLIST_ID_FROM_TITLE, (playlist_title,))
         if not playlist_id:
-            playlist_id = self.add_data_to_db(sql_insert_playlist_info_table, (title,))
+            playlist_id = self.add_data_to_db(sql_insert_playlist_info_table, (playlist_title,))
         return playlist_id
 
     def add_media_to_playlist(self, playlist_id, media_id, list_index):
-        db_handler = DatabaseHandler()
         playlist_media_id = self.add_data_to_db(sql_insert_playlist_media_list_table,
                                                 (playlist_id, media_id, list_index))
         if not playlist_media_id:
-            playlist_media_id = db_handler.get_playlist_media_id(playlist_id, media_id, list_index)
+            playlist_media_id = self.get_row_id(GET_PLAYLIST_ID_FROM_PLAYLIST_MEDIA_INFO,
+                                                (playlist_id, media_id, list_index))
         return playlist_media_id
 
-    def add_media(self, media_folder_path_id, title, media_path, season_id=None, tv_show_id=None):
-        db_handler = DatabaseHandler()
+    def add_media(self, media_folder_path_id, media_title, media_path, season_id=None, tv_show_id=None):
         media_id = self.add_data_to_db(sql_insert_media_info_table,
-                                       (tv_show_id, season_id, media_folder_path_id, title, media_path))
+                                       (tv_show_id, season_id, media_folder_path_id, media_title, media_path))
         if not media_id:
-            media_id = db_handler.get_media_id(title, media_path)
+            media_id = self.get_row_id(GET_MEDIA_ID_FROM_TITLE_PATH, (media_title, media_path))
         return media_id
 
     def add_season(self, tv_show_id, tv_show_season_index):
-        db_handler = DatabaseHandler()
         season_id = self.add_data_to_db(sql_insert_season_info_table, (tv_show_id, tv_show_season_index))
         if not season_id:
-            season_id = db_handler.get_season_id(tv_show_id, tv_show_season_index)
+            season_id = self.get_row_id(GET_SEASON_ID_FROM_TV_SHOW_ID_SEASON_INDEX, (tv_show_id, tv_show_season_index))
         return season_id
 
     def add_tv_show(self, tv_show_title):
-        db_handler = DatabaseHandler()
         playlist_id = self.add_playlist(tv_show_title)
         tv_show_id = self.add_data_to_db(sql_insert_tv_show_info_table, (playlist_id,))
         if not tv_show_id:
-            tv_show_id = db_handler.get_tv_show_id(playlist_id)
-
+            tv_show_id = self.get_row_id(GET_TV_SHOW_ID_FROM_PLAYLIST_ID, (playlist_id,))
         return playlist_id, tv_show_id

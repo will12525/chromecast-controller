@@ -1,5 +1,10 @@
+from enum import Enum, auto
 import sqlite3
-from sqlite3 import Error
+
+
+class MediaType(Enum):
+    TV_SHOW = auto()
+    MOVIE = auto()
 
 
 class DBConnection:
@@ -30,7 +35,7 @@ class DBConnection:
                 self.__db_connection = sqlite3.connect(self.MEDIA_METADATA_DB_NAME)
                 self.__db_connection.row_factory = sqlite3.Row
                 # print(f"SqlLite version: {sqlite3.version}")
-            except Error as e:
+            except sqlite3.Error as e:
                 print(f"Connection error: {e}")
         return self.__db_connection
 
@@ -44,7 +49,7 @@ class DBConnection:
             try:
                 c = db_connection.cursor()
                 c.execute(create_table_sql)
-            except Error as e:
+            except sqlite3.Error as e:
                 print(f"Error creating table:\n{create_table_sql}")
                 print(e)
             finally:
@@ -91,7 +96,7 @@ class DBConnection:
                 for result in query_result:
                     query_result_dict_list.append(dict(result))
                 return query_result_dict_list
-            except Error as e:
+            except sqlite3.Error as e:
                 print(f"Error querying db:\n{query}")
                 print(e)
                 return []
@@ -99,13 +104,16 @@ class DBConnection:
                 if c:
                     c.close()
 
-    def get_data_from_db_first_result(self, query, params=()):
+    def get_data_from_db_first_result(self, query, params=()) -> dict:
         if query_result := self.get_data_from_db(query, params):
             return query_result[0]
         return {}
 
+    def get_row_item(self, query: str, params: tuple, item: str):
+        return self.get_data_from_db_first_result(query, params).get(item)
+
     def get_row_id(self, query: str, params: tuple):
-        return self.get_data_from_db_first_result(query, params).get("id")
+        return self.get_row_item(query, params, "id")
 
     def __set_version(self, version):
         return self.add_data_to_db(self.__sql_insert_version_info_table, (version,))

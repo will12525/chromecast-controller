@@ -3,7 +3,7 @@ import threading
 import time
 import os
 from enum import Enum, auto
-from database_handler.database_handler import DatabaseHandler
+from database_handler.database_handler import DatabaseHandler, ContentType
 
 import pychromecast
 
@@ -49,7 +49,7 @@ class MyMediaDevice:
     def play_episode_from_sql(self, media_id, playlist_id=None):
         db_handler = DatabaseHandler()
         if db_handler:
-            media_info = db_handler.get_media_metadata(media_id)
+            media_info = db_handler.get_media_content(ContentType.MEDIA.value, media_id)
             if playlist_id:
                 media_info["user_selected_playlist_id"] = playlist_id
             if media_info:
@@ -65,16 +65,16 @@ class MyMediaDevice:
 
     def play_next_episode(self):
         if db_handler := DatabaseHandler():
-            self.play_increment_episode(db_handler.get_next_media_metadata)
+            self.play_increment_episode(db_handler.get_next_in_playlist_media_metadata)
 
     def play_previous_episode(self):
         if db_handler := DatabaseHandler():
-            self.play_increment_episode(db_handler.get_previous_media_metadata)
+            self.play_increment_episode(db_handler.get_previous_in_playlist_media_metadata)
 
     def play_media_info(self, media_info=None):
         if media_info:
             media_url = f"{media_info.get('media_folder_url')}{media_info.get('path')}"
-            media_title = media_info.get('title')
+            media_title = media_info.get('media_title')
             if season_title := media_info.get('season_title'):
                 media_title = f"{season_title} {media_title}"
             if tv_show_title := media_info.get('tv_show_title'):
