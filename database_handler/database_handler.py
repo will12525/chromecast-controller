@@ -69,6 +69,20 @@ class ContentType(Enum):
             return self.TV
 
 
+media_content_query_data = {
+    ContentType.MEDIA: {"query_list": MEDIA_QUERY_LIST,
+                        "require_id": True},
+    ContentType.SEASON: {"query_list": TV_SHOW_SEASON_MEDIA_QUERY_LIST,
+                         "media_title_list_query": GET_TV_SHOW_SEASON_EPISODE_TITLES,
+                         "require_id": True},
+    ContentType.TV_SHOW: {"query_list": TV_SHOW_SEASON_QUERY_LIST,
+                          "media_title_list_query": GET_TV_SHOW_SEASON_TITLES,
+                          "require_id": True},
+    ContentType.TV: {"media_title_list_query": GET_TV_SHOW_TITLES},
+    ContentType.MOVIE: {"media_title_list_query": GET_MOVIE_TITLES}
+}
+
+
 class DatabaseHandler(DBConnection):
 
     def get_content_title_list(self, content_type, query, params=()) -> dict:
@@ -76,40 +90,38 @@ class DatabaseHandler(DBConnection):
                 "media_list": self.get_data_from_db(query, params)}
 
     def get_media_content(self, content_type_id, content_id=None) -> dict:
-        media_metadata = {}
         params = ()
+        media_metadata = {}
+        content_type = None
+        content_data = None
 
-        if content_type_id <= len(ContentType) and (content_type := ContentType(content_type_id)):
+        if content_type_id <= len(ContentType):
+            content_type = ContentType(content_type_id)
+
+        if content_type:
+            content_data = media_content_query_data.get(content_type)
+
+        if content_data:
+            if content_data.get("require_id"):
+                if content_id:
+                    params = (content_id,)
+                else:
+                    print(f"Requires ID for query: {content_type}")
+                    return {}
+
             if container_content_type := content_type.get_last():
                 media_metadata["container_content_type"] = container_content_type.value
+            for query in content_data.get("query_list", []):
+                media_metadata.update(self.get_data_from_db_first_result(query, params))
+            if media_title_list_query := content_data.get("media_title_list_query"):
+                media_metadata.update(
+                    self.get_content_title_list(content_type.get_next(), media_title_list_query, params))
+            return media_metadata
 
-            if content_type == ContentType.MEDIA and content_id:
-                params = (content_id,)
-                for query in MEDIA_QUERY_LIST:
-                    media_metadata.update(self.get_data_from_db_first_result(query, params))
-            elif content_type == ContentType.SEASON and content_id:
-                params = (content_id,)
-                for query in TV_SHOW_SEASON_MEDIA_QUERY_LIST:
-                    media_metadata.update(self.get_data_from_db_first_result(query, params))
-                media_metadata.update(
-                    self.get_content_title_list(content_type.get_next(), GET_TV_SHOW_SEASON_EPISODE_TITLES, params))
-            elif content_type == ContentType.TV_SHOW and content_id:
-                params = (content_id,)
-                for query in TV_SHOW_SEASON_QUERY_LIST:
-                    media_metadata.update(self.get_data_from_db_first_result(query, params))
-                media_metadata.update(
-                    self.get_content_title_list(content_type.get_next(), GET_TV_SHOW_SEASON_TITLES, params))
-            elif content_type == ContentType.TV:
-                media_metadata.update(self.get_content_title_list(content_type.get_next(), GET_TV_SHOW_TITLES, params))
-            elif content_type == ContentType.MOVIE:
-                media_metadata.update(self.get_content_title_list(content_type.get_next(), GET_MOVIE_TITLES, params))
-            else:
-                print(f"Unimplemented content type provided: {content_type}")
-                return {}
         else:
             print(f"Unknown content type requested: {content_type_id}")
 
-        return media_metadata
+        return {}
 
     def get_increment_episode_metadata(self, query_list, content_id, playlist_id) -> dict:
         result_content = ["list_index", "media_id"]
