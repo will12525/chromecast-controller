@@ -29,7 +29,7 @@ fi
 
 # Point to the main flask application
 echo "Setting flask app"
-export FLASK_APP=$WORKSPACE/webpage_builder.py
+export FLASK_APP=$WORKSPACE/flask_endpoints.py
 
 # Start the flask server
 echo "Starting flask app"

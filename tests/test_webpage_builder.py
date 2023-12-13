@@ -1,6 +1,6 @@
 import inspect
 from unittest import TestCase
-import webpage_builder
+import flask_endpoints
 from flask import Flask
 
 SAVE_FILES = False
@@ -45,18 +45,17 @@ class Test(TestWebpageBuilder):
         with self.app.app_context(), self.app.test_request_context():
             self.app.jinja_env.lstrip_blocks = True
             self.app.jinja_env.trim_blocks = True
-            assert webpage_builder.build_main_content({"content_type": webpage_builder.ContentType.TV_SHOW.value,
+            assert flask_endpoints.build_main_content({"content_type": flask_endpoints.ContentType.TV_SHOW.value,
                                                        "media_id": 1})
-            assert webpage_builder.build_main_content({"content_type": webpage_builder.ContentType.MOVIE.value})
-            assert webpage_builder.build_main_content({"content_type": webpage_builder.ContentType.TV.value})
+            assert flask_endpoints.build_main_content({"content_type": flask_endpoints.ContentType.MOVIE.value})
+            assert flask_endpoints.build_main_content({"content_type": flask_endpoints.ContentType.TV.value})
 
     def test_build_movie_menu_content(self):
         with self.app.app_context(), self.app.test_request_context():
             self.app.jinja_env.lstrip_blocks = True
             self.app.jinja_env.trim_blocks = True
             assert isinstance(
-                webpage_builder.build_main_content({"content_type": webpage_builder.ContentType.MOVIE.value},
-                                                   self.template), str)
+                flask_endpoints.build_main_content({"content_type": flask_endpoints.ContentType.MOVIE.value}), str)
 
     def test_build_MOVIE_content(self):
         html_as_string = load_file()
@@ -64,8 +63,8 @@ class Test(TestWebpageBuilder):
         with self.app.app_context(), self.app.test_request_context():
             self.app.jinja_env.lstrip_blocks = True
             self.app.jinja_env.trim_blocks = True
-            request_args = {"content_type": webpage_builder.ContentType.MOVIE.value}
-            main_content = webpage_builder.build_main_content(request_args)
+            request_args = {"content_type": flask_endpoints.ContentType.MOVIE.value}
+            main_content = flask_endpoints.build_main_content(request_args)
             assert main_content
             print_differences(main_content, html_as_string)
             if SAVE_FILES:
@@ -78,8 +77,8 @@ class Test(TestWebpageBuilder):
         with self.app.app_context(), self.app.test_request_context():
             self.app.jinja_env.lstrip_blocks = True
             self.app.jinja_env.trim_blocks = True
-            request_args = {"content_type": webpage_builder.ContentType.TV.value}
-            main_content = webpage_builder.build_main_content(request_args)
+            request_args = {"content_type": flask_endpoints.ContentType.TV.value}
+            main_content = flask_endpoints.build_main_content(request_args)
             assert main_content
             print_differences(main_content, html_as_string)
             if SAVE_FILES:
@@ -92,8 +91,8 @@ class Test(TestWebpageBuilder):
         with self.app.app_context(), self.app.test_request_context():
             self.app.jinja_env.lstrip_blocks = True
             self.app.jinja_env.trim_blocks = True
-            request_args = {'media_id': 1, "content_type": webpage_builder.ContentType.TV_SHOW.value}
-            main_content = webpage_builder.build_main_content(request_args)
+            request_args = {'media_id': 1, "content_type": flask_endpoints.ContentType.TV_SHOW.value}
+            main_content = flask_endpoints.build_main_content(request_args)
             assert main_content
             print_differences(main_content, html_as_string)
             if SAVE_FILES:
@@ -106,8 +105,8 @@ class Test(TestWebpageBuilder):
         with self.app.app_context(), self.app.test_request_context():
             self.app.jinja_env.lstrip_blocks = True
             self.app.jinja_env.trim_blocks = True
-            request_args = {'media_id': 1, "content_type": webpage_builder.ContentType.SEASON.value}
-            main_content = webpage_builder.build_main_content(request_args)
+            request_args = {'media_id': 1, "content_type": flask_endpoints.ContentType.SEASON.value}
+            main_content = flask_endpoints.build_main_content(request_args)
             assert main_content
             print_differences(main_content, html_as_string)
             if SAVE_FILES:

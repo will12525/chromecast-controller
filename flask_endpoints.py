@@ -15,7 +15,6 @@ from database_handler.create_database import DBCreator
 # TODO: Update media grid to dynamically update rather than page reload
 # TODO: Extract default values to json config file
 # TODO: Update chromecast menu auto populate to remove missing chromecasts
-# TODO: Extract HTML building functions and REST endpoints
 # TODO: Update all js function references to eventlisteneres on js side
 # TODO: Add notification when media scan completes
 # TODO: Convert chromecast name strings to id values and use ID values to refer to chromecasts
@@ -53,31 +52,28 @@ backend_handler = BackEndHandler()
 backend_handler.start()
 
 
-def build_main_content(request_args, template="index.html"):
+def build_main_content(request_args):
+    media_metadata = {}
+    content_id = None
+    content_type = ContentType.TV.value
+    content_id_str = request_args.get('media_id', None)
+    content_type_value = request_args.get("content_type", None)
+    if content_type_value:
+        try:
+            content_type = int(content_type_value)
+        except Exception as e:
+            print(e)
+            print("Content_type error")
+    if content_id_str:
+        try:
+            content_id = int(content_id_str)
+        except ValueError as e:
+            print(e)
+
     try:
-        content_id = None
-        content_type = ContentType.TV.value
-        content_id_str = request_args.get('media_id', None)
-        content_type_value = request_args.get("content_type", None)
-        if content_type_value:
-            try:
-                content_type = int(content_type_value)
-            except Exception as e:
-                print(e)
-                print("Content_type error")
-        if content_id_str:
-            try:
-                content_id = int(content_id_str)
-            except ValueError as e:
-                print(e)
-
-        media_metadata = {}
-        db_handler = DatabaseHandler()
-
-        if db_handler:
+        if db_handler := DatabaseHandler():
             media_metadata = db_handler.get_media_content(content_type, content_id)
-
-        return render_template(template, homepage_url="/", sha=backend_handler.get_startup_sha(),
+        return render_template("index.html", homepage_url="/", sha=backend_handler.get_startup_sha(),
                                button_dict=media_controller_button_dict, media_metadata=media_metadata)
     except Exception as e:
         print("Exception class: ", e.__class__)
@@ -88,11 +84,7 @@ def build_main_content(request_args, template="index.html"):
 
 @app.route(APIEndpoints.MAIN.value)
 def main_index():
-    try:
-        return build_main_content(request.args)
-    except Exception as e:
-        print(traceback.print_exc())
-        return str(traceback.print_exc())
+    return build_main_content(request.args)
 
 
 @app.route(APIEndpoints.GET_MEDIA_CONTENT_TYPES.value, methods=['GET'])
