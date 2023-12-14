@@ -4,11 +4,6 @@ from backend_handler import BackEndHandler
 
 
 class TestBackEndHandler(TestCase):
-    SERVER_URL_TV_SHOWS = "http://192.168.1.200:8000/tv_shows/"
-    MEDIA_FOLDER_PATH = "/media/hdd1/plex_media/tv_shows/"
-    MEDIA_METADATA_FILE = "tv_show_metadata.json"
-    # CHROMECAST_ID = "Family Room TV"
-
     CHROMECAST_ID = "Test Cast"
 
     def setUp(self):

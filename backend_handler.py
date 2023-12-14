@@ -1,16 +1,10 @@
 import git
 
-from database_handler.create_database import DBCreator, MediaType
+from database_handler.create_database import DBCreator
 from chromecast_handler import ChromecastHandler
 
 
 class BackEndHandler:
-    SERVER_URL = "http://192.168.1.200:8000/"
-    SERVER_URL_TV_SHOWS = SERVER_URL + "tv_shows/"
-    SERVER_URL_MOVIES = SERVER_URL + "movies/"
-    MEDIA_FOLDER_PATH = "/media/hdd1/plex_media/tv_shows"
-    MEDIA_FOLDER_PATH_MOVIES = "/media/hdd1/plex_media/movies"
-
     startup_sha = None
     chromecast_handler = None
 
@@ -19,15 +13,10 @@ class BackEndHandler:
         self.startup_sha = repo.head.object.hexsha
         print(self.startup_sha)
         self.chromecast_handler = ChromecastHandler()
-        # Build database if it doesn't exist
-        media_paths = [{"media_type": MediaType.TV_SHOW.value, "media_folder_path": self.MEDIA_FOLDER_PATH,
-                        "media_folder_url": self.SERVER_URL_TV_SHOWS},
-                       {"media_type": MediaType.MOVIE.value, "media_folder_path": self.MEDIA_FOLDER_PATH_MOVIES,
-                        "media_folder_url": self.SERVER_URL_MOVIES}
-                       ]
-        db_creator = DBCreator()
-        for media_path in media_paths:
-            db_creator.setup_media_directory(media_path)
+
+    def scan_media_folder(self, media_folder_info):
+        if db_creator := DBCreator():
+            db_creator.setup_media_directory(media_folder_info)
 
     def get_startup_sha(self):
         return self.startup_sha

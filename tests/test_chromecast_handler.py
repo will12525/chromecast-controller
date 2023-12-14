@@ -4,11 +4,6 @@ from chromecast_handler import ChromecastHandler
 
 
 class TestChromecastHandler(TestCase):
-    SERVER_URL_TV_SHOWS = "http://192.168.1.200:8000/tv_shows/"
-    MEDIA_FOLDER_PATH = "/media/hdd1/plex_media/tv_shows/"
-    MEDIA_METADATA_FILE = "tv_show_metadata.json"
-    # CHROMECAST_ID = "Family Room TV"
-
     CHROMECAST_ID = "Test Cast"
 
     def setUp(self):
@@ -99,10 +94,7 @@ class TestChromecastConnection(TestChromecastHandler):
 
 
 class TestMyMediaDevice(TestCase):
-    CHROMECAST_ID = "Master Bedroom TV"
-    SERVER_URL_TV_SHOWS = "http://192.168.1.200:8000/tv_shows/"
-    MEDIA_FOLDER_PATH = "/media/hdd1/plex_media/tv_shows/"
-    MEDIA_METADATA_FILE = "tv_show_metadata.json"
+    CHROMECAST_ID = "Test Cast"
 
     chromecast_handler = None
     media_controller = None

@@ -2,6 +2,7 @@ from enum import Enum
 import traceback
 from flask import Flask, request, render_template
 
+import config_file_handler
 # jsonify, redirect, current_app, render_template
 from backend_handler import BackEndHandler
 from chromecast_handler import CommandList
@@ -50,6 +51,10 @@ media_controller_button_dict = {
 
 backend_handler = BackEndHandler()
 backend_handler.start()
+
+media_paths = config_file_handler.load_js_file()
+for media_path in media_paths:
+    backend_handler.scan_media_folder(media_path)
 
 
 def build_main_content(request_args):

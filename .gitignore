@@ -1,15 +1,18 @@
 __pycache__/
 .venv/
 config.cfg
+*.log
 
 # PyCharm
 .idea/
 venv/
 
 # Test
-media_folder_sample/
-media_folder_movie/
+#media_folder_sample/
+#media_folder_movie/
+media_folder*/
+tests/static/
 
 # media database
-media_metadata.db
+*.db
 config.json
