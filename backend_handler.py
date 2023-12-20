@@ -1,6 +1,5 @@
 import git
 
-from database_handler.create_database import DBCreator
 from chromecast_handler import ChromecastHandler
 
 
@@ -13,10 +12,6 @@ class BackEndHandler:
         self.startup_sha = repo.head.object.hexsha
         print(self.startup_sha)
         self.chromecast_handler = ChromecastHandler()
-
-    def scan_media_folder(self, media_folder_info):
-        if db_creator := DBCreator():
-            db_creator.setup_media_directory(media_folder_info)
 
     def get_startup_sha(self):
         return self.startup_sha

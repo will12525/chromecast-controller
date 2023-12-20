@@ -52,9 +52,10 @@ media_controller_button_dict = {
 backend_handler = BackEndHandler()
 backend_handler.start()
 
-media_paths = config_file_handler.load_js_file()
-for media_path in media_paths:
-    backend_handler.scan_media_folder(media_path)
+if db_creator := DBCreator():
+    media_paths = config_file_handler.load_js_file()
+    for media_folder_info in media_paths:
+        db_creator.setup_media_directory(media_folder_info)
 
 
 def build_main_content(request_args):

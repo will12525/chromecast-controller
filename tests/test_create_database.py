@@ -18,71 +18,44 @@ class TestDBCreatorInit(TestCase):
 
 class TestDBCreator(TestDBCreatorInit):
     def test_scan_new_content(self):
-        expected_output = [{'mp4_input_file_path': '../media_folder_modify/input/Animal Party/S1/E1.mp4',
-                            'mp4_output_file_path': '../media_folder_modify/output/Animal Party/Season 1/Animal Party - s01e001.mp4',
-                            'mp4_media_title': 'turtle'},
-                           {'mp4_input_file_path': '../media_folder_modify/input/Animal Party/S1/E2.mp4',
-                            'mp4_output_file_path': '../media_folder_modify/output/Animal Party/Season 1/Animal Party - s01e002.mp4',
-                            'mp4_media_title': 'dinosaur'},
-                           {'mp4_input_file_path': '../media_folder_modify/input/Animal Party/S12/E1.mp4',
-                            'mp4_output_file_path': '../media_folder_modify/output/Animal Party/Season 12/Animal Party - s012e001.mp4',
-                            'mp4_media_title': 'cat'},
-                           {'mp4_input_file_path': '../media_folder_modify/input/Animal Party/S12/E2.mp4',
-                            'mp4_output_file_path': '../media_folder_modify/output/Animal Party/Season 12/Animal Party - s012e002.mp4',
-                            'mp4_media_title': 'mouse'},
-                           {'mp4_input_file_path': '../media_folder_modify/input/Animal Party/S12/E3.mp4',
-                            'mp4_output_file_path': '../media_folder_modify/output/Animal Party/Season 12/Animal Party - s012e003.mp4',
-                            'mp4_media_title': 'dog'},
-                           {'mp4_input_file_path': '../media_folder_modify/input/Vampire/S1/E1.mp4',
-                            'mp4_output_file_path': '../media_folder_modify/output/Vampire/Season 1/Vampire - s01e001.mp4',
-                            'mp4_media_title': 'sparkle'},
-                           {'mp4_input_file_path': '../media_folder_modify/input/Vampire/S1/E2.mp4',
-                            'mp4_output_file_path': '../media_folder_modify/output/Vampire/Season 1/Vampire - s01e002.mp4',
-                            'mp4_media_title': 'mysterious'},
-                           {'mp4_input_file_path': '../media_folder_modify/input/Vampire/S2/E1.mp4',
-                            'mp4_output_file_path': '../media_folder_modify/output/Vampire/Season 2/Vampire - s02e001.mp4',
-                            'mp4_media_title': 'dance'},
-                           {'mp4_input_file_path': '../media_folder_modify/input/Vampire/S2/E2.mp4',
-                            'mp4_output_file_path': '../media_folder_modify/output/Vampire/Season 2/Vampire - s02e002.mp4',
-                            'mp4_media_title': 'candles'},
-                           {'mp4_input_file_path': '../media_folder_modify/input/Vampire/S2/E3.mp4',
-                            'mp4_output_file_path': '../media_folder_modify/output/Vampire/Season 2/Vampire - s02e003.mp4',
-                            'mp4_media_title': 'romance'}]
-        expected_output = [{'mp4_media_title': 'turtle',
-                            'mp4_output_file_name': '../media_folder_modify/output/Animal Party/Season 1/Animal Party - s1e1.mp4',
-                            'mp4_input_file_name': '../media_folder_modify/input/Animal Party/S1/E1.mp4'},
-                           {'mp4_media_title': 'dinosaur',
-                            'mp4_output_file_name': '../media_folder_modify/output/Animal Party/Season 1/Animal Party - s1e2.mp4',
-                            'mp4_input_file_name': '../media_folder_modify/input/Animal Party/S1/E2.mp4'},
-                           {'mp4_media_title': 'cat',
-                            'mp4_output_file_name': '../media_folder_modify/output/Animal Party/Season 12/Animal Party - s12e1.mp4',
-                            'mp4_input_file_name': '../media_folder_modify/input/Animal Party/S12/E1.mp4'},
-                           {'mp4_media_title': 'mouse',
-                            'mp4_output_file_name': '../media_folder_modify/output/Animal Party/Season 12/Animal Party - s12e2.mp4',
-                            'mp4_input_file_name': '../media_folder_modify/input/Animal Party/S12/E2.mp4'},
-                           {'mp4_media_title': 'dog',
-                            'mp4_output_file_name': '../media_folder_modify/output/Animal Party/Season 12/Animal Party - s12e3.mp4',
-                            'mp4_input_file_name': '../media_folder_modify/input/Animal Party/S12/E3.mp4'},
-                           {'mp4_media_title': 'sparkle',
-                            'mp4_output_file_name': '../media_folder_modify/output/Vampire/Season 1/Vampire - s1e1.mp4',
-                            'mp4_input_file_name': '../media_folder_modify/input/Vampire/S1/E1.mp4'},
-                           {'mp4_media_title': 'mysterious',
-                            'mp4_output_file_name': '../media_folder_modify/output/Vampire/Season 1/Vampire - s1e2.mp4',
-                            'mp4_input_file_name': '../media_folder_modify/input/Vampire/S1/E2.mp4'},
-                           {'mp4_media_title': 'dance',
-                            'mp4_output_file_name': '../media_folder_modify/output/Vampire/Season 2/Vampire - s2e1.mp4',
-                            'mp4_input_file_name': '../media_folder_modify/input/Vampire/S2/E1.mp4'},
-                           {'mp4_media_title': 'candles',
-                            'mp4_output_file_name': '../media_folder_modify/output/Vampire/Season 2/Vampire - s2e2.mp4',
-                            'mp4_input_file_name': '../media_folder_modify/input/Vampire/S2/E2.mp4'},
-                           {'mp4_media_title': 'romance',
-                            'mp4_output_file_name': '../media_folder_modify/output/Vampire/Season 2/Vampire - s2e3.mp4',
-                            'mp4_input_file_name': '../media_folder_modify/input/Vampire/S2/E3.mp4'}]
+        expected_output = [{'media_folder_mp4': '..\\media_folder_modify\\input\\Animal Party\\S1\\E1.mp4',
+                            'mp4_output_file_name': '..\\media_folder_modify\\output\\Animal Party\\Season 1\\Animal Party - s1e1.mp4',
+                            'media_title': 'sparkle'},
+                           {'media_folder_mp4': '..\\media_folder_modify\\input\\Animal Party\\S1\\E2.mp4',
+                            'mp4_output_file_name': '..\\media_folder_modify\\output\\Animal Party\\Season 1\\Animal Party - s1e2.mp4',
+                            'media_title': 'mysterious'},
+                           {'media_folder_mp4': '..\\media_folder_modify\\input\\Animal Party\\S12\\E1.mp4',
+                            'mp4_output_file_name': '..\\media_folder_modify\\output\\Animal Party\\Season 12\\Animal Party - s12e1.mp4',
+                            'media_title': 'sparkle'},
+                           {'media_folder_mp4': '..\\media_folder_modify\\input\\Animal Party\\S12\\E2.mp4',
+                            'mp4_output_file_name': '..\\media_folder_modify\\output\\Animal Party\\Season 12\\Animal Party - s12e2.mp4',
+                            'media_title': 'mysterious'},
+                           {'media_folder_mp4': '..\\media_folder_modify\\input\\Animal Party\\S12\\E3.mp4',
+                            'mp4_output_file_name': '..\\media_folder_modify\\output\\Animal Party\\Season 12\\Animal Party - s12e3.mp4',
+                            'media_title': 'dark'},
+                           {'media_folder_mp4': '..\\media_folder_modify\\input\\Sparkles\\S1\\E1.mp4',
+                            'mp4_output_file_name': '..\\media_folder_modify\\output\\Sparkles\\Season 1\\Sparkles - s1e1.mp4',
+                            'media_title': 'sparkle'},
+                           {'media_folder_mp4': '..\\media_folder_modify\\input\\Sparkles\\S1\\E2.mp4',
+                            'mp4_output_file_name': '..\\media_folder_modify\\output\\Sparkles\\Season 1\\Sparkles - s1e2.mp4',
+                            'media_title': 'mysterious'},
+                           {'media_folder_mp4': '..\\media_folder_modify\\input\\Sparkles\\S2\\E1.mp4',
+                            'mp4_output_file_name': '..\\media_folder_modify\\output\\Sparkles\\Season 2\\Sparkles - s2e1.mp4',
+                            'media_title': 'sparkle'},
+                           {'media_folder_mp4': '..\\media_folder_modify\\input\\Sparkles\\S2\\E2.mp4',
+                            'mp4_output_file_name': '..\\media_folder_modify\\output\\Sparkles\\Season 2\\Sparkles - s2e2.mp4',
+                            'media_title': 'mysterious'},
+                           {'media_folder_mp4': '..\\media_folder_modify\\input\\Sparkles\\S2\\E3.mp4',
+                            'mp4_output_file_name': '..\\media_folder_modify\\output\\Sparkles\\Season 2\\Sparkles - s2e3.mp4',
+                            'media_title': 'dark'}]
 
         db_creator = DBCreator()
         scan_output = db_creator.check_new_content(self.media_paths[2])
         print(scan_output)
+        # print(json.dumps(scan_output, indent=4))
+        # print(len(expected_output), len(scan_output))
         assert len(expected_output) == len(scan_output)
+        assert expected_output == scan_output
         # for i in range(len(expected_output)):
         #     print(scan_output[i])
         #     print(expected_output[i])
@@ -103,6 +76,21 @@ class TestDBCreator(TestDBCreatorInit):
     def test_setup_media_directory(self):
         db_creator = DBCreator()
         set_media_info = self.media_paths[0]
+        media_directory_id = db_creator.setup_media_directory(set_media_info)
+        media_directory_info_list = self.db_handler.get_media_folder_path(media_directory_id)
+        print(media_directory_info_list)
+        assert isinstance(media_directory_info_list, list)
+        media_directory_info = media_directory_info_list[0]
+        assert media_directory_id == media_directory_info.get("id")
+        assert set_media_info.get("media_type") == media_directory_info.get("media_type")
+        assert set_media_info.get("media_folder_path") == media_directory_info.get("media_folder_path")
+        assert set_media_info.get("media_folder_url") == media_directory_info.get("media_folder_url")
+        media_directory_id = db_creator.setup_media_directory(self.media_paths[1])
+        assert media_directory_id == 2
+
+    def test_setup_new_tv_show_media_directory(self):
+        db_creator = DBCreator()
+        set_media_info = self.media_paths[2]
         media_directory_id = db_creator.setup_media_directory(set_media_info)
         media_directory_info_list = self.db_handler.get_media_folder_path(media_directory_id)
         print(media_directory_info_list)

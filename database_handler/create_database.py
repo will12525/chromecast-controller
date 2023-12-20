@@ -1,6 +1,6 @@
 from . import DBConnection, MediaType
 from .database_handler import GET_ALL_MEDIA_DIRECTORIES
-from .media_metadata_collector import collect_tv_shows, collect_movies, scan_new_media
+from .media_metadata_collector import collect_tv_shows, collect_movies, collect_new_tv_shows
 
 # playlist_info and media_info are the sources
 
@@ -87,7 +87,7 @@ class DBCreator(DBConnection):
         super().__init__(db_table_creation_list)
 
     def check_new_content(self, new_tv_folder):
-        return scan_new_media(new_tv_folder)
+        return collect_new_tv_shows(new_tv_folder)
 
     def add_tv_show_data(self, media_directory_info, tv_show_list):
         tv_show_ids = {}
@@ -101,27 +101,29 @@ class DBCreator(DBConnection):
                     (playlist_id, tv_show_id) = self.add_tv_show(tv_show_tile)
 
                 season_id = self.add_season(tv_show_id, tv_show.get("season_index"))
-                media_id = self.add_media(media_directory_info.get("id"),
-                                          f"Episode {(tv_show.get('episode_index'))}",
+                media_id = self.add_media(media_directory_info.get("id"), tv_show.get("media_title",
+                                                                                      f"Episode {(tv_show.get('episode_index'))}"),
                                           tv_show.get("mp4_file_url"), season_id, tv_show_id)
                 list_index = (1000 * tv_show.get("season_index")) + tv_show.get("episode_index")
                 self.add_media_to_playlist(playlist_id, media_id, list_index)
 
+    def scan_tv_folder(self, media_directory_info):
+        self.add_tv_show_data(media_directory_info, collect_tv_shows(media_directory_info))
+
+    def scan_movie_folder(self, media_directory_info):
+        for movie in collect_movies(media_directory_info):
+            self.add_media(media_directory_info.get("id"), movie.get("mp4_show_title"), movie.get("mp4_file_url"))
+
     def scan_media_directory(self, media_directory_info):
         if media_directory_info.get("media_type") == MediaType.TV_SHOW.value:
-            tv_show_list = collect_tv_shows(media_directory_info)
-            self.add_tv_show_data(media_directory_info, tv_show_list)
-            # if "new_media_folder_path" in media_directory_info:
-            #     tv_show_list = scan_new_media(media_directory_info)
-            #     self.add_tv_show_data(media_directory_info, tv_show_list)
+            self.scan_tv_folder(media_directory_info)
         elif media_directory_info.get("media_type") == MediaType.MOVIE.value:
-            movie_list = collect_movies(media_directory_info)
-            for movie in movie_list:
-                self.add_media(media_directory_info.get("id"), movie.get("mp4_show_title"), movie.get("mp4_file_url"))
+            self.scan_movie_folder(media_directory_info)
+        else:
+            print(f"ERROR: Unknown MediaType provided: {media_directory_info.get('media_type')}")
 
     def scan_all_media_directories(self):
-        media_directories = self.get_data_from_db(GET_ALL_MEDIA_DIRECTORIES)
-        for media_directory_info in media_directories:
+        for media_directory_info in self.get_data_from_db(GET_ALL_MEDIA_DIRECTORIES):
             self.scan_media_directory(media_directory_info)
 
     def add_media_directory(self, media_directory_info):
@@ -130,8 +132,7 @@ class DBCreator(DBConnection):
             media_directory_info.get("new_media_folder_path"), media_directory_info.get("media_folder_url"),))
 
     def setup_media_directory(self, media_directory_info):
-        media_directory_id = self.add_media_directory(media_directory_info)
-        if media_directory_id:
+        if media_directory_id := self.add_media_directory(media_directory_info):
             media_directory_info["id"] = media_directory_id
             self.scan_media_directory(media_directory_info)
         return media_directory_id
