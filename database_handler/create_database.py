@@ -101,8 +101,7 @@ class DBCreator(DBConnection):
                     (playlist_id, tv_show_id) = self.add_tv_show(tv_show_tile)
 
                 season_id = self.add_season(tv_show_id, tv_show.get("season_index"))
-                media_id = self.add_media(media_directory_info.get("id"), tv_show.get("media_title",
-                                                                                      f"Episode {(tv_show.get('episode_index'))}"),
+                media_id = self.add_media(media_directory_info.get("id"), tv_show.get("media_title"),
                                           tv_show.get("mp4_file_url"), season_id, tv_show_id)
                 list_index = (1000 * tv_show.get("season_index")) + tv_show.get("episode_index")
                 self.add_media_to_playlist(playlist_id, media_id, list_index)

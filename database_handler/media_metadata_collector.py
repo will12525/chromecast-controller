@@ -104,8 +104,6 @@ def collect_tv_shows(media_directory_info):
     media_folder_path = pathlib.Path(media_directory_info.get("media_folder_path"))
     media_folder_titles = get_title_txt_files(media_folder_path)
     for media_folder_mp4 in list(media_folder_path.rglob(mp4_file_ext)):
-        media_title = None
-        mp4_show_title, season_name = extract_names_from_path(media_folder_mp4)
 
         # self.add_tv_show_data(media_directory_info, tv_show_list)
         # ffmpeg_probe_result = ffmpeg.probe(str(media_folder_mp4))
@@ -118,12 +116,13 @@ def collect_tv_shows(media_directory_info):
             mp4_index_content = mp4_file_name[mp4_index_content_index + len(mp4_index_content_index_search_string):]
             mp4_episode_start_index = mp4_index_content.index(tv_show_media_episode_index_identifier)
 
+            mp4_show_title = mp4_file_name[:mp4_index_content_index]
             episode_index = int(mp4_index_content[mp4_episode_start_index + 1:])
+            media_title = f"Episode {episode_index}"
             if (media_folder_txt_file_parent := str(media_folder_mp4.parent)) in media_folder_titles:
                 if len(media_folder_titles[media_folder_txt_file_parent]) >= episode_index:
                     media_title = media_folder_titles[media_folder_txt_file_parent][episode_index - 1]
-            if not media_title:
-                media_title = mp4_file_name[:mp4_index_content_index]
+
             media_directory_content.append({"mp4_show_title": mp4_show_title,
                                             "season_index": int(mp4_index_content[:mp4_episode_start_index]),
                                             "episode_index": episode_index,
