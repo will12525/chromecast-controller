@@ -14,6 +14,7 @@ class TestDatabaseHandler(TestCase):
     media_paths = None
 
     def setUp(self) -> None:
+        # IMPORTANT: Delete DB once before running
         # time.sleep(2)
         # if os.path.exists(self.DB_PATH):
         #     os.remove(self.DB_PATH)
@@ -52,7 +53,7 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
         assert url.get("tv_show_id") == 1
         assert url.get("season_id") == 1
         assert url.get("media_folder_path_id") == 1
-        assert url.get("media_title") == "Episode 2"
+        assert url.get("media_title") == "mysterious"
         assert ".mp4" in url.get("path")
         assert url.get("media_type") == 1
         assert url.get("media_folder_path") == self.media_paths[0].get("media_folder_path")
@@ -69,7 +70,7 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
         assert url.get("tv_show_id") == 1
         assert url.get("season_id") == 2
         assert url.get("media_folder_path_id") == 1
-        assert url.get("media_title") == "Episode 3"
+        assert url.get("media_title") == "dark"
         assert ".mp4" in url.get("path")
         assert url.get("media_type") == 1
         assert url.get("media_folder_path") == self.media_paths[0].get("media_folder_path")
@@ -85,7 +86,7 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
         assert url.get("tv_show_id") == 1
         assert url.get("season_id") == 1
         assert url.get("media_folder_path_id") == 1
-        assert url.get("media_title") == "Episode 2"
+        assert url.get("media_title") == "mysterious"
         assert ".mp4" in url.get("path")
         assert url.get("media_type") == 1
         assert url.get("media_folder_path") == self.media_paths[0].get("media_folder_path")
@@ -102,7 +103,7 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
         assert url.get("tv_show_id") == 1
         assert url.get("season_id") == 1
         assert url.get("media_folder_path_id") == 1
-        assert url.get("media_title") == "Episode 1"
+        assert url.get("media_title") == "sparkle"
         assert ".mp4" in url.get("path")
         assert url.get("media_type") == 1
         assert url.get("media_folder_path") == self.media_paths[0].get("media_folder_path")
@@ -336,7 +337,7 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
         assert url.get("tv_show_id") == 1
         assert url.get("season_id") == 1
         assert url.get("media_folder_path_id") == 1
-        assert url.get("media_title") == "Episode 1"
+        assert url.get("media_title") == "sparkle"
         assert ".mp4" in url.get("path")
         assert url.get("media_type") == 1
         assert url.get("media_folder_path") == self.media_paths[0].get("media_folder_path")

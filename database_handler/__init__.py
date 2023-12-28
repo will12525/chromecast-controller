@@ -9,14 +9,15 @@ class MediaType(Enum):
 
 class DBConnection:
     VERSION = 1
-    MEDIA_METADATA_DB_NAME = r"media_metadata.db"
+    MEDIA_METADATA_DB_NAME = 'media_metadata.db'
     __db_connection = None
-    __sql_create_version_info_table = """CREATE TABLE IF NOT EXISTS version_info (
+    __sql_create_version_info_table = '''CREATE TABLE IF NOT EXISTS version_info (
                                          id integer PRIMARY KEY,
                                          version integer NOT NULL
-                                         );"""
+                                      );'''
 
-    __sql_insert_version_info_table = ''' INSERT INTO version_info(version) VALUES(?) '''
+    __sql_insert_version_info_table = 'INSERT INTO version_info(version) VALUES(?)'
+    __version_info_query = 'SELECT * FROM version_info;'
 
     def __init__(self, table_list=None):
         self.__validate_db(table_list)
@@ -48,7 +49,8 @@ class DBConnection:
         if db_connection := self.__connect_db():
             try:
                 c = db_connection.cursor()
-                c.execute(create_table_sql)
+                if sqlite3.complete_statement(create_table_sql):
+                    c.execute(create_table_sql)
             except sqlite3.Error as e:
                 print(f"Error creating table:\n{create_table_sql}")
                 print(e)
@@ -119,9 +121,7 @@ class DBConnection:
         return self.add_data_to_db(self.__sql_insert_version_info_table, (version,))
 
     def __validate_db(self, table_list=None):
-        query = "SELECT * FROM version_info"
-        version_info = self.get_data_from_db(query)
-        if not version_info:
+        if not self.get_data_from_db(self.__version_info_query):
             self.__create_table(self.__sql_create_version_info_table)
             self.__set_version(self.VERSION)
         if table_list:

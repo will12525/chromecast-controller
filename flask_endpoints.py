@@ -13,11 +13,12 @@ from database_handler.create_database import DBCreator
 # TODO: Add to DB: Add media title from ffmpeg extraction
 # TODO: Add to DB: Track if media was previously watched
 # TODO: Update DB: Remove media that no longer exists
+# TODO: Update DB: Use md5sum to track files
 # TODO: Update media grid to dynamically update rather than page reload
-# TODO: Extract default values to json config file
-# TODO: Update chromecast menu auto populate to remove missing chromecasts
+# TODO: Extract default values to json config file <- in progress
 # TODO: Update all js function references to eventlisteneres on js side
 # TODO: Add notification when media scan completes
+# TODO: Update chromecast menu auto populate to remove missing chromecasts
 # TODO: Convert chromecast name strings to id values and use ID values to refer to chromecasts
 
 class APIEndpoints(Enum):
@@ -53,8 +54,7 @@ backend_handler = BackEndHandler()
 backend_handler.start()
 
 if db_creator := DBCreator():
-    media_paths = config_file_handler.load_js_file()
-    for media_folder_info in media_paths:
+    for media_folder_info in config_file_handler.load_js_file():
         db_creator.setup_media_directory(media_folder_info)
 
 
