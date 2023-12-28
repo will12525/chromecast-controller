@@ -2,7 +2,7 @@ import pathlib
 import ffmpeg
 import shutil
 
-DELETE = False
+DELETE = True
 
 tv_show_media_episode_index_identifier = 'e'
 mp4_index_content_index_search_string = ' - s'
