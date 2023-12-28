@@ -67,10 +67,6 @@ sql_create_media_folder_path_table = '''CREATE TABLE IF NOT EXISTS media_folder_
 
 sql_insert_media_folder_path_table = 'INSERT INTO media_folder_path(media_type, media_folder_path, new_media_folder_path, media_folder_url) VALUES(?, ?, ?, ?);'
 
-db_table_creation_list = [sql_create_tv_show_info_table, sql_create_season_info_table, sql_create_media_info_table,
-                          sql_create_playlist_info_table, sql_create_playlist_media_list_table,
-                          sql_create_media_folder_path_table]
-
 # Get row ID's from various contents
 GET_ID = 'SELECT id FROM '
 GET_PLAYLIST_ID_FROM_TITLE = f'{GET_ID} playlist_info WHERE playlist_title=?;'
@@ -83,12 +79,19 @@ GET_MEDIA_ID_FROM_PATH = f'{GET_ID} media_info WHERE path=?;'
 
 class DBCreator(DBConnection):
 
-    def __init__(self):
-        super().__init__(db_table_creation_list)
+    def setup_db(self):
+        if self.VERSION != self.check_db_version():
+            # Run db update procedure
+            pass
+        db_table_creation_script = ''.join(['BEGIN;', sql_create_tv_show_info_table, sql_create_season_info_table,
+                                            sql_create_media_info_table, sql_create_playlist_info_table,
+                                            sql_create_playlist_media_list_table, sql_create_media_folder_path_table,
+                                            'COMMIT;'])
+        self.create_tables(db_table_creation_script)
 
-    def add_tv_show_data(self, media_directory_info, tv_show_list):
+    def add_tv_show_data(self, media_directory_info):
         tv_show_ids = {}
-        for tv_show in tv_show_list:
+        for tv_show in collect_tv_shows(media_directory_info):
             if tv_show_tile := tv_show.get('mp4_show_title'):
                 if self.get_row_id(GET_MEDIA_ID_FROM_PATH, (tv_show.get('mp4_file_url'),)):
                     continue
@@ -103,18 +106,15 @@ class DBCreator(DBConnection):
                 list_index = (1000 * tv_show.get('season_index')) + tv_show.get('episode_index')
                 self.add_media_to_playlist(playlist_id, media_id, list_index)
 
-    def scan_tv_folder(self, media_directory_info):
-        self.add_tv_show_data(media_directory_info, collect_tv_shows(media_directory_info))
-
-    def scan_movie_folder(self, media_directory_info):
+    def add_movie_data(self, media_directory_info):
         for movie in collect_movies(media_directory_info):
             self.add_media(media_directory_info.get('id'), movie.get('mp4_show_title'), movie.get('mp4_file_url'))
 
     def scan_media_directory(self, media_directory_info):
         if media_directory_info.get('media_type') == MediaType.TV_SHOW.value:
-            self.scan_tv_folder(media_directory_info)
+            self.add_tv_show_data(media_directory_info)
         elif media_directory_info.get('media_type') == MediaType.MOVIE.value:
-            self.scan_movie_folder(media_directory_info)
+            self.add_movie_data(media_directory_info)
         else:
             print(f"ERROR: Unknown MediaType provided: {media_directory_info.get('media_type')}")
 

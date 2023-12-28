@@ -47,13 +47,12 @@ class MyMediaDevice:
         self.media_controller = None
 
     def play_episode_from_sql(self, media_id, playlist_id=None):
-        db_handler = DatabaseHandler()
-        if db_handler:
-            media_info = db_handler.get_media_content(ContentType.MEDIA.value, media_id)
+        with DatabaseHandler() as db_connection:
+            media_info = db_connection.get_media_content(ContentType.MEDIA.value, media_id)
             if playlist_id:
                 media_info["user_selected_playlist_id"] = playlist_id
-            if media_info:
-                self.play_media_info(media_info)
+        if media_info:
+            self.play_media_info(media_info)
 
     def play_increment_episode(self, db_function):
         if self.status:
@@ -64,12 +63,12 @@ class MyMediaDevice:
                         self.play_media_info(media_info)
 
     def play_next_episode(self):
-        if db_handler := DatabaseHandler():
-            self.play_increment_episode(db_handler.get_next_in_playlist_media_metadata)
+        with DatabaseHandler() as db_connection:
+            self.play_increment_episode(db_connection.get_next_in_playlist_media_metadata)
 
     def play_previous_episode(self):
-        if db_handler := DatabaseHandler():
-            self.play_increment_episode(db_handler.get_previous_in_playlist_media_metadata)
+        with DatabaseHandler() as db_connection:
+            self.play_increment_episode(db_connection.get_previous_in_playlist_media_metadata)
 
     def play_media_info(self, media_info=None):
         if media_info:

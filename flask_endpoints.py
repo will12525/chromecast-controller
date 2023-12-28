@@ -53,9 +53,10 @@ media_controller_button_dict = {
 backend_handler = BackEndHandler()
 backend_handler.start()
 
-if db_creator := DBCreator():
+with DBCreator() as db_initial_connection:
+    db_initial_connection.setup_db()
     for media_folder_info in config_file_handler.load_js_file():
-        db_creator.setup_media_directory(media_folder_info)
+        db_initial_connection.setup_media_directory(media_folder_info)
 
 
 def build_main_content(request_args):
@@ -77,8 +78,8 @@ def build_main_content(request_args):
             print(e)
 
     try:
-        if db_handler := DatabaseHandler():
-            media_metadata = db_handler.get_media_content(content_type, content_id)
+        with DatabaseHandler() as db_connection:
+            media_metadata = db_connection.get_media_content(content_type, content_id)
         return render_template("index.html", homepage_url="/", sha=backend_handler.get_startup_sha(),
                                button_dict=media_controller_button_dict, media_metadata=media_metadata)
     except Exception as e:
@@ -170,17 +171,15 @@ def play_media():
 @app.route(APIEndpoints.SCAN_MEDIA_DIRECTORIES.value, methods=['POST'])
 def scan_media_directories():
     data = {}
-    db_creator = DBCreator()
-    if db_creator:
-        db_creator.scan_all_media_directories()
+    with DBCreator() as db_connection:
+        db_connection.scan_all_media_directories()
     return data, 200
 
 
 @app.route(APIEndpoints.GET_MEDIA_MENU_DATA.value, methods=['POST'])
 def get_media_menu_data():
     data = {}
-    db_creator = DBCreator()
-    if db_creator:
+    with DBCreator() as db_connection:
         pass
     return data, 200
 
