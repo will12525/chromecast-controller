@@ -1,6 +1,16 @@
+import threading
 import git
 
+import config_file_handler
 from chromecast_handler import ChromecastHandler
+from database_handler.create_database import DBCreator
+
+
+def setup_db():
+    with DBCreator() as db_connection:
+        db_connection.create_db()
+        for media_folder_info in config_file_handler.load_js_file():
+            db_connection.setup_media_directory(media_folder_info)
 
 
 class BackEndHandler:
@@ -17,7 +27,10 @@ class BackEndHandler:
         return self.startup_sha
 
     def start(self):
+        setup_db_thread = threading.Thread(target=setup_db, args=(), daemon=True)
+        setup_db_thread.start()
         self.chromecast_handler.start()
+        return setup_db_thread
 
     def get_chromecast_scan_list(self):
         return self.chromecast_handler.get_scan_list()

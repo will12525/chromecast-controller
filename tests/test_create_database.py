@@ -14,7 +14,7 @@ class TestDBCreatorInit(TestCase):
             os.remove(self.DB_PATH)
         self.media_paths = config_file_handler.load_js_file()
         with DBCreator() as db_connection:
-            db_connection.setup_db()
+            db_connection.create_db()
 
 
 class TestDBCreator(TestDBCreatorInit):

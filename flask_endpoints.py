@@ -2,7 +2,6 @@ from enum import Enum
 import traceback
 from flask import Flask, request, render_template
 
-import config_file_handler
 # jsonify, redirect, current_app, render_template
 from backend_handler import BackEndHandler
 from chromecast_handler import CommandList
@@ -51,12 +50,7 @@ media_controller_button_dict = {
 }
 
 backend_handler = BackEndHandler()
-backend_handler.start()
-
-with DBCreator() as db_initial_connection:
-    db_initial_connection.setup_db()
-    for media_folder_info in config_file_handler.load_js_file():
-        db_initial_connection.setup_media_directory(media_folder_info)
+setup_thread = backend_handler.start()
 
 
 def build_main_content(request_args):
@@ -80,7 +74,7 @@ def build_main_content(request_args):
     try:
         with DatabaseHandler() as db_connection:
             media_metadata = db_connection.get_media_content(content_type, content_id)
-        return render_template("index.html", homepage_url="/", sha=backend_handler.get_startup_sha(),
+        return render_template("index.html", homepage_url="/",
                                button_dict=media_controller_button_dict, media_metadata=media_metadata)
     except Exception as e:
         print("Exception class: ", e.__class__)

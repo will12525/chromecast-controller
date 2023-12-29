@@ -1,3 +1,4 @@
+import json
 import os
 import pathlib
 from unittest import TestCase
@@ -15,88 +16,50 @@ class TestMediaMetadataCollectorSetup(TestCase):
         if os.path.exists(self.DB_PATH):
             os.remove(self.DB_PATH)
         self.media_paths = config_file_handler.load_js_file()
-        self.new_media_path = self.media_paths[2]
 
 
 class TestDBCreator(TestMediaMetadataCollectorSetup):
 
-    def test_collect_new_tv_shows(self):
-        expected_output = [{'media_folder_mp4': '..\\media_folder_modify\\input\\Animal Party\\S1\\E1.mp4',
-                            'mp4_output_file_name': '..\\media_folder_modify\\output\\Animal Party\\Season 1\\Animal Party - s1e1.mp4',
-                            'media_title': 'sparkle'},
-                           {'media_folder_mp4': '..\\media_folder_modify\\input\\Animal Party\\S1\\E2.mp4',
-                            'mp4_output_file_name': '..\\media_folder_modify\\output\\Animal Party\\Season 1\\Animal Party - s1e2.mp4',
-                            'media_title': 'mysterious'},
-                           {'media_folder_mp4': '..\\media_folder_modify\\input\\Animal Party\\S12\\E1.mp4',
-                            'mp4_output_file_name': '..\\media_folder_modify\\output\\Animal Party\\Season 12\\Animal Party - s12e1.mp4',
-                            'media_title': 'sparkle'},
-                           {'media_folder_mp4': '..\\media_folder_modify\\input\\Animal Party\\S12\\E2.mp4',
-                            'mp4_output_file_name': '..\\media_folder_modify\\output\\Animal Party\\Season 12\\Animal Party - s12e2.mp4',
-                            'media_title': 'mysterious'},
-                           {'media_folder_mp4': '..\\media_folder_modify\\input\\Animal Party\\S12\\E3.mp4',
-                            'mp4_output_file_name': '..\\media_folder_modify\\output\\Animal Party\\Season 12\\Animal Party - s12e3.mp4',
-                            'media_title': 'dark'},
-                           {'media_folder_mp4': '..\\media_folder_modify\\input\\Sparkles\\S1\\E1.mp4',
-                            'mp4_output_file_name': '..\\media_folder_modify\\output\\Sparkles\\Season 1\\Sparkles - s1e1.mp4',
-                            'media_title': 'sparkle'},
-                           {'media_folder_mp4': '..\\media_folder_modify\\input\\Sparkles\\S1\\E2.mp4',
-                            'mp4_output_file_name': '..\\media_folder_modify\\output\\Sparkles\\Season 1\\Sparkles - s1e2.mp4',
-                            'media_title': 'mysterious'},
-                           {'media_folder_mp4': '..\\media_folder_modify\\input\\Sparkles\\S2\\E1.mp4',
-                            'mp4_output_file_name': '..\\media_folder_modify\\output\\Sparkles\\Season 2\\Sparkles - s2e1.mp4',
-                            'media_title': 'sparkle'},
-                           {'media_folder_mp4': '..\\media_folder_modify\\input\\Sparkles\\S2\\E2.mp4',
-                            'mp4_output_file_name': '..\\media_folder_modify\\output\\Sparkles\\Season 2\\Sparkles - s2e2.mp4',
-                            'media_title': 'mysterious'},
-                           {'media_folder_mp4': '..\\media_folder_modify\\input\\Sparkles\\S2\\E3.mp4',
-                            'mp4_output_file_name': '..\\media_folder_modify\\output\\Sparkles\\Season 2\\Sparkles - s2e3.mp4',
-                            'media_title': 'dark'}]
-
-        generated_result = md_collector.collect_new_tv_shows(self.new_media_path)
-        print(generated_result)
-        assert len(generated_result) == 10
-        for item in generated_result:
-            assert "media_folder_mp4" in item
-            assert "mp4_output_file_name" in item
-            assert "media_title" in item
-            assert item.get("media_folder_mp4") is not None
-            assert item.get("mp4_output_file_name") is not None
-            assert item.get("media_title") is not None
-        assert generated_result == expected_output
-
     def test_get_new_title_txt_files(self):
-        media_path_info = self.media_paths[2]
-        media_folder_path = md_collector.get_new_media_folder_path(media_path_info)
+        media_folder_path = md_collector.get_new_media_folder_path(self.media_paths[2])
         print(media_folder_path)
         media_folder_titles = md_collector.get_title_txt_files(media_folder_path)
         assert len(media_folder_titles) == 4
         for key, value in media_folder_titles.items():
-            print(value)
+            print(key, value)
             assert isinstance(key, str)
             assert isinstance(value, list)
+            assert str(media_folder_path) in key
+            assert "S" in key
+            assert value
+            for item in value:
+                assert item
+                assert isinstance(item, str)
 
     def test_get_tv_show_title_txt_files(self):
-        media_path_info = self.media_paths[0]
-        media_folder_path = pathlib.Path(media_path_info.get("media_folder_path"))
+        media_directory_info = self.media_paths[0]
+        media_folder_path = pathlib.Path(media_directory_info.get("media_folder_path"))
         media_folder_titles = md_collector.get_title_txt_files(media_folder_path)
         print(media_folder_titles)
         assert len(media_folder_titles) == 5
         for key, value in media_folder_titles.items():
-            print(value)
+            print(key, value)
             assert isinstance(key, str)
             assert isinstance(value, list)
-
-    def test_collect_tv_shows_new(self):
-        result = md_collector.collect_tv_shows(self.media_paths[0])
-        print(result)
-        assert result
+            assert str(media_folder_path) in key
+            assert "Season " in key
+            assert value
+            for item in value:
+                assert item
+                assert isinstance(item, str)
 
     def test_collect_tv_shows(self):
-        result = md_collector.collect_tv_shows(self.media_paths[0])
-        print(result)
+        result = list(md_collector.collect_tv_shows(self.media_paths[0]))
+        print(json.dumps(result, indent=4))
         assert result
         assert len(result) == 13
         for item in result:
+            assert len(item) == 5
             assert "mp4_show_title" in item
             assert "mp4_file_url" in item
             assert "season_index" in item
@@ -106,11 +69,189 @@ class TestDBCreator(TestMediaMetadataCollectorSetup):
             assert item.get("season_index") is not None
             assert item.get("episode_index") is not None
 
+            assert isinstance(item.get("mp4_show_title"), str)
+            assert isinstance(item.get("mp4_file_url"), str)
+            assert isinstance(item.get("season_index"), int)
+            assert isinstance(item.get("episode_index"), int)
+            assert isinstance(item.get("media_title"), str)
+
+            assert item.get("mp4_show_title")
+            assert item.get("mp4_file_url")
+            assert item.get("season_index")
+            assert item.get("episode_index")
+
+            assert "Season " in item.get("mp4_file_url")
+            assert " - " in item.get("mp4_file_url")
+            assert ".mp4" in item.get("mp4_file_url")
+            assert item.get("mp4_show_title") in item.get("mp4_file_url")
+            assert item.get("mp4_file_url").count(item.get("mp4_show_title")) == 2
+            assert str(item.get("season_index")) in item.get("mp4_file_url")
+            assert item.get("mp4_file_url").count(str(item.get("season_index"))) >= 2
+            assert str(item.get("episode_index")) in item.get("mp4_file_url")
+            assert item.get("mp4_file_url").count(str(item.get("episode_index"))) >= 1
+
+    def test_collect_tv_shows_new(self):
+        result = list(md_collector.collect_tv_shows(self.media_paths[2]))
+        counts_of_length_7 = 0
+        counts_of_length_5 = 0
+        print(json.dumps(result, indent=4))
+        assert result
+        assert len(result) == 20
+        for item in result:
+            print(json.dumps(item, indent=4))
+            if len(item) == 5:
+                counts_of_length_5 += 1
+            if len(item) == 7:
+                counts_of_length_7 += 1
+                assert "media_folder_mp4" in item
+                assert "mp4_output_file_name" in item
+                assert item.get("media_folder_mp4") is not None
+                assert item.get("mp4_output_file_name") is not None
+                assert isinstance(item.get("media_folder_mp4"), str)
+                assert isinstance(item.get("mp4_output_file_name"), str)
+                assert item.get("media_folder_mp4")
+                assert item.get("mp4_output_file_name")
+
+                assert "input" in item.get("media_folder_mp4")
+                assert "S" in item.get("media_folder_mp4")
+                assert "E" in item.get("media_folder_mp4")
+                assert ".mp4" in item.get("media_folder_mp4")
+                assert "output" in item.get("mp4_output_file_name")
+                assert "Season " in item.get("mp4_output_file_name")
+                assert " - " in item.get("mp4_output_file_name")
+                assert ".mp4" in item.get("mp4_output_file_name")
+
+                assert item.get("mp4_show_title") in item.get("media_folder_mp4")
+                assert item.get("media_folder_mp4").count(item.get("mp4_show_title")) == 1
+                assert str(item.get("season_index")) in item.get("media_folder_mp4")
+                assert item.get("media_folder_mp4").count(str(item.get("season_index"))) >= 1
+                assert str(item.get("episode_index")) in item.get("media_folder_mp4")
+                assert item.get("media_folder_mp4").count(str(item.get("episode_index"))) >= 1
+                assert item.get("mp4_show_title") in item.get("mp4_output_file_name")
+                assert item.get("mp4_output_file_name").count(item.get("mp4_show_title")) == 2
+                assert item.get("mp4_file_url") in item.get("mp4_output_file_name")
+                assert item.get("mp4_output_file_name").count(item.get("mp4_file_url")) == 1
+                assert str(item.get("season_index")) in item.get("mp4_output_file_name")
+                assert item.get("mp4_output_file_name").count(str(item.get("season_index"))) >= 2
+                assert str(item.get("episode_index")) in item.get("mp4_output_file_name")
+                assert item.get("mp4_output_file_name").count(str(item.get("episode_index"))) >= 1
+
+            assert len(item) in [7, 5]
+            assert "mp4_show_title" in item
+            assert "mp4_file_url" in item
+            assert "season_index" in item
+            assert "episode_index" in item
+            assert item.get("mp4_show_title") is not None
+            assert item.get("mp4_file_url") is not None
+            assert item.get("season_index") is not None
+            assert item.get("episode_index") is not None
+
+            assert isinstance(item.get("mp4_show_title"), str)
+            assert isinstance(item.get("mp4_file_url"), str)
+            assert isinstance(item.get("season_index"), int)
+            assert isinstance(item.get("episode_index"), int)
+            assert isinstance(item.get("media_title"), str)
+
+            assert item.get("mp4_show_title")
+            assert item.get("mp4_file_url")
+            assert item.get("season_index")
+            assert item.get("episode_index")
+
+            assert "Season " in item.get("mp4_file_url")
+            assert " - " in item.get("mp4_file_url")
+            assert ".mp4" in item.get("mp4_file_url")
+            assert item.get("mp4_show_title") in item.get("mp4_file_url")
+            assert item.get("mp4_file_url").count(item.get("mp4_show_title")) == 2
+            assert str(item.get("season_index")) in item.get("mp4_file_url")
+            assert item.get("mp4_file_url").count(str(item.get("season_index"))) >= 2
+            assert str(item.get("episode_index")) in item.get("mp4_file_url")
+            assert item.get("mp4_file_url").count(str(item.get("episode_index"))) >= 1
+        assert counts_of_length_5 == counts_of_length_7 == 10
+
     def test_collect_movies(self):
-        result = md_collector.collect_movies(self.media_paths[1])
-        print(result)
+        result = list(md_collector.collect_movies(self.media_paths[1]))
+        print(json.dumps(result, indent=4))
         assert result
         assert len(result) == 5
         for item in result:
+            assert len(item) == 2
             assert "mp4_show_title" in item
             assert "mp4_file_url" in item
+            assert item.get("mp4_show_title") is not None
+            assert item.get("mp4_file_url") is not None
+            assert isinstance(item.get("mp4_show_title"), str)
+            assert isinstance(item.get("mp4_file_url"), str)
+            assert item.get("mp4_show_title")
+            assert item.get("mp4_file_url")
+            assert ".mp4" in item.get("mp4_file_url")
+
+    def test_collect_new_tv_shows_new(self):
+        result = list(md_collector.collect_new_tv_shows(self.media_paths[2]))
+        print(json.dumps(result, indent=4))
+        assert result
+        assert len(result) == 10
+        for item in result:
+            assert len(item) == 7
+            assert "media_folder_mp4" in item
+            assert "mp4_output_file_name" in item
+            assert "mp4_show_title" in item
+            assert "mp4_file_url" in item
+            assert "season_index" in item
+            assert "episode_index" in item
+            assert "media_title" in item
+            assert item.get("media_folder_mp4") is not None
+            assert item.get("mp4_output_file_name") is not None
+            assert item.get("mp4_show_title") is not None
+            assert item.get("mp4_file_url") is not None
+            assert item.get("season_index") is not None
+            assert item.get("episode_index") is not None
+            assert item.get("media_title") is not None
+            assert isinstance(item.get("media_folder_mp4"), str)
+            assert isinstance(item.get("mp4_output_file_name"), str)
+            assert isinstance(item.get("mp4_show_title"), str)
+            assert isinstance(item.get("mp4_file_url"), str)
+            assert isinstance(item.get("season_index"), int)
+            assert isinstance(item.get("episode_index"), int)
+            assert isinstance(item.get("media_title"), str)
+
+            assert item.get("media_folder_mp4")
+            assert item.get("mp4_output_file_name")
+            assert item.get("mp4_show_title")
+            assert item.get("mp4_file_url")
+            assert item.get("season_index")
+            assert item.get("episode_index")
+            assert item.get("media_title")
+
+            assert "input" in item.get("media_folder_mp4")
+            assert "S" in item.get("media_folder_mp4")
+            assert "E" in item.get("media_folder_mp4")
+            assert ".mp4" in item.get("media_folder_mp4")
+            assert "output" in item.get("mp4_output_file_name")
+            assert "Season " in item.get("mp4_output_file_name")
+            assert " - " in item.get("mp4_output_file_name")
+            assert ".mp4" in item.get("mp4_output_file_name")
+
+            assert item.get("mp4_show_title") in item.get("media_folder_mp4")
+            assert item.get("media_folder_mp4").count(item.get("mp4_show_title")) == 1
+            assert str(item.get("season_index")) in item.get("media_folder_mp4")
+            assert item.get("media_folder_mp4").count(str(item.get("season_index"))) >= 1
+            assert str(item.get("episode_index")) in item.get("media_folder_mp4")
+            assert item.get("media_folder_mp4").count(str(item.get("episode_index"))) >= 1
+            assert item.get("mp4_show_title") in item.get("mp4_output_file_name")
+            assert item.get("mp4_output_file_name").count(item.get("mp4_show_title")) == 2
+            assert item.get("mp4_file_url") in item.get("mp4_output_file_name")
+            assert item.get("mp4_output_file_name").count(item.get("mp4_file_url")) == 1
+            assert str(item.get("season_index")) in item.get("mp4_output_file_name")
+            assert item.get("mp4_output_file_name").count(str(item.get("season_index"))) >= 2
+            assert str(item.get("episode_index")) in item.get("mp4_output_file_name")
+            assert item.get("mp4_output_file_name").count(str(item.get("episode_index"))) >= 1
+
+            assert "Season " in item.get("mp4_file_url")
+            assert " - " in item.get("mp4_file_url")
+            assert ".mp4" in item.get("mp4_file_url")
+            assert item.get("mp4_show_title") in item.get("mp4_file_url")
+            assert item.get("mp4_file_url").count(item.get("mp4_show_title")) == 2
+            assert str(item.get("season_index")) in item.get("mp4_file_url")
+            assert item.get("mp4_file_url").count(str(item.get("season_index"))) >= 2
+            assert str(item.get("episode_index")) in item.get("mp4_file_url")
+            assert item.get("mp4_file_url").count(str(item.get("episode_index"))) >= 1

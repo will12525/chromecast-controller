@@ -37,6 +37,8 @@ class TestWebpageBuilder(TestCase):
 
     def setUp(self) -> None:
         self.app = Flask(__name__)
+        # Wait for the setup_thread to finish so the database is fully populated for testing
+        flask_endpoints.setup_thread.join()
 
 
 class Test(TestWebpageBuilder):

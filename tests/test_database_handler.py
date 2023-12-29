@@ -24,7 +24,7 @@ class TestDatabaseHandler(TestCase):
         assert isinstance(self.media_paths, list)
         assert len(self.media_paths) == 3
         with DBCreator() as db_connection:
-            db_connection.setup_db()
+            db_connection.create_db()
             for media_path in self.media_paths:
                 db_connection.setup_media_directory(media_path)
 

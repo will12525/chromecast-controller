@@ -79,7 +79,7 @@ GET_MEDIA_ID_FROM_PATH = f'{GET_ID} media_info WHERE path=?;'
 
 class DBCreator(DBConnection):
 
-    def setup_db(self):
+    def create_db(self):
         if self.VERSION != self.check_db_version():
             # Run db update procedure
             pass
