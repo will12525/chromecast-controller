@@ -216,7 +216,7 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
             assert metadata.get("container_content_type") == ContentType.TV_SHOW.value
             assert metadata.get("id") == 1
             assert metadata.get("tv_show_id") == 1
-            assert metadata.get("tv_show_season_index") == 1
+            assert metadata.get("season_index") == 1
             assert metadata.get("playlist_id") == 1
             assert metadata.get("playlist_title") == "Vampire"
             assert metadata.get("season_title") == "Season 1"
@@ -318,7 +318,7 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
             assert isinstance(metadata, dict)
             assert metadata.get("id") == 1
             assert metadata.get("tv_show_id") == 1
-            assert metadata.get("tv_show_season_index") == 1
+            assert metadata.get("season_index") == 1
             assert metadata.get("playlist_id") == 1
             assert metadata.get("playlist_title") == "Vampire"
             assert metadata.get("season_title") == "Season 1"

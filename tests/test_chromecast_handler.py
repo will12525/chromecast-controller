@@ -105,7 +105,7 @@ class TestMyMediaDevice(TestCase):
         self.media_controller = self.chromecast_handler.get_media_controller()
 
 
-# Integration tests
+# Integration test with Chromecast networked device
 class TestMediaPlayer(TestMyMediaDevice):
 
     # def test_play_episode(self):

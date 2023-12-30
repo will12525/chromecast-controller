@@ -53,7 +53,8 @@ class DBConnection:
         print(message)
 
     def get_last_row_id(self, cursor) -> int:
-        return cursor.lastrowid
+        if cursor.rowcount > 0:
+            return cursor.lastrowid
 
     def get_data_list(self, cursor) -> list[dict]:
         return [dict(row) for row in cursor.fetchall()]

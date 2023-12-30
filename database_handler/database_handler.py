@@ -1,19 +1,19 @@
 from enum import Enum, auto
-from . import DBConnection, MediaType
+from . import DBConnection, MediaType, common_objects
 
-SEASON_TITLE_BUILDER = "'Season' || ' ' || tv_show_season_index AS season_title"
+SEASON_TITLE_BUILDER = "'Season' || ' ' || season_index AS season_title"
 
 # Get title lists
-GET_TV_SHOW_TITLE = 'SELECT playlist_title FROM tv_show_info INNER JOIN playlist_info ON tv_show_info.playlist_id = playlist_info.id WHERE tv_show_info.id = ?;'
-GET_TV_SHOW_TITLES = "SELECT tv_show_info.id, playlist_title FROM tv_show_info INNER JOIN playlist_info ON tv_show_info.playlist_id = playlist_info.id ORDER BY playlist_title GLOB '[A-Za-z]*' DESC, playlist_title;"
-GET_TV_SHOW_SEASON_TITLES = f'SELECT id, {SEASON_TITLE_BUILDER}, tv_show_season_index FROM season_info WHERE tv_show_id = ? ORDER BY tv_show_season_index ASC;'
+GET_TV_SHOW_TITLE = f'SELECT {common_objects.PLAYLIST_TITLE} FROM tv_show_info INNER JOIN playlist_info ON tv_show_info.playlist_id = playlist_info.id WHERE tv_show_info.id = ?;'
+GET_TV_SHOW_TITLES = f"SELECT tv_show_info.id, {common_objects.PLAYLIST_TITLE} FROM tv_show_info INNER JOIN playlist_info ON tv_show_info.playlist_id = playlist_info.id ORDER BY playlist_title GLOB '[A-Za-z]*' DESC, playlist_title;"
+GET_TV_SHOW_SEASON_TITLES = f'SELECT id, {SEASON_TITLE_BUILDER}, season_index FROM season_info WHERE tv_show_id = ? ORDER BY season_index ASC;'
 GET_TV_SHOW_SEASON_EPISODE_TITLES = 'SELECT media_info.id, media_title FROM media_info INNER JOIN playlist_media_list ON media_info.id = playlist_media_list.media_id WHERE season_id = ? ORDER BY list_index ASC, media_title;'
 GET_MOVIE_TITLES = f"SELECT media_info.id, media_title FROM media_info INNER JOIN media_folder_path ON media_info.media_folder_path_id = media_folder_path.id WHERE media_folder_path.media_type == {MediaType.MOVIE.value} ORDER BY media_title GLOB '[A-Za-z]*' DESC, media_title;"
 
 # Get content metadata
-GET_TV_SHOW_METADATA = 'SELECT tv_show_info.id, playlist_title FROM tv_show_info INNER JOIN playlist_info ON tv_show_info.playlist_id = playlist_info.id WHERE tv_show_info.id = ?;'
+GET_TV_SHOW_METADATA = f'SELECT tv_show_info.id, {common_objects.PLAYLIST_TITLE} FROM tv_show_info INNER JOIN playlist_info ON tv_show_info.playlist_id = playlist_info.id WHERE tv_show_info.id = ?;'
 GET_TV_SHOW_SEASON_METADATA = f'SELECT *, {SEASON_TITLE_BUILDER} FROM season_info INNER JOIN tv_show_info ON season_info.tv_show_id = tv_show_info.id INNER JOIN playlist_info ON tv_show_info.playlist_id = playlist_info.id WHERE season_info.id = ?;'
-GET_MEDIA_METADATA = f'SELECT *, {SEASON_TITLE_BUILDER}, playlist_info.playlist_title as tv_show_title FROM media_info INNER JOIN media_folder_path ON media_info.media_folder_path_id = media_folder_path.id LEFT JOIN tv_show_info ON media_info.tv_show_id = tv_show_info.id LEFT JOIN playlist_info ON tv_show_info.id = playlist_info.id LEFT JOIN season_info ON media_info.season_id = season_info.id WHERE media_info.id=?;'
+GET_MEDIA_METADATA = f'SELECT *, {SEASON_TITLE_BUILDER}, playlist_info.{common_objects.PLAYLIST_TITLE} as tv_show_title FROM media_info INNER JOIN media_folder_path ON media_info.media_folder_path_id = media_folder_path.id LEFT JOIN tv_show_info ON media_info.tv_show_id = tv_show_info.id LEFT JOIN playlist_info ON tv_show_info.id = playlist_info.id LEFT JOIN season_info ON media_info.season_id = season_info.id WHERE media_info.id=?;'
 
 # Get row counts
 GET_TV_SHOW_SEASON_COUNT = 'SELECT COUNT(*) AS season_count FROM season_info WHERE tv_show_id = ?;'
@@ -28,7 +28,7 @@ GET_PLAYLIST_LAST_MEDIA_ID = 'SELECT media_id FROM playlist_media_list WHERE pla
 
 # Get list indexes
 GET_LIST_INDEX = 'SELECT list_index, media_id FROM playlist_media_list WHERE playlist_id=? AND media_id=?;'
-GET_SEASON_LIST_INDEX_FROM_SEASON_ID = 'SELECT tv_show_season_index FROM season_info WHERE id=?;'
+GET_SEASON_LIST_INDEX_FROM_SEASON_ID = 'SELECT season_index FROM season_info WHERE id=?;'
 
 # Get media directory info
 GET_ALL_MEDIA_DIRECTORIES = 'SELECT * FROM media_folder_path;'
@@ -142,11 +142,11 @@ class DatabaseHandler(DBConnection):
     def get_previous_in_playlist_media_metadata(self, content_id, playlist_id) -> dict:
         return self.get_increment_episode_metadata(GET_PREVIOUS_IN_PLAYLIST_MEDIA_METADATA, content_id, playlist_id)
 
-    def get_media_folder_path(self, content_id) -> list[dict]:
-        return self.get_data_from_db(GET_MEDIA_FOLDER_PATH_FROM_ID, (content_id,))
+    def get_media_folder_path(self, content_id) -> dict:
+        return self.get_data_from_db_first_result(GET_MEDIA_FOLDER_PATH_FROM_ID, (content_id,))
 
     def get_season_list_index(self, content_id) -> int:
-        return self.get_row_item(GET_SEASON_LIST_INDEX_FROM_SEASON_ID, (content_id,), 'tv_show_season_index')
+        return self.get_row_item(GET_SEASON_LIST_INDEX_FROM_SEASON_ID, (content_id,), 'season_index')
 
     def get_tv_show_title(self, content_id) -> str:
-        return self.get_row_item(GET_TV_SHOW_TITLE, (content_id,), 'playlist_title')
+        return self.get_row_item(GET_TV_SHOW_TITLE, (content_id,), common_objects.PLAYLIST_TITLE)
