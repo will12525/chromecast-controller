@@ -3,9 +3,11 @@ import threading
 import time
 import os
 from enum import Enum, auto
-from database_handler.database_handler import DatabaseHandler, ContentType
-
 import pychromecast
+
+from database_handler import common_objects
+from database_handler.database_handler import DatabaseHandler
+from database_handler.common_objects import ContentType
 
 
 class CommandList(Enum):
@@ -58,8 +60,8 @@ class MyMediaDevice:
         if self.status:
             if media_metadata := self.status.media_metadata:
                 if playlist_id := media_metadata.get("user_selected_playlist_id",
-                                                     media_metadata.get("playlist_id", None)):
-                    if media_info := db_function(media_metadata.get("id"), playlist_id):
+                                                     media_metadata.get(common_objects.PLAYLIST_ID_COLUMN, None)):
+                    if media_info := db_function(media_metadata.get(common_objects.ID_COLUMN), playlist_id):
                         self.play_media_info(media_info)
 
     def play_next_episode(self):
@@ -72,8 +74,8 @@ class MyMediaDevice:
 
     def play_media_info(self, media_info=None):
         if media_info:
-            media_url = f"{media_info.get('media_folder_url')}{media_info.get('path')}"
-            media_title = media_info.get('media_title')
+            media_url = f"{media_info.get(common_objects.MEDIA_DIRECTORY_URL_COLUMN)}{media_info.get(common_objects.PATH_COLUMN)}"
+            media_title = media_info.get(common_objects.MEDIA_TITLE_COLUMN)
             if season_title := media_info.get('season_title'):
                 media_title = f"{season_title} {media_title}"
             if tv_show_title := media_info.get('tv_show_title'):

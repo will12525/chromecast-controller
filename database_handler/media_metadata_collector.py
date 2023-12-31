@@ -33,8 +33,8 @@ tv_show_str_index = -2
 
 
 def get_new_media_folder_path(media_directory_info):
-    if new_media_folder_path := media_directory_info.get('new_media_folder_path'):
-        media_folder_path = pathlib.Path(media_directory_info.get('media_folder_path'))
+    if new_media_folder_path := media_directory_info.get(common_objects.NEW_MEDIA_DIRECTORY_PATH_COLUMN):
+        media_folder_path = pathlib.Path(media_directory_info.get(common_objects.MEDIA_DIRECTORY_PATH_COLUMN))
         return pathlib.Path(media_folder_path.parents[0]).joinpath(new_media_folder_path)
 
 
@@ -53,7 +53,8 @@ def get_playlist_list_index(season_index, episode_index):
 def convert_to_tv_show_path(media_directory_info, path_to_convert, file_name):
     tv_show_title, season = get_season_name_show_title(pathlib.Path(path_to_convert))
     season = season.replace(season_marker, season_marker_replacement)
-    return pathlib.Path(media_directory_info.get('media_folder_path'), tv_show_title, season, file_name)
+    return pathlib.Path(media_directory_info.get(common_objects.MEDIA_DIRECTORY_PATH_COLUMN), tv_show_title, season,
+                        file_name)
 
 
 def move_txt_file(source_file_name, destination_file_name):
@@ -75,7 +76,7 @@ def get_title_txt_files(media_folder_path):
 
 
 def collect_new_tv_shows(media_directory_info):
-    media_folder_path = pathlib.Path(media_directory_info.get('media_folder_path'))
+    media_folder_path = pathlib.Path(media_directory_info.get(common_objects.MEDIA_DIRECTORY_PATH_COLUMN))
     new_media_folder_path = get_new_media_folder_path(media_directory_info)
 
     media_folder_titles = get_title_txt_files(new_media_folder_path)
@@ -90,7 +91,7 @@ def collect_new_tv_shows(media_directory_info):
             season_index = int(season.replace(season_marker, empty_str))
             episode_index = int(media_folder_mp4.stem.replace(episode_marker, empty_str))
         except ValueError as e:
-            print(f'ERROR: File doesnt match expected format: {media_folder_mp4}\n{e}')
+            print(f'{e}\nERROR: File doesnt match expected format: {media_folder_mp4}')
             continue
 
         mp4_show_file_name = ''.join([playlist_title, mp4_index_content_index_search_string, str(season_index),
@@ -113,11 +114,14 @@ def collect_new_tv_shows(media_directory_info):
                                                                c='copy').overwrite_output().run()
                 if mp4_output_file_name.is_file():
                     yield {'media_folder_mp4': str(media_folder_mp4), 'mp4_output_file_name': str(mp4_output_file_name),
-                           'id': None, common_objects.PLAYLIST_TITLE: playlist_title, 'season_index': season_index,
+                           common_objects.ID_COLUMN: None, common_objects.PLAYLIST_TITLE: playlist_title,
+                           common_objects.SEASON_INDEX_COLUMN: season_index,
                            'episode_index': episode_index,
-                           'media_folder_path_id': media_directory_info.get('media_folder_path_id'),
-                           'path': get_url(mp4_output_file_name, media_folder_path), 'media_title': media_title,
-                           'list_index': get_playlist_list_index(season_index, episode_index)
+                           common_objects.MEDIA_DIRECTORY_ID_COLUMN: media_directory_info.get(
+                               common_objects.MEDIA_DIRECTORY_ID_COLUMN),
+                           common_objects.PATH_COLUMN: get_url(mp4_output_file_name, media_folder_path),
+                           common_objects.MEDIA_TITLE_COLUMN: media_title,
+                           common_objects.LIST_INDEX_COLUMN: get_playlist_list_index(season_index, episode_index)
                            }
                     if DELETE:
                         media_folder_mp4.unlink()
@@ -139,10 +143,10 @@ def get_extra_metadata(media_folder_mp4):
                 extra_metadata['runtime_minutes'] = round(float(runtime) / 60)
                 # print(json.dumps(ffmpeg_probe_result_format, indent=4))
                 if tags := ffmpeg_probe_result_format.get('tags'):
-                    extra_metadata['media_title'] = tags.get('title')
+                    extra_metadata[common_objects.MEDIA_TITLE_COLUMN] = tags.get('title')
 
     def get_ffmpeg_metadata():
-        with open(media_folder_mp4, "rb") as f:
+        with open(media_folder_mp4, 'rb') as f:
             file_hash = hashlib.md5()
             while chunk := f.read(8192):
                 file_hash.update(chunk)
@@ -159,10 +163,10 @@ def get_extra_metadata(media_folder_mp4):
 
 
 def collect_tv_shows(media_directory_info):
-    if media_directory_info.get('new_media_folder_path'):
+    if media_directory_info.get(common_objects.NEW_MEDIA_DIRECTORY_PATH_COLUMN):
         yield from collect_new_tv_shows(media_directory_info)
 
-    media_folder_path = pathlib.Path(media_directory_info.get('media_folder_path'))
+    media_folder_path = pathlib.Path(media_directory_info.get(common_objects.MEDIA_DIRECTORY_PATH_COLUMN))
     media_folder_titles = get_title_txt_files(media_folder_path)
     for media_folder_mp4 in list(media_folder_path.rglob(mp4_file_ext)):
 
@@ -180,22 +184,27 @@ def collect_tv_shows(media_directory_info):
                 if len(media_folder_titles[media_folder_txt_file_parent]) >= episode_index:
                     media_title = media_folder_titles[media_folder_txt_file_parent][episode_index - 1]
             # get_extra_metadata(media_folder_mp4)
-            yield {'id': None, common_objects.PLAYLIST_TITLE: playlist_title, 'season_index': season_index,
+            yield {common_objects.ID_COLUMN: None, common_objects.PLAYLIST_TITLE: playlist_title,
+                   common_objects.SEASON_INDEX_COLUMN: season_index,
                    'episode_index': episode_index,
-                   'media_folder_path_id': media_directory_info.get('media_folder_path_id'),
-                   'path': get_url(media_folder_mp4, media_folder_path), 'media_title': media_title,
-                   'list_index': get_playlist_list_index(season_index, episode_index)
+                   common_objects.MEDIA_DIRECTORY_ID_COLUMN: media_directory_info.get(
+                       common_objects.MEDIA_DIRECTORY_ID_COLUMN),
+                   common_objects.PATH_COLUMN: get_url(media_folder_mp4, media_folder_path),
+                   common_objects.MEDIA_TITLE_COLUMN: media_title,
+                   common_objects.LIST_INDEX_COLUMN: get_playlist_list_index(season_index, episode_index)
                    }
         except ValueError as e:
-            print(f"\nNEW MEDIA ERROR: expected: '<show_name> - sXXeXXX.mp4', Actual: {media_folder_mp4}\n{e}")
+            print(f'{e}\nNEW MEDIA ERROR: expected: <show_name> - sXXeXXX.mp4, Actual: {media_folder_mp4}')
 
 
 def collect_movies(media_directory_info):
-    media_folder_path = pathlib.Path(media_directory_info.get('media_folder_path'))
+    media_folder_path = pathlib.Path(media_directory_info.get(common_objects.MEDIA_DIRECTORY_PATH_COLUMN))
 
     for media_folder_mp4 in list(media_folder_path.rglob(mp4_file_ext)):
         try:
-            yield {'media_folder_path_id': media_directory_info.get('media_folder_path_id'),
-                   'path': get_url(media_folder_mp4, media_folder_path), 'media_title': media_folder_mp4.stem}
+            yield {common_objects.MEDIA_DIRECTORY_ID_COLUMN: media_directory_info.get(
+                common_objects.MEDIA_DIRECTORY_ID_COLUMN),
+                common_objects.PATH_COLUMN: get_url(media_folder_mp4, media_folder_path),
+                common_objects.MEDIA_TITLE_COLUMN: media_folder_mp4.stem}
         except ValueError as e:
-            print(f"\nNEW MEDIA ERROR: expected: '<show_name> - sXXeXXX.mp4', Actual: {media_folder_mp4}\n{e}")
+            print(f'{e}\nNEW MEDIA ERROR: expected: <show_name> - sXXeXXX.mp4, Actual: {media_folder_mp4}')

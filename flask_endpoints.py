@@ -5,7 +5,9 @@ from flask import Flask, request, render_template
 # jsonify, redirect, current_app, render_template
 from backend_handler import BackEndHandler
 from chromecast_handler import CommandList
-from database_handler.database_handler import DatabaseHandler, ContentType
+from database_handler import common_objects
+from database_handler.database_handler import DatabaseHandler
+from database_handler.common_objects import ContentType
 from database_handler.create_database import DBCreator
 
 
@@ -57,7 +59,7 @@ def build_main_content(request_args):
     media_metadata = {}
     content_id = None
     content_type = ContentType.TV.value
-    content_id_str = request_args.get('media_id', None)
+    content_id_str = request_args.get(common_objects.MEDIA_ID_COLUMN, None)
     content_type_value = request_args.get("content_type", None)
     if content_type_value:
         try:
@@ -156,8 +158,8 @@ def chromecast_command():
 def play_media():
     data = {}
     if json_request := request.get_json():
-        if media_id := json_request.get("media_id", 0):
-            playlist_id = json_request.get("playlist_id", None)
+        if media_id := json_request.get(common_objects.MEDIA_ID_COLUMN, 0):
+            playlist_id = json_request.get(common_objects.PLAYLIST_ID_COLUMN, None)
             backend_handler.play_media_on_chromecast(media_id, playlist_id)
     return data, 200
 

@@ -2,9 +2,11 @@ import json
 from unittest import TestCase
 
 import config_file_handler
+from database_handler import common_objects
 from database_handler.create_database import DBCreator
-from database_handler.database_handler import DatabaseHandler, ContentType, GET_MOVIE_TITLES, GET_TV_SHOW_TITLES, \
+from database_handler.database_handler import DatabaseHandler, GET_MOVIE_TITLES, GET_TV_SHOW_TITLES, \
     GET_TV_SHOW_SEASON_TITLES, GET_TV_SHOW_SEASON_EPISODE_TITLES
+from database_handler.common_objects import ContentType
 
 
 class TestDatabaseHandler(TestCase):
@@ -45,16 +47,18 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
             metadata = db_connection.get_next_in_playlist_media_metadata(1, 1)
             print(json.dumps(metadata, indent=4))
             assert metadata
-            assert metadata.get("id") == 2
-            assert metadata.get("tv_show_id") == 1
-            assert metadata.get("season_id") == 1
-            assert metadata.get("media_folder_path_id") == 1
-            assert metadata.get("media_title") == "mysterious"
-            assert ".mp4" in metadata.get("path")
-            assert metadata.get("media_type") == 1
-            assert metadata.get("media_folder_path") == self.media_paths[0].get("media_folder_path")
-            assert metadata.get("media_folder_url") == self.media_paths[0].get("media_folder_url")
-            assert metadata.get("playlist_id") == 1
+            assert metadata.get(common_objects.ID_COLUMN) == 2
+            assert metadata.get(common_objects.TV_SHOW_ID_COLUMN) == 1
+            assert metadata.get(common_objects.SEASON_ID_COLUMN) == 1
+            assert metadata.get(common_objects.MEDIA_DIRECTORY_ID_COLUMN) == 1
+            assert metadata.get(common_objects.MEDIA_TITLE_COLUMN) == "mysterious"
+            assert ".mp4" in metadata.get(common_objects.PATH_COLUMN)
+            assert metadata.get(common_objects.MEDIA_TYPE_COLUMN) == 5
+            assert metadata.get(common_objects.MEDIA_DIRECTORY_PATH_COLUMN) == self.media_paths[0].get(
+                common_objects.MEDIA_DIRECTORY_PATH_COLUMN)
+            assert metadata.get(common_objects.MEDIA_DIRECTORY_URL_COLUMN) == self.media_paths[0].get(
+                common_objects.MEDIA_DIRECTORY_URL_COLUMN)
+            assert metadata.get(common_objects.PLAYLIST_ID_COLUMN) == 1
             assert metadata.get("tv_show_title") == "Vampire"
             assert metadata.get("season_title") == "Season 1"
 
@@ -63,32 +67,36 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
             metadata = db_connection.get_previous_in_playlist_media_metadata(1, 1)
             print(json.dumps(metadata, indent=4))
             assert metadata
-            assert metadata.get("id") == 5
-            assert metadata.get("tv_show_id") == 1
-            assert metadata.get("season_id") == 2
-            assert metadata.get("media_folder_path_id") == 1
-            assert metadata.get("media_title") == "dark"
-            assert ".mp4" in metadata.get("path")
-            assert metadata.get("media_type") == 1
-            assert metadata.get("media_folder_path") == self.media_paths[0].get("media_folder_path")
-            assert metadata.get("media_folder_url") == self.media_paths[0].get("media_folder_url")
-            assert metadata.get("playlist_id") == 1
+            assert metadata.get(common_objects.ID_COLUMN) == 5
+            assert metadata.get(common_objects.TV_SHOW_ID_COLUMN) == 1
+            assert metadata.get(common_objects.SEASON_ID_COLUMN) == 2
+            assert metadata.get(common_objects.MEDIA_DIRECTORY_ID_COLUMN) == 1
+            assert metadata.get(common_objects.MEDIA_TITLE_COLUMN) == "dark"
+            assert ".mp4" in metadata.get(common_objects.PATH_COLUMN)
+            assert metadata.get(common_objects.MEDIA_TYPE_COLUMN) == 5
+            assert metadata.get(common_objects.MEDIA_DIRECTORY_PATH_COLUMN) == self.media_paths[0].get(
+                common_objects.MEDIA_DIRECTORY_PATH_COLUMN)
+            assert metadata.get(common_objects.MEDIA_DIRECTORY_URL_COLUMN) == self.media_paths[0].get(
+                common_objects.MEDIA_DIRECTORY_URL_COLUMN)
+            assert metadata.get(common_objects.PLAYLIST_ID_COLUMN) == 1
             assert metadata.get("tv_show_title") == "Vampire"
             assert metadata.get("season_title") == "Season 2"
 
             metadata = db_connection.get_previous_in_playlist_media_metadata(3, 1)
             print(json.dumps(metadata, indent=4))
             assert metadata
-            assert metadata.get("id") == 2
-            assert metadata.get("tv_show_id") == 1
-            assert metadata.get("season_id") == 1
-            assert metadata.get("media_folder_path_id") == 1
-            assert metadata.get("media_title") == "mysterious"
-            assert ".mp4" in metadata.get("path")
-            assert metadata.get("media_type") == 1
-            assert metadata.get("media_folder_path") == self.media_paths[0].get("media_folder_path")
-            assert metadata.get("media_folder_url") == self.media_paths[0].get("media_folder_url")
-            assert metadata.get("playlist_id") == 1
+            assert metadata.get(common_objects.ID_COLUMN) == 2
+            assert metadata.get(common_objects.TV_SHOW_ID_COLUMN) == 1
+            assert metadata.get(common_objects.SEASON_ID_COLUMN) == 1
+            assert metadata.get(common_objects.MEDIA_DIRECTORY_ID_COLUMN) == 1
+            assert metadata.get(common_objects.MEDIA_TITLE_COLUMN) == "mysterious"
+            assert ".mp4" in metadata.get(common_objects.PATH_COLUMN)
+            assert metadata.get(common_objects.MEDIA_TYPE_COLUMN) == 5
+            assert metadata.get(common_objects.MEDIA_DIRECTORY_PATH_COLUMN) == self.media_paths[0].get(
+                common_objects.MEDIA_DIRECTORY_PATH_COLUMN)
+            assert metadata.get(common_objects.MEDIA_DIRECTORY_URL_COLUMN) == self.media_paths[0].get(
+                common_objects.MEDIA_DIRECTORY_URL_COLUMN)
+            assert metadata.get(common_objects.PLAYLIST_ID_COLUMN) == 1
             assert metadata.get("tv_show_title") == "Vampire"
             assert metadata.get("season_title") == "Season 1"
 
@@ -97,16 +105,18 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
             metadata = db_connection.get_media_content(ContentType.MEDIA.value, 1)
             print(json.dumps(metadata, indent=4))
             assert metadata
-            assert metadata.get("id") == 1
-            assert metadata.get("tv_show_id") == 1
-            assert metadata.get("season_id") == 1
-            assert metadata.get("media_folder_path_id") == 1
-            assert metadata.get("media_title") == "sparkle"
-            assert ".mp4" in metadata.get("path")
-            assert metadata.get("media_type") == 1
-            assert metadata.get("media_folder_path") == self.media_paths[0].get("media_folder_path")
-            assert metadata.get("media_folder_url") == self.media_paths[0].get("media_folder_url")
-            assert metadata.get("playlist_id") == 1
+            assert metadata.get(common_objects.ID_COLUMN) == 1
+            assert metadata.get(common_objects.TV_SHOW_ID_COLUMN) == 1
+            assert metadata.get(common_objects.SEASON_ID_COLUMN) == 1
+            assert metadata.get(common_objects.MEDIA_DIRECTORY_ID_COLUMN) == 1
+            assert metadata.get(common_objects.MEDIA_TITLE_COLUMN) == "sparkle"
+            assert ".mp4" in metadata.get(common_objects.PATH_COLUMN)
+            assert metadata.get(common_objects.MEDIA_TYPE_COLUMN) == 5
+            assert metadata.get(common_objects.MEDIA_DIRECTORY_PATH_COLUMN) == self.media_paths[0].get(
+                common_objects.MEDIA_DIRECTORY_PATH_COLUMN)
+            assert metadata.get(common_objects.MEDIA_DIRECTORY_URL_COLUMN) == self.media_paths[0].get(
+                common_objects.MEDIA_DIRECTORY_URL_COLUMN)
+            assert metadata.get(common_objects.PLAYLIST_ID_COLUMN) == 1
             assert metadata.get("tv_show_title") == "Vampire"
             assert metadata.get("season_title") == "Season 1"
 
@@ -115,26 +125,26 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
 
     def test_get_tv_show_title(self):
         with DatabaseHandler() as db_connection:
-            metadata = db_connection.get_tv_show_title(1)
+            metadata = db_connection.get_tv_show_title({common_objects.TV_SHOW_ID_COLUMN: 1})
             print(metadata)
             assert isinstance(metadata, str)
             assert metadata == "Vampire"
 
     def test_get_movie_title_list(self):
         with DatabaseHandler() as db_connection:
-            metadata = db_connection.get_content_title_list(ContentType.MEDIA, GET_MOVIE_TITLES)
+            metadata = db_connection.get_content_title_list(ContentType.MOVIE, GET_MOVIE_TITLES)
             print(json.dumps(metadata, indent=4))
             assert metadata
             assert isinstance(metadata, dict)
-            assert metadata.get("media_list_content_type") == ContentType.MEDIA.value
+            assert metadata.get("media_list_content_type") == ContentType.MOVIE.value
             assert isinstance(metadata.get("media_list"), list)
             assert len(metadata.get("media_list")) == 5
             for movie in metadata.get("media_list"):
                 assert isinstance(movie, dict)
-                assert "id" in movie
-                assert "media_title" in movie
-                assert isinstance(movie["id"], int)
-                assert isinstance(movie["media_title"], str)
+                assert common_objects.ID_COLUMN in movie
+                assert common_objects.MEDIA_TITLE_COLUMN in movie
+                assert isinstance(movie[common_objects.ID_COLUMN], int)
+                assert isinstance(movie[common_objects.MEDIA_TITLE_COLUMN], str)
 
     def test_get_tv_show_title_list(self):
         with DatabaseHandler() as db_connection:
@@ -147,9 +157,9 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
             assert len(metadata.get("media_list")) == 5
             for movie in metadata.get("media_list"):
                 assert isinstance(movie, dict)
-                assert "id" in movie
+                assert common_objects.ID_COLUMN in movie
                 assert "playlist_title" in movie
-                assert isinstance(movie["id"], int)
+                assert isinstance(movie[common_objects.ID_COLUMN], int)
                 assert isinstance(movie["playlist_title"], str)
 
     def test_get_tv_show_season_title_list(self):
@@ -163,9 +173,9 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
             assert len(metadata.get("media_list")) == 2
             for movie in metadata.get("media_list"):
                 assert isinstance(movie, dict)
-                assert "id" in movie
+                assert common_objects.ID_COLUMN in movie
                 assert "season_title" in movie
-                assert isinstance(movie["id"], int)
+                assert isinstance(movie[common_objects.ID_COLUMN], int)
                 assert isinstance(movie["season_title"], str)
 
     def test_get_tv_show_season_episode_title_list(self):
@@ -180,10 +190,10 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
             assert len(metadata.get("media_list")) == 2
             for movie in metadata.get("media_list"):
                 assert isinstance(movie, dict)
-                assert "id" in movie
-                assert "media_title" in movie
-                assert isinstance(movie["id"], int)
-                assert isinstance(movie["media_title"], str)
+                assert common_objects.ID_COLUMN in movie
+                assert common_objects.MEDIA_TITLE_COLUMN in movie
+                assert isinstance(movie[common_objects.ID_COLUMN], int)
+                assert isinstance(movie[common_objects.MEDIA_TITLE_COLUMN], str)
 
     def test_get_tv_show_metadata(self):
         with DatabaseHandler() as db_connection:
@@ -192,7 +202,7 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
             assert metadata
             assert isinstance(metadata, dict)
             assert metadata.get("container_content_type") == ContentType.TV.value
-            assert metadata.get("id") == 1
+            assert metadata.get(common_objects.ID_COLUMN) == 1
             assert metadata.get("playlist_title") == "Vampire"
             assert metadata.get("season_count") == 2
             assert metadata.get("episode_count") == 5
@@ -201,11 +211,27 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
             assert len(metadata.get("media_list")) == 2
             for movie in metadata.get("media_list"):
                 assert isinstance(movie, dict)
-                assert "id" in movie
+                assert common_objects.ID_COLUMN in movie
                 assert "season_title" in movie
-                assert isinstance(movie["id"], int)
+                assert isinstance(movie[common_objects.ID_COLUMN], int)
                 assert isinstance(movie["season_title"], str)
             assert metadata.get("media_list_content_type") == ContentType.SEASON.value
+
+    def test_get_movie_metadata(self):
+        with DatabaseHandler() as db_connection:
+            metadata = db_connection.get_media_content(ContentType.MOVIE.value, 1)
+            print(json.dumps(metadata, indent=4))
+            assert metadata
+            assert isinstance(metadata, dict)
+            assert metadata.get("media_list")
+            assert isinstance(metadata.get("media_list"), list)
+            assert len(metadata.get("media_list")) == 5
+            for movie in metadata.get("media_list"):
+                assert isinstance(movie, dict)
+                assert common_objects.ID_COLUMN in movie
+                assert isinstance(movie[common_objects.ID_COLUMN], int)
+                assert isinstance(movie[common_objects.MEDIA_TITLE_COLUMN], str)
+            assert metadata.get("media_list_content_type") == ContentType.MEDIA.value
 
     def test_get_tv_show_season_metadata(self):
         with DatabaseHandler() as db_connection:
@@ -214,10 +240,10 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
             assert metadata
             assert isinstance(metadata, dict)
             assert metadata.get("container_content_type") == ContentType.TV_SHOW.value
-            assert metadata.get("id") == 1
-            assert metadata.get("tv_show_id") == 1
-            assert metadata.get("season_index") == 1
-            assert metadata.get("playlist_id") == 1
+            assert metadata.get(common_objects.ID_COLUMN) == 1
+            assert metadata.get(common_objects.TV_SHOW_ID_COLUMN) == 1
+            assert metadata.get(common_objects.SEASON_INDEX_COLUMN) == 1
+            assert metadata.get(common_objects.PLAYLIST_ID_COLUMN) == 1
             assert metadata.get("playlist_title") == "Vampire"
             assert metadata.get("season_title") == "Season 1"
             assert metadata.get("episode_count") == 2
@@ -226,15 +252,15 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
             assert len(metadata.get("media_list")) == 2
             for movie in metadata.get("media_list"):
                 assert isinstance(movie, dict)
-                assert "id" in movie
-                assert "media_title" in movie
-                assert isinstance(movie["id"], int)
-                assert isinstance(movie["media_title"], str)
+                assert common_objects.ID_COLUMN in movie
+                assert common_objects.MEDIA_TITLE_COLUMN in movie
+                assert isinstance(movie[common_objects.ID_COLUMN], int)
+                assert isinstance(movie[common_objects.MEDIA_TITLE_COLUMN], str)
             assert metadata.get("media_list_content_type") == ContentType.MEDIA.value
 
     def test_get_season_list_index(self):
         with DatabaseHandler() as db_connection:
-            metadata = db_connection.get_season_list_index(1)
+            metadata = db_connection.get_season_list_index({common_objects.SEASON_ID_COLUMN: 1})
             print(metadata)
             assert metadata
             assert isinstance(metadata, int)
@@ -252,10 +278,10 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
             assert len(metadata.get("media_list")) == 5
             for movie in metadata.get("media_list"):
                 assert isinstance(movie, dict)
-                assert "id" in movie
-                assert "media_title" in movie
-                assert isinstance(movie["id"], int)
-                assert isinstance(movie["media_title"], str)
+                assert common_objects.ID_COLUMN in movie
+                assert common_objects.MEDIA_TITLE_COLUMN in movie
+                assert isinstance(movie[common_objects.ID_COLUMN], int)
+                assert isinstance(movie[common_objects.MEDIA_TITLE_COLUMN], str)
             assert metadata.get("media_list_content_type") == ContentType.MEDIA.value
 
     def test_get_tv_show_media_content(self):
@@ -270,9 +296,9 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
             assert len(metadata.get("media_list")) == 5
             for movie in metadata.get("media_list"):
                 assert isinstance(movie, dict)
-                assert "id" in movie
+                assert common_objects.ID_COLUMN in movie
                 assert "playlist_title" in movie
-                assert isinstance(movie["id"], int)
+                assert isinstance(movie[common_objects.ID_COLUMN], int)
                 assert isinstance(movie["playlist_title"], str)
             assert metadata.get("media_list_content_type") == ContentType.TV_SHOW.value
 
@@ -292,7 +318,7 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
             print(json.dumps(metadata, indent=4))
             assert metadata
             assert isinstance(metadata, dict)
-            assert metadata.get("id") == 1
+            assert metadata.get(common_objects.ID_COLUMN) == 1
             assert metadata.get("playlist_title") == "Vampire"
             assert metadata.get("season_count") == 2
             assert metadata.get("episode_count") == 5
@@ -302,9 +328,9 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
             assert len(metadata.get("media_list")) == 2
             for movie in metadata.get("media_list"):
                 assert isinstance(movie, dict)
-                assert "id" in movie
+                assert common_objects.ID_COLUMN in movie
                 assert "season_title" in movie
-                assert isinstance(movie["id"], int)
+                assert isinstance(movie[common_objects.ID_COLUMN], int)
                 assert isinstance(movie["season_title"], str)
             assert metadata.get("media_list_content_type") == ContentType.SEASON.value
 
@@ -316,10 +342,10 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
             print(json.dumps(metadata, indent=4))
             assert metadata
             assert isinstance(metadata, dict)
-            assert metadata.get("id") == 1
-            assert metadata.get("tv_show_id") == 1
-            assert metadata.get("season_index") == 1
-            assert metadata.get("playlist_id") == 1
+            assert metadata.get(common_objects.ID_COLUMN) == 1
+            assert metadata.get(common_objects.TV_SHOW_ID_COLUMN) == 1
+            assert metadata.get(common_objects.SEASON_INDEX_COLUMN) == 1
+            assert metadata.get(common_objects.PLAYLIST_ID_COLUMN) == 1
             assert metadata.get("playlist_title") == "Vampire"
             assert metadata.get("season_title") == "Season 1"
             assert metadata.get("episode_count") == 2
@@ -329,10 +355,10 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
             assert len(metadata.get("media_list")) == 2
             for movie in metadata.get("media_list"):
                 assert isinstance(movie, dict)
-                assert "id" in movie
-                assert "media_title" in movie
-                assert isinstance(movie["id"], int)
-                assert isinstance(movie["media_title"], str)
+                assert common_objects.ID_COLUMN in movie
+                assert common_objects.MEDIA_TITLE_COLUMN in movie
+                assert isinstance(movie[common_objects.ID_COLUMN], int)
+                assert isinstance(movie[common_objects.MEDIA_TITLE_COLUMN], str)
             assert metadata.get("media_list_content_type") == ContentType.MEDIA.value
 
     def test_get_media_content_metadata(self):
@@ -341,16 +367,18 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
             metadata = db_connection.get_media_content(content_type, 1)
             print(json.dumps(metadata, indent=4))
             assert metadata
-            assert metadata.get("id") == 1
-            assert metadata.get("tv_show_id") == 1
-            assert metadata.get("season_id") == 1
-            assert metadata.get("media_folder_path_id") == 1
-            assert metadata.get("media_title") == "sparkle"
-            assert ".mp4" in metadata.get("path")
-            assert metadata.get("media_type") == 1
-            assert metadata.get("media_folder_path") == self.media_paths[0].get("media_folder_path")
-            assert metadata.get("media_folder_url") == self.media_paths[0].get("media_folder_url")
-            assert metadata.get("playlist_id") == 1
+            assert metadata.get(common_objects.ID_COLUMN) == 1
+            assert metadata.get(common_objects.TV_SHOW_ID_COLUMN) == 1
+            assert metadata.get(common_objects.SEASON_ID_COLUMN) == 1
+            assert metadata.get(common_objects.MEDIA_DIRECTORY_ID_COLUMN) == 1
+            assert metadata.get(common_objects.MEDIA_TITLE_COLUMN) == "sparkle"
+            assert ".mp4" in metadata.get(common_objects.PATH_COLUMN)
+            assert metadata.get(common_objects.MEDIA_TYPE_COLUMN) == 5
+            assert metadata.get(common_objects.MEDIA_DIRECTORY_PATH_COLUMN) == self.media_paths[0].get(
+                common_objects.MEDIA_DIRECTORY_PATH_COLUMN)
+            assert metadata.get(common_objects.MEDIA_DIRECTORY_URL_COLUMN) == self.media_paths[0].get(
+                common_objects.MEDIA_DIRECTORY_URL_COLUMN)
+            assert metadata.get(common_objects.PLAYLIST_ID_COLUMN) == 1
             assert metadata.get("tv_show_title") == "Vampire"
             assert metadata.get("season_title") == "Season 1"
 
