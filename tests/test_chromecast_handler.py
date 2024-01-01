@@ -1,6 +1,9 @@
 from unittest import TestCase
 
+from pychromecast.controllers.media import MediaStatus
+
 from chromecast_handler import ChromecastHandler
+from database_handler import common_objects
 
 
 class TestChromecastHandler(TestCase):
@@ -116,7 +119,42 @@ class TestMediaPlayer(TestMyMediaDevice):
     #     self.assertTrue(self.media_controller.get_current_media_status())
 
     def test_play_next_episode(self):
-        pass
+        compare_value = {'id': 2, 'tv_show_id': 1, 'season_id': 1, 'media_directory_id': 1, 'media_title': 'mysterious',
+                         'path': '\\Vampire\\Season 1\\Vampire - s01e002.mp4', 'media_type': 5,
+                         'media_directory_path': '../media_folder_sample', 'new_media_directory_path': None,
+                         'media_directory_url': 'http://192.168.1.200:8000/tv_shows/', 'playlist_id': 1,
+                         'playlist_title': 'Vampire', 'season_index': 1, 'season_title': 'Season 1',
+                         'tv_show_title': 'Vampire', 'title': 'Vampire Season 1 mysterious', 'metadataType': 0}
+
+        media_status = MediaStatus()
+        media_status.media_metadata = {common_objects.PLAYLIST_ID_COLUMN: 1, common_objects.ID_COLUMN: 1}
+        self.media_controller.status = media_status
+        next_media_metadata = self.media_controller.play_next_episode()
+        # print(next_media_metadata)
+
+        assert compare_value == next_media_metadata
+
+    def test_play_next_episode_no_playlist(self):
+        media_status = MediaStatus()
+        media_status.media_metadata = {common_objects.ID_COLUMN: 1}
+        self.media_controller.status = media_status
+        next_media_metadata = self.media_controller.play_next_episode()
+        # print(next_media_metadata)
+        assert not next_media_metadata
+
+    def test_play_previous_episode(self):
+        compare_value = {'id': 1, 'tv_show_id': 1, 'season_id': 1, 'media_directory_id': 1, 'media_title': 'sparkle',
+                         'path': '\\Vampire\\Season 1\\Vampire - s01e001.mp4', 'media_type': 5,
+                         'media_directory_path': '../media_folder_sample', 'new_media_directory_path': None,
+                         'media_directory_url': 'http://192.168.1.200:8000/tv_shows/', 'playlist_id': 1,
+                         'playlist_title': 'Vampire', 'season_index': 1, 'season_title': 'Season 1',
+                         'tv_show_title': 'Vampire', 'title': 'Vampire Season 1 sparkle', 'metadataType': 0}
+
+        media_status = MediaStatus()
+        media_status.media_metadata = {common_objects.PLAYLIST_ID_COLUMN: 1, common_objects.ID_COLUMN: 2}
+        self.media_controller.status = media_status
+        next_media_metadata = self.media_controller.play_previous_episode()
+        assert compare_value == next_media_metadata
 
     def test_play_url(self):
         pass

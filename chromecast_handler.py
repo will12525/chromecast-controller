@@ -48,31 +48,41 @@ class MyMediaDevice:
     def __del__(self):
         self.media_controller = None
 
-    def play_episode_from_sql(self, media_id, playlist_id=None):
+    def play_episode_from_sql(self, media_id):
         with DatabaseHandler() as db_connection:
-            media_info = db_connection.get_media_content(ContentType.MEDIA.value, media_id)
-            if playlist_id:
-                media_info["user_selected_playlist_id"] = playlist_id
+            media_info = db_connection.get_media_content(ContentType.MEDIA, media_id)
         if media_info:
             self.play_media_info(media_info)
 
-    def play_increment_episode(self, db_function):
-        if self.status:
-            if media_metadata := self.status.media_metadata:
-                if playlist_id := media_metadata.get("user_selected_playlist_id",
-                                                     media_metadata.get(common_objects.PLAYLIST_ID_COLUMN, None)):
-                    if media_info := db_function(media_metadata.get(common_objects.ID_COLUMN), playlist_id):
-                        self.play_media_info(media_info)
-
     def play_next_episode(self):
-        with DatabaseHandler() as db_connection:
-            self.play_increment_episode(db_connection.get_next_in_playlist_media_metadata)
+        media_info = None
+        if self.status and (media_metadata := self.status.media_metadata):
+            current_media_data = {common_objects.MEDIA_ID_COLUMN: media_metadata.get(common_objects.ID_COLUMN),
+                                  common_objects.PLAYLIST_ID_COLUMN: media_metadata.get(
+                                      common_objects.PLAYLIST_ID_COLUMN)}
+
+            with DatabaseHandler() as db_connection:
+                media_info = db_connection.get_next_in_playlist_media_metadata(current_media_data)
+
+        if media_info:
+            self.play_media_info(media_info)
+            return media_info
 
     def play_previous_episode(self):
-        with DatabaseHandler() as db_connection:
-            self.play_increment_episode(db_connection.get_previous_in_playlist_media_metadata)
+        media_info = None
+        if self.status and (media_metadata := self.status.media_metadata):
+            current_media_data = {common_objects.MEDIA_ID_COLUMN: media_metadata.get(common_objects.ID_COLUMN),
+                                  common_objects.PLAYLIST_ID_COLUMN: media_metadata.get(
+                                      common_objects.PLAYLIST_ID_COLUMN)}
 
-    def play_media_info(self, media_info=None):
+            with DatabaseHandler() as db_connection:
+                media_info = db_connection.get_previous_in_playlist_media_metadata(current_media_data)
+
+        if media_info:
+            self.play_media_info(media_info)
+            return media_info
+
+    def play_media_info(self, media_info):
         if media_info:
             media_url = f"{media_info.get(common_objects.MEDIA_DIRECTORY_URL_COLUMN)}{media_info.get(common_objects.PATH_COLUMN)}"
             media_title = media_info.get(common_objects.MEDIA_TITLE_COLUMN)
@@ -80,7 +90,6 @@ class MyMediaDevice:
                 media_title = f"{season_title} {media_title}"
             if tv_show_title := media_info.get('tv_show_title'):
                 media_title = f"{tv_show_title} {media_title}"
-
             self.media_controller.play_media(media_url, self.DEFAULT_MEDIA_TYPE, title=media_title, metadata=media_info)
             self.media_controller.block_until_active()
 
@@ -190,9 +199,9 @@ class ChromecastHandler(threading.Thread):
         if self.media_controller:
             self.media_controller.seek(media_time)
 
-    def play_from_sql(self, media_id, playlist_id=None):
+    def play_from_sql(self, media_id):
         if self.media_controller:
-            self.media_controller.play_episode_from_sql(media_id, playlist_id)
+            self.media_controller.play_episode_from_sql(media_id)
 
     def send_command(self, media_device_command):
         if self.media_controller:

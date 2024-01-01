@@ -56,26 +56,23 @@ setup_thread = backend_handler.start()
 
 
 def build_main_content(request_args):
-    media_metadata = {}
-    content_id = None
-    content_type = ContentType.TV.value
-    content_id_str = request_args.get(common_objects.MEDIA_ID_COLUMN, None)
-    content_type_value = request_args.get("content_type", None)
-    if content_type_value:
-        try:
-            content_type = int(content_type_value)
-        except Exception as e:
-            print(e)
-            print("Content_type error")
-    if content_id_str:
-        try:
-            content_id = int(content_id_str)
-        except ValueError as e:
-            print(e)
+    content_type = request_args.get(key="content_type", default=ContentType.TV.value, type=int)
+    content_id = request_args.get(key=common_objects.MEDIA_ID_COLUMN, default=None, type=int)
+    # When run using flask, the default type of ContentType isn't applied
+    if len(ContentType) > content_type:
+        content_type = ContentType(content_type)
+
+    data = {}
+    if content_type == ContentType.TV_SHOW:
+        data[common_objects.TV_SHOW_ID_COLUMN] = content_id
+    elif content_type == ContentType.SEASON:
+        data[common_objects.SEASON_ID_COLUMN] = content_id
+    else:
+        pass
 
     try:
         with DatabaseHandler() as db_connection:
-            media_metadata = db_connection.get_media_content(content_type, content_id)
+            media_metadata = db_connection.get_media_content(content_type, params_dict=data)
         return render_template("index.html", homepage_url="/",
                                button_dict=media_controller_button_dict, media_metadata=media_metadata)
     except Exception as e:
@@ -158,9 +155,9 @@ def chromecast_command():
 def play_media():
     data = {}
     if json_request := request.get_json():
-        if media_id := json_request.get(common_objects.MEDIA_ID_COLUMN, 0):
+        if json_request.get(common_objects.MEDIA_ID_COLUMN, None):
             playlist_id = json_request.get(common_objects.PLAYLIST_ID_COLUMN, None)
-            backend_handler.play_media_on_chromecast(media_id, playlist_id)
+            backend_handler.play_media_on_chromecast(json_request)
     return data, 200
 
 

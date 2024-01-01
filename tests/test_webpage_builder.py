@@ -1,5 +1,8 @@
 import inspect
 from unittest import TestCase
+
+from werkzeug.datastructures.structures import ImmutableMultiDict
+
 import flask_endpoints
 from flask import Flask
 
@@ -46,32 +49,31 @@ class TestWebpageBuilder(TestCase):
 class Test(TestWebpageBuilder):
 
     def test_build_media_menu_content(self):
+        data = ImmutableMultiDict(
+            [('content_type', common_objects.ContentType.TV_SHOW.value), (common_objects.ID_COLUMN, 1)])
+        data2 = ImmutableMultiDict([('content_type', common_objects.ContentType.MOVIE.value)])
+        data3 = ImmutableMultiDict([('content_type', common_objects.ContentType.TV.value)])
         with self.app.app_context(), self.app.test_request_context():
             self.app.jinja_env.lstrip_blocks = True
             self.app.jinja_env.trim_blocks = True
-            assert flask_endpoints.build_main_content(
-                {"content_type": common_objects.ContentType.TV_SHOW.value,
-                 common_objects.MEDIA_ID_COLUMN: 1})
-            assert flask_endpoints.build_main_content(
-                {"content_type": common_objects.ContentType.MOVIE.value})
-            assert flask_endpoints.build_main_content(
-                {"content_type": common_objects.ContentType.TV.value})
+            assert flask_endpoints.build_main_content(data)
+            assert flask_endpoints.build_main_content(data2)
+            assert flask_endpoints.build_main_content(data3)
 
     def test_build_movie_menu_content(self):
+        request_args = ImmutableMultiDict([('content_type', common_objects.ContentType.MOVIE.value)])
         with self.app.app_context(), self.app.test_request_context():
             self.app.jinja_env.lstrip_blocks = True
             self.app.jinja_env.trim_blocks = True
-            assert isinstance(
-                flask_endpoints.build_main_content(
-                    {"content_type": common_objects.ContentType.MOVIE.value}), str)
+            assert isinstance(flask_endpoints.build_main_content(request_args), str)
 
     def test_build_MOVIE_content(self):
+        request_args = ImmutableMultiDict([('content_type', common_objects.ContentType.MOVIE.value)])
         html_as_string = load_file()
         assert html_as_string
         with self.app.app_context(), self.app.test_request_context():
             self.app.jinja_env.lstrip_blocks = True
             self.app.jinja_env.trim_blocks = True
-            request_args = {"content_type": common_objects.ContentType.MOVIE.value}
             main_content = flask_endpoints.build_main_content(request_args)
             assert main_content
             print_differences(main_content, html_as_string)
@@ -80,13 +82,14 @@ class Test(TestWebpageBuilder):
             assert main_content == html_as_string
 
     def test_build_TV_SHOW_content(self):
+        request_args = ImmutableMultiDict([('content_type', common_objects.ContentType.TV.value)])
         html_as_string = load_file()
         assert html_as_string
         with self.app.app_context(), self.app.test_request_context():
             self.app.jinja_env.lstrip_blocks = True
             self.app.jinja_env.trim_blocks = True
-            request_args = {"content_type": common_objects.ContentType.TV.value}
             main_content = flask_endpoints.build_main_content(request_args)
+
             assert main_content
             print_differences(main_content, html_as_string)
             if SAVE_FILES:
@@ -94,13 +97,14 @@ class Test(TestWebpageBuilder):
             assert main_content == html_as_string
 
     def test_build_SEASON_content(self):
+        request_args = ImmutableMultiDict(
+            [('content_type', common_objects.ContentType.TV_SHOW.value), (common_objects.MEDIA_ID_COLUMN, 1)])
         html_as_string = load_file()
         assert html_as_string
         with self.app.app_context(), self.app.test_request_context():
             self.app.jinja_env.lstrip_blocks = True
             self.app.jinja_env.trim_blocks = True
-            request_args = {common_objects.MEDIA_ID_COLUMN: 1,
-                            "content_type": common_objects.ContentType.TV_SHOW.value}
+
             main_content = flask_endpoints.build_main_content(request_args)
             assert main_content
             print_differences(main_content, html_as_string)
@@ -109,13 +113,13 @@ class Test(TestWebpageBuilder):
             assert main_content == html_as_string
 
     def test_build_MEDIA_content(self):
+        request_args = ImmutableMultiDict(
+            [('content_type', common_objects.ContentType.SEASON.value), (common_objects.MEDIA_ID_COLUMN, 1)])
         html_as_string = load_file()
         assert html_as_string
         with self.app.app_context(), self.app.test_request_context():
             self.app.jinja_env.lstrip_blocks = True
             self.app.jinja_env.trim_blocks = True
-            request_args = {common_objects.MEDIA_ID_COLUMN: 1,
-                            "content_type": common_objects.ContentType.SEASON.value}
             main_content = flask_endpoints.build_main_content(request_args)
             assert main_content
             print_differences(main_content, html_as_string)
