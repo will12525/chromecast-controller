@@ -21,6 +21,7 @@ from database_handler.create_database import DBCreator
 # TODO: Add notification when media scan completes
 # TODO: Update chromecast menu auto populate to remove missing chromecasts
 # TODO: Convert chromecast name strings to id values and use ID values to refer to chromecasts
+# TODO: Make local media player: https://www.tutorialspoint.com/opencv_python/opencv_python_play_video_file.htm
 
 class APIEndpoints(Enum):
     MAIN = "/"

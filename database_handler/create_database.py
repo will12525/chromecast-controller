@@ -51,13 +51,15 @@ sql_create_media_info_table = f'''CREATE TABLE IF NOT EXISTS {common_objects.MED
                                  {common_objects.MEDIA_DIRECTORY_ID_COLUMN} NOT NULL,
                                  {common_objects.MEDIA_TITLE_COLUMN} text NOT NULL,
                                  {common_objects.PATH_COLUMN} text NOT NULL UNIQUE,
+                                 {common_objects.MD5SUM_COLUMN} text UNIQUE,
+                                 {common_objects.DURATION_COLUMN} integer,
                                  FOREIGN KEY ({common_objects.TV_SHOW_ID_COLUMN}) REFERENCES {common_objects.TV_SHOW_INFO_TABLE} ({common_objects.ID_COLUMN}),
                                  FOREIGN KEY ({common_objects.SEASON_ID_COLUMN}) REFERENCES {common_objects.SEASON_INFO_TABLE} ({common_objects.ID_COLUMN}),
                                  FOREIGN KEY ({common_objects.MEDIA_DIRECTORY_ID_COLUMN}) REFERENCES {common_objects.MEDIA_DIRECTORY_ID_COLUMN} ({common_objects.ID_COLUMN}),
                                  UNIQUE({common_objects.MEDIA_DIRECTORY_ID_COLUMN}, {common_objects.MEDIA_TITLE_COLUMN}, {common_objects.PATH_COLUMN})
                               );'''
 
-sql_insert_media_info_table = f'{INSERT_IGNORE} {common_objects.MEDIA_INFO_TABLE} VALUES(:{common_objects.ID_COLUMN}, :{common_objects.TV_SHOW_ID_COLUMN}, :{common_objects.SEASON_ID_COLUMN}, :{common_objects.MEDIA_DIRECTORY_ID_COLUMN}, :{common_objects.MEDIA_TITLE_COLUMN}, :{common_objects.PATH_COLUMN});'
+sql_insert_media_info_table = f'{INSERT_IGNORE} {common_objects.MEDIA_INFO_TABLE} VALUES(:{common_objects.ID_COLUMN}, :{common_objects.TV_SHOW_ID_COLUMN}, :{common_objects.SEASON_ID_COLUMN}, :{common_objects.MEDIA_DIRECTORY_ID_COLUMN}, :{common_objects.MEDIA_TITLE_COLUMN}, :{common_objects.PATH_COLUMN}, :{common_objects.MD5SUM_COLUMN}, :{common_objects.DURATION_COLUMN});'
 
 sql_create_media_folder_path_table = f'''CREATE TABLE IF NOT EXISTS {common_objects.MEDIA_DIRECTORY_TABLE} (
                                         {common_objects.ID_COLUMN} integer PRIMARY KEY,
@@ -100,16 +102,6 @@ class DBCreator(DBConnection):
                                             'COMMIT;'])
         self.create_tables(db_table_creation_script)
 
-    def scan_all_media_directories(self):
-        for media_directory_info in self.get_all_media_directory_info():
-            self.scan_media_directory(media_directory_info)
-
-    def setup_media_directory(self, media_directory_info):
-        if media_directory_id := self.set_media_directory_info(media_directory_info):
-            media_directory_info[common_objects.MEDIA_DIRECTORY_ID_COLUMN] = media_directory_id
-            self.scan_media_directory(media_directory_info)
-        return media_directory_id
-
     def scan_media_directory(self, media_directory_info):
         if media_directory_info.get(common_objects.MEDIA_TYPE_COLUMN) == ContentType.TV.value:
             self.add_tv_show_data(media_directory_info)
@@ -118,6 +110,16 @@ class DBCreator(DBConnection):
         else:
             print(f'ERROR: Unknown ContentType provided: {media_directory_info.get(common_objects.MEDIA_TYPE_COLUMN)}')
             print(f'INFO: Supported values {ContentType.list()}')
+
+    def setup_media_directory(self, media_directory_info):
+        if media_directory_id := self.set_media_directory_info(media_directory_info):
+            media_directory_info[common_objects.MEDIA_DIRECTORY_ID_COLUMN] = media_directory_id
+            self.scan_media_directory(media_directory_info)
+        return media_directory_id
+
+    def scan_all_media_directories(self):
+        for media_directory_info in self.get_all_media_directory_info():
+            self.scan_media_directory(media_directory_info)
 
     def add_tv_show_data(self, media_directory_info):
         for tv_show in collect_tv_shows(media_directory_info):
@@ -145,9 +147,6 @@ class DBCreator(DBConnection):
         for movie in collect_movies(media_directory_info):
             movie[common_objects.TV_SHOW_ID_COLUMN] = None
             movie[common_objects.SEASON_ID_COLUMN] = None
-            movie[common_objects.ID_COLUMN] = None
-            movie[common_objects.PLAYLIST_TITLE] = None
-            movie[common_objects.SEASON_INDEX_COLUMN] = None
             self.set_media_metadata(movie)
 
     def set_media_directory_info(self, media_directory_info) -> int:

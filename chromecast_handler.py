@@ -50,9 +50,12 @@ class MyMediaDevice:
 
     def play_episode_from_sql(self, media_id):
         with DatabaseHandler() as db_connection:
-            media_info = db_connection.get_media_content(ContentType.MEDIA, media_id)
+            media_info = db_connection.get_media_content(content_type=ContentType.MEDIA,
+                                                         params_dict={common_objects.MEDIA_ID_COLUMN: media_id})
+
         if media_info:
             self.play_media_info(media_info)
+            return media_info
 
     def play_next_episode(self):
         media_info = None
@@ -77,7 +80,6 @@ class MyMediaDevice:
 
             with DatabaseHandler() as db_connection:
                 media_info = db_connection.get_previous_in_playlist_media_metadata(current_media_data)
-
         if media_info:
             self.play_media_info(media_info)
             return media_info

@@ -7,6 +7,7 @@ import flask_endpoints
 from flask import Flask
 
 from database_handler import common_objects
+import __init__
 
 SAVE_FILES = False
 
@@ -37,10 +38,20 @@ def print_differences(str_1, str_2):
 
 
 class TestWebpageBuilder(TestCase):
+    DB_PATH = "media_metadata.db"
     template = "index.html"
     app = None
 
     def setUp(self) -> None:
+        # if os.path.exists(self.DB_PATH):
+        #     os.remove(self.DB_PATH)
+        __init__.patch_get_file_hash(self)
+        __init__.patch_get_ffmpeg_metadata(self)
+        __init__.patch_move_media_file(self)
+        __init__.patch_collect_tv_shows(self)
+        __init__.patch_collect_new_tv_shows(self)
+        __init__.patch_collect_movies(self)
+
         self.app = Flask(__name__)
         # Wait for the setup_thread to finish so the database is fully populated for testing
         flask_endpoints.setup_thread.join()

@@ -1,4 +1,4 @@
-import json
+import os
 from unittest import TestCase
 
 import config_file_handler
@@ -6,6 +6,7 @@ from database_handler import common_objects
 from database_handler.create_database import DBCreator
 from database_handler.database_handler import DatabaseHandler
 from database_handler.common_objects import ContentType
+import __init__
 
 
 class TestDatabaseHandler(TestCase):
@@ -16,9 +17,16 @@ class TestDatabaseHandler(TestCase):
     media_paths = None
 
     def setUp(self) -> None:
-        # IMPORTANT: Delete DB once before running
-        # if os.path.exists(self.DB_PATH):
-        #     os.remove(self.DB_PATH)
+
+        __init__.patch_get_file_hash(self)
+        __init__.patch_get_ffmpeg_metadata(self)
+        __init__.patch_move_media_file(self)
+        __init__.patch_collect_tv_shows(self)
+        __init__.patch_collect_new_tv_shows(self)
+        __init__.patch_collect_movies(self)
+
+        if os.path.exists(self.DB_PATH):
+            os.remove(self.DB_PATH)
 
         self.media_paths = config_file_handler.load_js_file()
         assert self.media_paths
@@ -359,7 +367,7 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
                    {'id': 18, 'media_title': 'Vampire - s02e003'}]
         with DatabaseHandler() as db_connection:
             metadata = db_connection.get_media_content(content_type=content_type)
-            # # print(json.dumps(metadata, indent=4))
+            # print(json.dumps(metadata, indent=4))
             assert metadata
             assert metadata.get("media_list")
             assert isinstance(metadata.get("media_list"), list)
@@ -370,6 +378,7 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
                 assert common_objects.MEDIA_TITLE_COLUMN in movie
                 assert isinstance(movie[common_objects.ID_COLUMN], int)
                 assert isinstance(movie[common_objects.MEDIA_TITLE_COLUMN], str)
+                # print(movie)
                 assert movie in compare
             assert metadata.get("media_list_content_type") == ContentType.MEDIA.value
 
