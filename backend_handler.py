@@ -62,16 +62,26 @@ class BackEndHandler:
         self.chromecast_handler.play_from_sql(media_id)
 
     def get_editor_txt_files(self):
-        editor_txt_file_list = []
         RAW_PATH = pathlib.Path(EDITOR_RAW_FOLDER).resolve()
-        for raw_folder_mp4 in list(RAW_PATH.rglob(mp4_file_ext)):
-            raw_txt_file = str(raw_folder_mp4).replace('.mp4', '.txt')
-            editor_txt_file_list.append(raw_folder_mp4.stem)
-        return editor_txt_file_list
+        return list(RAW_PATH.rglob(mp4_file_ext))
+
+    def get_editor_txt_file_names(self, editor_txt_files=None):
+        if not editor_txt_files:
+            editor_txt_files = self.get_editor_txt_files()
+
+        return [editor_txt_file.stem for editor_txt_file in editor_txt_files]
+
+    def load_txt_file_content(self, path):
+        with open(path, 'rb') as f:
+            return f.readlines()
 
     def get_editor_metadata(self):
+        selected_index = 0
+        editor_txt_files = self.get_editor_txt_files()
+        editor_txt_file_names = self.get_editor_txt_file_names(editor_txt_files)
         editor_metadata = {
-            "txt_file_list": self.get_editor_txt_files()
+            "txt_file_list": editor_txt_file_names,
+            "selected_txt_file_title": editor_txt_file_names[selected_index],
+            "selected_txt_file_content": self.load_txt_file_content(editor_txt_files[selected_index])
         }
         return editor_metadata
-
