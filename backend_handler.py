@@ -10,7 +10,6 @@ import mp4_splitter
 
 EDITOR_FOLDER = "/media/hdd1/plex_media/splitter/"
 EDITOR_RAW_FOLDER = f"{EDITOR_FOLDER}raw_files/"
-EDITOR_RAW_FOLDER = "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/"
 
 
 def setup_db():
