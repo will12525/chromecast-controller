@@ -91,6 +91,13 @@ class BackEndHandler:
             print(f"Not a txt file: {path}")
         return ""
 
+    def save_txt_file_content(self, txt_file_path, txt_file_content):
+        if ".txt" in txt_file_path:
+            with open(txt_file_path, 'w+') as f:
+                f.write(txt_file_content)
+        else:
+            print(f"Not a txt file: {txt_file_path}")
+
     def get_editor_metadata(self, input_txt_file):
         editor_txt_files = self.get_editor_txt_files()
         if len(editor_txt_files) >= 1:
@@ -115,6 +122,9 @@ class BackEndHandler:
 
         return editor_metadata
 
-    def editor_save_txt_file(request):
-        print(request)
+    def editor_save_txt_file(self, save_request):
+        output_file_path = f"{EDITOR_RAW_FOLDER}{save_request.get('txt_file_name')}.txt"
+        self.save_txt_file_content(output_file_path, save_request.get('txt_file_content'))
+        print(output_file_path)
+        print(save_request.get('txt_file_content'))
 

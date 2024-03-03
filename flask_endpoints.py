@@ -103,7 +103,14 @@ def editor():
 def editor_save_txt_file():
     data = {}
     if json_request := request.get_json():
-        backend_handler.editor_save_txt_file(json_request)
+        try:
+            backend_handler.editor_save_txt_file(json_request)
+        except Exception as e:
+            print("Exception class: ", e.__class__)
+            print(f"ERROR: {e}")
+            print(traceback.print_exc())
+
+       
     return data, 200
 
 
