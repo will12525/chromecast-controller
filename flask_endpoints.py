@@ -58,6 +58,7 @@ setup_thread = backend_handler.start()
 
 backend_handler.get_editor_metadata()
 
+
 def build_main_content(request_args):
     content_type = request_args.get(key="content_type", default=ContentType.TV.value, type=int)
     content_id = request_args.get(key=common_objects.MEDIA_ID_COLUMN, default=None, type=int)
@@ -87,9 +88,10 @@ def build_main_content(request_args):
 
 @app.route(APIEndpoints.EDITOR.value)
 def editor():
+    selected_txt_file = request.args.get(key="selected_file", default=None, type=int)
     try:
         return render_template("editor.html", homepage_url="/", button_dict=media_controller_button_dict,
-                               editor_metadata=backend_handler.get_editor_metadata())
+                               editor_metadata=backend_handler.get_editor_metadata(selected_txt_file))
     except Exception as e:
         print("Exception class: ", e.__class__)
         print(f"ERROR: {e}")

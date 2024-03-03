@@ -54,7 +54,7 @@
                 {% if 'txt_file_list' in editor_metadata %}
                 <div class="list-group">
                     {% for editor_txt_file in editor_metadata['txt_file_list']: %}
-                    <a href="?selected_file={{ media_metadata['media_list_content_type'] }}"
+                    <a href="/editor?selected_file={{ editor_txt_file }}"
                        class="list-group-item list-group-item-action">{{ editor_txt_file }}</a>
                     {% endfor %}
                 </div>

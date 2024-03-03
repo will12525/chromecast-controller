@@ -63,7 +63,7 @@ class BackEndHandler:
 
     def get_mp4_txt_files(self):
         RAW_PATH = pathlib.Path(EDITOR_RAW_FOLDER).resolve()
-        return list(RAW_PATH.rglob(mp4_file_ext))
+        return list(sorted(RAW_PATH.rglob(mp4_file_ext)))
 
     def get_editor_txt_files(self, editor_mp4_files=None):
         editor_txt_files = []
@@ -91,7 +91,7 @@ class BackEndHandler:
             print(f"Not a txt file: {path}")
         return ""
 
-    def get_editor_metadata(self):
+    def get_editor_metadata(self, input_txt_file):
         editor_txt_files = self.get_editor_txt_files()
         if len(editor_txt_files) >= 1:
             assert ".mp4" not in str(editor_txt_files[0])
@@ -101,6 +101,11 @@ class BackEndHandler:
         editor_txt_file_names = self.get_editor_txt_file_names(editor_txt_files)
         selected_txt_file = editor_txt_file_names[selected_index]
         selected_txt_file_content = self.load_txt_file_content(editor_txt_files[selected_index])
+
+        if input_txt_file and input_txt_file in editor_txt_file_names:
+            selected_txt_file = editor_txt_file_names[selected_index]
+            selected_txt_file_content = self.load_txt_file_content(
+                editor_txt_files[editor_txt_file_names.index(selected_txt_file)])
 
         editor_metadata = {
             "txt_file_list": editor_txt_file_names,
