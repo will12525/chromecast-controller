@@ -201,7 +201,7 @@ def get_cmd_list(output_path, sub_clips, mp4_process_file, video_path):
         if media_output_path.exists():
             print(f"ERROR: File exists: {media_output_path}.")
             continue
-        print(media_output_path)
+        # print(media_output_path)
         # print(f"Splitting: {sub_clip.start_time}:{sub_clip.end_time}, {mp4_process_file} -> {episode_path}")
         cmd_list.append([SPLITTER_BASH_CMD, str(mp4_process_file), str(media_output_path), str(sub_clip.start_time),
                          str(sub_clip.end_time), str(episode_title)])
@@ -245,7 +245,7 @@ def run_image_processor_v2(txt_process_file, destination_dir=None):
         cmd_list = get_cmd_list(destination_dir, sub_clips, mp4_process_file, video_path)
 
         for cmd in cmd_list:
-            print(cmd)
+            # print(cmd)
             extract_subclip(video_path.parent, cmd)
     except ValueError:
         return ERROR_TXT_FILE_INVALID_CONTENT
