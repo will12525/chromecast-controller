@@ -88,7 +88,7 @@ def build_main_content(request_args):
 
 @app.route(APIEndpoints.EDITOR.value)
 def editor():
-    selected_txt_file = request.args.get(key="selected_file", default=None, type=int)
+    selected_txt_file = request.args.get(key="selected_file", default=None, type=str)
     try:
         return render_template("editor.html", homepage_url="/", button_dict=media_controller_button_dict,
                                editor_metadata=backend_handler.get_editor_metadata(selected_txt_file))

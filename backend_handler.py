@@ -97,13 +97,13 @@ class BackEndHandler:
             assert ".mp4" not in str(editor_txt_files[0])
             assert ".txt" in str(editor_txt_files[0])
 
-        selected_index = 2
+        selected_index = 0
         editor_txt_file_names = self.get_editor_txt_file_names(editor_txt_files)
         selected_txt_file = editor_txt_file_names[selected_index]
         selected_txt_file_content = self.load_txt_file_content(editor_txt_files[selected_index])
 
         if input_txt_file and input_txt_file in editor_txt_file_names:
-            selected_txt_file = editor_txt_file_names[selected_index]
+            selected_txt_file = input_txt_file
             selected_txt_file_content = self.load_txt_file_content(
                 editor_txt_files[editor_txt_file_names.index(selected_txt_file)])
 
