@@ -66,25 +66,21 @@ class BackEndHandler:
         return list(RAW_PATH.rglob(mp4_file_ext))
 
     def get_editor_txt_files(self, editor_mp4_files=None):
+        editor_txt_files = []
+
         if not editor_mp4_files:
             editor_mp4_files = self.get_mp4_txt_files()
-        editor_txt_files = [pathlib.Path(str(editor_mp4_file).replace("mp4", "txt")).resolve() for editor_mp4_file in editor_mp4_files]
-        editor_txt_files = []
+
         for editor_mp4_file in editor_mp4_files:
-            print(editor_mp4_file)
-            editor_txt_files.append(pathlib.Path(str(editor_mp4_file).replace("mp4", "txt")).resolve())
+            editor_txt_file_path = pathlib.Path(str(editor_mp4_file).replace("mp4", "txt")).resolve()
+            editor_txt_file_path.touch()
+            editor_txt_files.append(editor_txt_file_path)
 
-        print(editor_txt_files)
-        print(len(editor_txt_files))
-        for editor_txt_file in editor_txt_files:
-            editor_txt_file.touch()
         return editor_txt_files
-
 
     def get_editor_txt_file_names(self, editor_txt_files=None):
         if not editor_txt_files:
             editor_txt_files = self.get_editor_txt_files()
-
         return [editor_txt_file.stem for editor_txt_file in editor_txt_files]
 
     def load_txt_file_content(self, path):
@@ -96,24 +92,20 @@ class BackEndHandler:
         return ""
 
     def get_editor_metadata(self):
-        editor_txt_files = self.get_editor_txt_files()        
-        assert ".mp4" not in str(editor_txt_files[0])
-        assert ".txt" in str(editor_txt_files[0])
-        
+        editor_txt_files = self.get_editor_txt_files()
+        if len(editor_txt_files) >= 1:
+            assert ".mp4" not in str(editor_txt_files[0])
+            assert ".txt" in str(editor_txt_files[0])
+
         selected_index = 2
         editor_txt_file_names = self.get_editor_txt_file_names(editor_txt_files)
         selected_txt_file = editor_txt_file_names[selected_index]
-        selected_txt_file_content=self.load_txt_file_content(editor_txt_files[selected_index])
+        selected_txt_file_content = self.load_txt_file_content(editor_txt_files[selected_index])
 
         editor_metadata = {
             "txt_file_list": editor_txt_file_names,
             "selected_txt_file_title": selected_txt_file,
-            "selected_txt_file_content": selected_txt_file_content 
+            "selected_txt_file_content": selected_txt_file_content
         }
-        print(editor_metadata)
+
         return editor_metadata
-
-
-
-
-
