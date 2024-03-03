@@ -134,6 +134,22 @@ async function play_media(media_id, playlist_id=null) {
     });
 }
 
+async function save_txt_file() {
+    var url = "/save_txt_file";
+    const editor_txt_file_name = document.getElementById("editor_txt_file_name");
+    const editor_txt_file_content = document.getElementById("editor_txt_file_content");
+    let data = {
+        "txt_file_name": editor_txt_file_name.textContent,
+        "txt_file_content": editor_txt_file_content.value 
+    };
+    // Send POST request
+    let response = await fetch(url, {
+        "method": "POST",
+        "headers": {"Content-Type": "application/json"},
+        "body": JSON.stringify(data),
+    });
+}
+
 async function scan_media_directories() {
     var url = "/scan_media_directories";
     let data = {};

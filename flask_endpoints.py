@@ -26,6 +26,7 @@ from database_handler.create_database import DBCreator
 class APIEndpoints(Enum):
     MAIN = "/"
     EDITOR = "/editor"
+    EDITOR_SAVE_TXT_FILE = "/save_txt_file"
     GET_CHROMECAST_CONTROLS = "/get_chromecast_controls"
     GET_MEDIA_CONTENT_TYPES = "/get_media_content_types"
     SET_CURRENT_MEDIA_RUNTIME = "/set_current_media_runtime"
@@ -97,6 +98,13 @@ def editor():
         print(f"ERROR: {e}")
         print(traceback.print_exc())
         return str(traceback.print_exc())
+
+@app.route(APIEndpoints.EDITOR_SAVE_TXT_FILE.value, methods=['POST'])
+def editor_save_txt_file():
+    data = {}
+    if json_request := request.get_json():
+        backend_handler.editor_save_txt_file(json_request)
+    return data, 200
 
 
 @app.route(APIEndpoints.MAIN.value)

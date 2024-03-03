@@ -62,11 +62,9 @@
             </div>
             <div class="col col-md-3">
                 <div class="mb-3">
-                    <label for="exampleFormControlTextarea1" class="form-label">
-                        {{ editor_metadata['selected_txt_file_title'] }}
-                    </label>
-                    <textarea class="form-control" id="exampleFormControlTextarea1" rows="20">{{ editor_metadata['selected_txt_file_content'] }}</textarea>
-                    <button type="button" class="btn btn-success">Save</button>
+                    <label for="editor_txt_file_content" id="editor_txt_file_name" class="form-label">{{ editor_metadata['selected_txt_file_title'] }}</label>
+                    <textarea class="form-control" id="editor_txt_file_content" rows="20">{{ editor_metadata['selected_txt_file_content'] }}</textarea>
+                    <button type="button" class="btn btn-success" onclick="javascript:save_txt_file()">Save</button>
                 </div>
             </div>
         </div>

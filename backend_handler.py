@@ -114,3 +114,7 @@ class BackEndHandler:
         }
 
         return editor_metadata
+
+    def editor_save_txt_file(request):
+        print(request)
+
