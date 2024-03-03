@@ -56,7 +56,7 @@ media_controller_button_dict = {
 backend_handler = BackEndHandler()
 setup_thread = backend_handler.start()
 
-backend_handler.get_editor_metadata()
+backend_handler.get_editor_metadata(None)
 
 
 def build_main_content(request_args):
