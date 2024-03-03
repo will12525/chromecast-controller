@@ -136,3 +136,4 @@ class BackEndHandler:
     def editor_validate_txt_file(self, editor_metadata):
         txt_file_name = f"{EDITOR_RAW_FOLDER}{editor_metadata.get('txt_file_name')}.txt"
         return mp4_splitter.check_txt_file_valid(txt_file_name)
+

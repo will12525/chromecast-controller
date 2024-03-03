@@ -176,7 +176,7 @@ def convert_txt_file_content(txt_file_content):
     return sub_clips
 
 
-def qget_cmd_list(output_path, sub_clips, mp4_process_file, video_path):
+def get_cmd_list(output_path, sub_clips, mp4_process_file, video_path):
     cmd_list = []
     current_index = ALPHANUMERIC_INDEX_A
     show_dir_name = ""
@@ -244,6 +244,7 @@ def run_image_processor_v2(txt_process_file, destination_dir=None):
         cmd_list = get_cmd_list(destination_dir, sub_clips, mp4_process_file, video_path)
 
         for cmd in cmd_list:
+            print(cmd)
             extract_subclip(video_path.parent, cmd)
     except ValueError:
         return ERROR_TXT_FILE_INVALID_CONTENT

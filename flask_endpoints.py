@@ -1,3 +1,4 @@
+import pathlib
 from enum import Enum
 import traceback
 from flask import Flask, request, render_template
@@ -119,9 +120,11 @@ def editor_process_txt_file():
     if json_request := request.get_json():
         try:
             with DatabaseHandler() as db_connection:
-                media_metadata = db_connection.get_media_folder_path(0)
+                media_metadata = db_connection.get_media_folder_path(1)
             print(media_metadata)
-            backend_handler.editor_process_txt_file(json_request, media_metadata.get(MEDIA_DIRECTORY_PATH_COLUMN))
+            output_path = pathlib.Path(media_metadata.get(MEDIA_DIRECTORY_PATH_COLUMN)).resolve()
+            err_code = backend_handler.editor_process_txt_file(json_request, output_path)
+            print(f"ERROR: {err_code}")
         except Exception as e:
             print("Exception class: ", e.__class__)
             print(f"ERROR: {e}")
