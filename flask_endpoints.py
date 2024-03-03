@@ -7,7 +7,7 @@ from backend_handler import BackEndHandler
 from chromecast_handler import CommandList
 from database_handler import common_objects
 from database_handler.database_handler import DatabaseHandler
-from database_handler.common_objects import ContentType
+from database_handler.common_objects import ContentType, MEDIA_DIRECTORY_PATH_COLUMN
 from database_handler.create_database import DBCreator
 
 
@@ -27,6 +27,7 @@ class APIEndpoints(Enum):
     MAIN = "/"
     EDITOR = "/editor"
     EDITOR_SAVE_TXT_FILE = "/save_txt_file"
+    EDITOR_PROCESS_TXT_FILE = "/process_txt_file"
     GET_CHROMECAST_CONTROLS = "/get_chromecast_controls"
     GET_MEDIA_CONTENT_TYPES = "/get_media_content_types"
     SET_CURRENT_MEDIA_RUNTIME = "/set_current_media_runtime"
@@ -56,8 +57,6 @@ media_controller_button_dict = {
 
 backend_handler = BackEndHandler()
 setup_thread = backend_handler.start()
-
-backend_handler.get_editor_metadata(None)
 
 
 def build_main_content(request_args):
@@ -99,6 +98,7 @@ def editor():
         print(traceback.print_exc())
         return str(traceback.print_exc())
 
+
 @app.route(APIEndpoints.EDITOR_SAVE_TXT_FILE.value, methods=['POST'])
 def editor_save_txt_file():
     data = {}
@@ -110,7 +110,23 @@ def editor_save_txt_file():
             print(f"ERROR: {e}")
             print(traceback.print_exc())
 
-       
+    return data, 200
+
+
+@app.route(APIEndpoints.EDITOR_PROCESS_TXT_FILE.value, methods=['POST'])
+def editor_process_txt_file():
+    data = {}
+    if json_request := request.get_json():
+        try:
+            with DatabaseHandler() as db_connection:
+                media_metadata = db_connection.get_media_folder_path(0)
+            print(media_metadata)
+            backend_handler.editor_process_txt_file(json_request, media_metadata.get(MEDIA_DIRECTORY_PATH_COLUMN))
+        except Exception as e:
+            print("Exception class: ", e.__class__)
+            print(f"ERROR: {e}")
+            print(traceback.print_exc())
+
     return data, 200
 
 

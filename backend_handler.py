@@ -6,9 +6,11 @@ import config_file_handler
 from chromecast_handler import ChromecastHandler
 from database_handler.create_database import DBCreator
 from database_handler.media_metadata_collector import mp4_file_ext, txt_file_ext
+import mp4_splitter
 
 EDITOR_FOLDER = "/media/hdd1/plex_media/splitter/"
 EDITOR_RAW_FOLDER = f"{EDITOR_FOLDER}raw_files/"
+EDITOR_RAW_FOLDER = "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/"
 
 
 def setup_db():
@@ -122,9 +124,16 @@ class BackEndHandler:
 
         return editor_metadata
 
-    def editor_save_txt_file(self, save_request):
-        output_file_path = f"{EDITOR_RAW_FOLDER}{save_request.get('txt_file_name')}.txt"
-        self.save_txt_file_content(output_file_path, save_request.get('txt_file_content'))
+    def editor_save_txt_file(self, editor_metadata):
+        output_file_path = f"{EDITOR_RAW_FOLDER}{editor_metadata.get('txt_file_name')}.txt"
+        self.save_txt_file_content(output_file_path, editor_metadata.get('txt_file_content'))
         print(output_file_path)
-        print(save_request.get('txt_file_content'))
+        print(editor_metadata.get('txt_file_content'))
 
+    def editor_process_txt_file(self, editor_metadata, destination_dir):
+        txt_file_name = f"{EDITOR_RAW_FOLDER}{editor_metadata.get('txt_file_name')}.txt"
+        return mp4_splitter.run_image_processor_v2(txt_file_name, destination_dir)
+
+    def editor_validate_txt_file(self, editor_metadata):
+        txt_file_name = f"{EDITOR_RAW_FOLDER}{editor_metadata.get('txt_file_name')}.txt"
+        return mp4_splitter.check_txt_file_valid(txt_file_name)

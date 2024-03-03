@@ -1,3 +1,4 @@
+import pathlib
 from unittest import TestCase
 
 from backend_handler import BackEndHandler
@@ -110,3 +111,55 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
     #
     #     tv_show_metadata = self.backend_handler.get_tv_show_metadata(media_id)
     #     self.assertTrue(tv_show_metadata)
+
+
+class TestEditor(TestBackEndHandler):
+    OUTPUT_PATH = "../media_folder_modify/output"
+
+    def test_editor_process_txt_file_error_invalid_file(self):
+        editor_metadata = {
+            'txt_file_name': "2024hi-01-31_16-32-36"
+        }
+        error_code = self.backend_handler.editor_process_txt_file(editor_metadata, self.OUTPUT_PATH)
+        print(f"ERROR: {error_code}")
+        assert error_code == 1
+
+    def test_editor_process_txt_file_error_missing_mp4(self):
+        editor_metadata = {
+            'txt_file_name': "2024-01-31_16-32-36_no_mp4"
+        }
+        error_code = self.backend_handler.editor_process_txt_file(editor_metadata, self.OUTPUT_PATH)
+        print(f"ERROR: {error_code}")
+        assert error_code == 2
+
+    def test_editor_process_txt_file_error_empty_file(self):
+        editor_metadata = {
+            'txt_file_name': "2024-01-31_16-32-36_empty"
+        }
+        error_code = self.backend_handler.editor_process_txt_file(editor_metadata, self.OUTPUT_PATH)
+        print(f"ERROR: {error_code}")
+        assert error_code == 3
+
+    def test_editor_process_txt_file_error_invalid_file_content(self):
+        editor_metadata = {
+            'txt_file_name': "2024-01-31_16-32-36_invalid"
+        }
+        error_code = self.backend_handler.editor_process_txt_file(editor_metadata, self.OUTPUT_PATH)
+        print(f"ERROR: {error_code}")
+        assert error_code == 4
+
+    def test_editor_process_txt_file(self):
+        editor_metadata = {
+            'txt_file_name': "2024-01-31_16-32-36"
+        }
+        error_code = self.backend_handler.editor_process_txt_file(editor_metadata,
+                                                                  pathlib.Path(self.OUTPUT_PATH).resolve())
+        print(f"ERROR: {error_code}")
+
+    def test_editor_cmd_list(self):
+        editor_metadata = {
+            'txt_file_name': "2024-01-31_16-32-36"
+        }
+        error_code = self.backend_handler.editor_process_txt_file(editor_metadata,
+                                                                  pathlib.Path(self.OUTPUT_PATH).resolve())
+        print(f"ERROR: {error_code}")

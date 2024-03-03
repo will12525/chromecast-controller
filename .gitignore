@@ -12,6 +12,7 @@ venv/
 #media_folder_movie/
 media_folder*/
 tests/static/
+editor_raw_files/
 
 # media database
 *.db

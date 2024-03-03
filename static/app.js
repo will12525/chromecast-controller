@@ -150,6 +150,20 @@ async function save_txt_file() {
     });
 }
 
+async function process_txt_file() {
+    var url = "/process_txt_file";
+    const editor_txt_file_name = document.getElementById("editor_txt_file_name");
+    let data = {
+        "txt_file_name": editor_txt_file_name.textContent
+    };
+    // Send POST request
+    let response = await fetch(url, {
+        "method": "POST",
+        "headers": {"Content-Type": "application/json"},
+        "body": JSON.stringify(data),
+    });
+}
+
 async function scan_media_directories() {
     var url = "/scan_media_directories";
     let data = {};
