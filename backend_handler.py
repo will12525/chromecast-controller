@@ -1,9 +1,13 @@
 import threading
 import git
+import pathlib
 
 import config_file_handler
 from chromecast_handler import ChromecastHandler
 from database_handler.create_database import DBCreator
+
+EDITOR_FOLDER = "/media/hdd1/plex_media/splitter/"
+EDITOR_RAW_FOLDER = f"{EDITOR_FOLDER}raw_files/"
 
 
 def setup_db():
@@ -55,3 +59,18 @@ class BackEndHandler:
 
     def play_media_on_chromecast(self, media_id):
         self.chromecast_handler.play_from_sql(media_id)
+    
+    def get_editor_txt_files(self):
+        editor_txt_file_list = ["Hello", "World!", EDITOR_FOLDER, EDITOR_RAW_FOLDER]
+        RAW_PATH = pathlib.Path(EDITOR_RAW_FOLDER).resolve()
+        print(RAW_PATH)
+        print(RAW_PATH.is_dir())
+        print(list(RAW_PATH.rglob("*.mp4")))
+        for raw_folder_mp4 in list(RAW_PATH.rglob("*.mp4")):
+            print(raw_folder_mp4)
+            raw_txt_file = str(raw_folder_mp4).replace('.mp4', '.txt')
+            editor_txt_file_list.append(raw_txt_file)
+
+        
+        return editor_txt_file_list
+
