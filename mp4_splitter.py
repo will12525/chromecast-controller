@@ -226,8 +226,6 @@ def run_image_processor_v2(txt_process_file, destination_dir=None):
     text_path = pathlib.Path(txt_process_file).resolve()
     mp4_process_file = txt_process_file.replace('.txt', '.mp4')
     video_path = pathlib.Path(mp4_process_file).resolve()
-    if not destination_dir:
-        destination_dir = video_path.parent
     if not text_path.exists() or not text_path.is_file() or not text_path.suffix == ".txt":
         return ERROR_TXT_FILE_DOESNT_EXIST
     if not video_path.exists() or not video_path.is_file() or not video_path.suffix == ".mp4":
@@ -241,6 +239,9 @@ def run_image_processor_v2(txt_process_file, destination_dir=None):
         sub_clips = convert_txt_file_content(time_lines)
         if not sub_clips:
             return ERROR_TXT_FILE_INVALID_CONTENT
+
+        if not destination_dir or not sub_clips[0].playlist_title:
+            destination_dir = video_path.parent
         cmd_list = get_cmd_list(destination_dir, sub_clips, mp4_process_file, video_path)
 
         for cmd in cmd_list:
