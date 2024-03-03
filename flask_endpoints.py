@@ -88,13 +88,13 @@ def build_main_content(request_args):
 def editor():
     try:
         print(backend_handler.get_editor_txt_files())
-        return render_template("editor.html", homepage_url="/", button_dict=media_controller_button_dict, editor_txt_files=backend_handler.get_editor_txt_files())
+        return render_template("editor.html", homepage_url="/", button_dict=media_controller_button_dict,
+                               editor_metadata=backend_handler.get_editor_metadata())
     except Exception as e:
         print("Exception class: ", e.__class__)
         print(f"ERROR: {e}")
         print(traceback.print_exc())
         return str(traceback.print_exc())
-
 
 
 @app.route(APIEndpoints.MAIN.value)
@@ -190,7 +190,6 @@ def get_media_menu_data():
     with DBCreator() as db_connection:
         pass
     return data, 200
-
 
 
 if __name__ == "__main__":
