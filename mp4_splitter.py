@@ -22,15 +22,7 @@ SPLITTER_BASH_CMD = "/media/hdd1/plex_media/splitter/splitter.sh"
 DEFAULT_MP4_FILE = "raw_file/2022-06-12_06-22-06.mp4"
 DEFAULT_EPISODE_START_INDEX = 0
 DEFAULT_SEASON_START_INDEX = None
-# DEFAULT_TV_SHOW_NAME = "abc"
 ALPHANUMERIC_INDEX_A = 97
-
-
-def quit_program(message):
-    print(message)
-    input("Press enter to quit...")
-    quit()
-
 
 ERROR_SUCCESS = 0
 ERROR_TXT_FILE_DOESNT_EXIST = 1
@@ -40,11 +32,12 @@ ERROR_TXT_FILE_INVALID_CONTENT = 4
 ERROR_MP4_FILE_ALREADY_EXISTS = 5
 
 
-def extract_subclip(output_path, cmd_list):
-    print(output_path)
-    print(cmd_list)
-    # output_path.mkdir(parents=True, exist_ok=True)
-    # subprocess.run(cmd_list, check=True, text=True)
+def extract_subclip(cmd):
+    output_dir = pathlib.Path(cmd[2]).resolve().parent
+    print(output_dir)
+    print(cmd)
+    # output_dir.mkdir(parents=True, exist_ok=True)
+    # subprocess.run(cmd, check=True, text=True)
 
 
 def load_txt_file(txt_file_path):
@@ -245,8 +238,8 @@ def run_image_processor_v2(txt_process_file, destination_dir=None):
         cmd_list = get_cmd_list(destination_dir, sub_clips, mp4_process_file, video_path)
 
         for cmd in cmd_list:
-            # print(cmd)
-            extract_subclip(video_path.parent, cmd)
+            extract_subclip(cmd)
+
     except ValueError:
         return ERROR_TXT_FILE_INVALID_CONTENT
     return 0
