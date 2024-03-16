@@ -279,6 +279,7 @@ async function setNavbarLinks() {
     var tv_show_select_button = document.getElementById("tv_show_select_button");
     var movie_select_button = document.getElementById("movie_select_button");
     var scan_media_button = document.getElementById("scan_media_button");
+    var editor_button = document.getElementById("editor_button");
 
     var url = "/get_media_content_types";
     let response = await fetch(url);
@@ -294,6 +295,10 @@ async function setNavbarLinks() {
         if (movie_select_button !== null)
         {
             movie_select_button.setAttribute('href', "?content_type=" + response_data["MOVIE"]);
+        }
+        if (editor_button !== null)
+        {
+            editor_button.setAttribute('href', "/editor");
         }
         if (scan_media_button !== null)
         {
