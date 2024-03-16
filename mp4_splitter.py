@@ -3,6 +3,7 @@ import queue
 import shutil
 import os
 import pathlib
+import subprocess
 import threading
 import time
 from datetime import datetime
@@ -222,10 +223,10 @@ class SubclipMetadata:
             destination_file_path = destination_file_path / self.playlist_title
 
         if self.season_index:
-            destination_file_path = destination_file_path / str(self.season_index)
+            destination_file_path = destination_file_path / f"Season {self.season_index}"
 
         if self.episode_index:
-            destination_file_path = destination_file_path / f'E{self.episode_index}.mp4'
+            destination_file_path = destination_file_path / f'{self.playlist_title} - s{self.season_index}e{self.episode_index}.mp4'
         else:
             destination_file_path = destination_file_path / f'{media_title}_{source_file_path.stem}.mp4'
 
@@ -293,11 +294,11 @@ def get_cmd_list(sub_clips: list[SubclipMetadata], sub_clip_file, media_output_p
 def extract_subclip(sub_clip):
     cmd = sub_clip.get_cmd()
     output_dir = pathlib.Path(cmd[2]).resolve().parent
-    # print(cmd)
     time.sleep(5)
-    # print(output_dir)
-    # output_dir.mkdir(parents=True, exist_ok=True)
-    # subprocess.run(cmd, check=True, text=True)
+    print(cmd)
+    print(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    subprocess.run(cmd, check=True, text=True)
 
 
 class SubclipProcessHandler(threading.Thread):
@@ -307,12 +308,10 @@ class SubclipProcessHandler(threading.Thread):
 
     def run(self):
         while not self.subclip_process_queue.empty():
-            print("Processing queue")
             self.process_start = datetime.now()
             self.current_cmd = self.subclip_process_queue.get()
             extract_subclip(self.current_cmd)
         self.current_cmd = None
-        print("Queue empty")
 
     def add_cmds_to_queue(self, cmd_list):
         for cmd in cmd_list:

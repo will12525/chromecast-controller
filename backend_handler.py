@@ -146,7 +146,6 @@ class BackEndHandler:
         try:
             save_txt_file_content(sub_clip_file, editor_metadata.get('txt_file_content'))
         except FileExistsError as e:
-            print("HELLO WORLD!")
             pass
 
         try:
