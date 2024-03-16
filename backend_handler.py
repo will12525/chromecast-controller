@@ -12,6 +12,9 @@ EDITOR_FOLDER = "/media/hdd1/plex_media/splitter/"
 EDITOR_RAW_FOLDER = f"{EDITOR_FOLDER}raw_files/"
 
 
+# EDITOR_RAW_FOLDER = "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/"
+
+
 def setup_db():
     with DBCreator() as db_connection:
         db_connection.create_db()
@@ -19,9 +22,27 @@ def setup_db():
             db_connection.setup_media_directory(media_folder_info)
 
 
+def save_txt_file_content(txt_file_path, txt_file_content):
+    if ".txt" in txt_file_path:
+        with open(txt_file_path, 'w+') as f:
+            f.write(txt_file_content)
+    else:
+        print(f"Not a txt file: {txt_file_path}")
+
+
+def load_txt_file_content(path):
+    if path.suffix == ".txt" and path.is_file():
+        with open(path, 'r', encoding="utf-8") as f:
+            return f.read()
+    else:
+        print(f"Not a txt file: {path}")
+    return ""
+
+
 class BackEndHandler:
     startup_sha = None
     chromecast_handler = None
+    editor_processor = mp4_splitter.SubclipProcessHandler()
 
     def __init__(self):
         repo = git.Repo(search_parent_directories=True)
@@ -84,21 +105,6 @@ class BackEndHandler:
             editor_txt_files = self.get_editor_txt_files()
         return [editor_txt_file.stem for editor_txt_file in editor_txt_files]
 
-    def load_txt_file_content(self, path):
-        if path.suffix == ".txt" and path.is_file():
-            with open(path, 'r', encoding="utf-8") as f:
-                return f.read()
-        else:
-            print(f"Not a txt file: {path}")
-        return ""
-
-    def save_txt_file_content(self, txt_file_path, txt_file_content):
-        if ".txt" in txt_file_path:
-            with open(txt_file_path, 'w+') as f:
-                f.write(txt_file_content)
-        else:
-            print(f"Not a txt file: {txt_file_path}")
-
     def get_editor_metadata(self, input_txt_file):
         editor_txt_files = self.get_editor_txt_files()
         if len(editor_txt_files) >= 1:
@@ -108,11 +114,11 @@ class BackEndHandler:
         selected_index = 0
         editor_txt_file_names = self.get_editor_txt_file_names(editor_txt_files)
         selected_txt_file = editor_txt_file_names[selected_index]
-        selected_txt_file_content = self.load_txt_file_content(editor_txt_files[selected_index])
+        selected_txt_file_content = load_txt_file_content(editor_txt_files[selected_index])
 
         if input_txt_file and input_txt_file in editor_txt_file_names:
             selected_txt_file = input_txt_file
-            selected_txt_file_content = self.load_txt_file_content(
+            selected_txt_file_content = load_txt_file_content(
                 editor_txt_files[editor_txt_file_names.index(selected_txt_file)])
 
         editor_metadata = {
@@ -125,15 +131,29 @@ class BackEndHandler:
 
     def editor_save_txt_file(self, editor_metadata):
         output_file_path = f"{EDITOR_RAW_FOLDER}{editor_metadata.get('txt_file_name')}.txt"
-        self.save_txt_file_content(output_file_path, editor_metadata.get('txt_file_content'))
+        save_txt_file_content(output_file_path, editor_metadata.get('txt_file_content'))
         print(output_file_path)
         print(editor_metadata.get('txt_file_content'))
 
-    def editor_process_txt_file(self, editor_metadata, destination_dir):
-        txt_file_name = f"{EDITOR_RAW_FOLDER}{editor_metadata.get('txt_file_name')}.txt"
-        return mp4_splitter.run_image_processor_v2(txt_file_name, destination_dir)
+    def editor_process_txt_file(self, editor_metadata, media_output_parent_path):
+        sub_clip_file = f"{EDITOR_RAW_FOLDER}{editor_metadata.get('txt_file_name')}.txt"
+        try:
+            sub_clips = self.editor_validate_txt_file(editor_metadata)
+            mp4_splitter.get_cmd_list(sub_clips, sub_clip_file, media_output_parent_path)
+            self.editor_processor.add_cmds_to_queue(sub_clips)
+        except ValueError as e:
+            raise ValueError(e.args[0]) from e
+        except FileNotFoundError as e:
+            raise FileNotFoundError(e.args[0]) from e
 
     def editor_validate_txt_file(self, editor_metadata):
         txt_file_name = f"{EDITOR_RAW_FOLDER}{editor_metadata.get('txt_file_name')}.txt"
-        return mp4_splitter.check_txt_file_valid(txt_file_name)
+        try:
+            return mp4_splitter.get_sub_clips_from_txt_file(txt_file_name)
+        except ValueError as e:
+            raise ValueError(e.args[0]) from e
+        except FileNotFoundError as e:
+            raise FileNotFoundError(e.args[0]) from e
 
+    def editor_get_process_metadata(self):
+        return self.editor_processor.get_metadata()

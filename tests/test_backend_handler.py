@@ -1,4 +1,5 @@
 import pathlib
+import time
 from unittest import TestCase
 
 from backend_handler import BackEndHandler
@@ -120,33 +121,53 @@ class TestEditor(TestBackEndHandler):
         editor_metadata = {
             'txt_file_name': "2024hi-01-31_16-32-36"
         }
-        error_code = self.backend_handler.editor_process_txt_file(editor_metadata, self.OUTPUT_PATH)
-        print(f"ERROR: {error_code}")
-        assert error_code == 1
+        with self.assertRaises(FileNotFoundError) as context:
+            self.backend_handler.editor_process_txt_file(editor_metadata, self.OUTPUT_PATH)
+        error_dict = context.exception.args[0]
+        assert type(error_dict) is dict
+        assert "Missing file" == error_dict.get("message")
+        print(error_dict)
+        assert "chromecast-controller/editor_raw_files/2024hi-01-31_16-32-36.txt" in error_dict.get("file_name")
 
     def test_editor_process_txt_file_error_missing_mp4(self):
         editor_metadata = {
             'txt_file_name': "2024-01-31_16-32-36_no_mp4"
         }
-        error_code = self.backend_handler.editor_process_txt_file(editor_metadata, self.OUTPUT_PATH)
-        print(f"ERROR: {error_code}")
-        assert error_code == 2
+        with self.assertRaises(FileNotFoundError) as context:
+            self.backend_handler.editor_process_txt_file(editor_metadata, self.OUTPUT_PATH)
+        error_dict = context.exception.args[0]
+        print(error_dict)
+        assert type(error_dict) is dict
+        assert "Missing file" == error_dict.get("message")
+        assert "chromecast-controller/editor_raw_files/2024-01-31_16-32-36_no_mp4.mp4" in error_dict.get("file_name")
 
     def test_editor_process_txt_file_error_empty_file(self):
         editor_metadata = {
             'txt_file_name': "2024-01-31_16-32-36_empty"
         }
-        error_code = self.backend_handler.editor_process_txt_file(editor_metadata, self.OUTPUT_PATH)
-        print(f"ERROR: {error_code}")
-        assert error_code == 3
+        with self.assertRaises(ValueError) as context:
+            self.backend_handler.editor_process_txt_file(editor_metadata, self.OUTPUT_PATH)
+        error_dict = context.exception.args[0]
+        print(error_dict)
+        assert type(error_dict) is dict
+        assert "Text file empty" == error_dict.get("message")
+        assert "chromecast-controller/editor_raw_files/2024-01-31_16-32-36_empty.txt" in error_dict.get("file_name")
 
     def test_editor_process_txt_file_error_invalid_file_content(self):
         editor_metadata = {
             'txt_file_name': "2024-01-31_16-32-36_invalid"
         }
-        error_code = self.backend_handler.editor_process_txt_file(editor_metadata, self.OUTPUT_PATH)
-        print(f"ERROR: {error_code}")
-        assert error_code == 4
+        with self.assertRaises(ValueError) as context:
+            self.backend_handler.editor_process_txt_file(editor_metadata, self.OUTPUT_PATH)
+        error_dict = context.exception.args[0]
+        assert type(error_dict) is dict
+        assert "Values less than 0" == error_dict.get("message")
+        assert "13:-3\n" == error_dict.get("string")
+        assert 0 == error_dict.get("hour")
+        assert 13 == error_dict.get("minute")
+        assert -3 == error_dict.get("second")
+        assert 0 == error_dict.get("line_index")
+        assert "chromecast-controller/editor_raw_files/2024-01-31_16-32-36_invalid.txt" in error_dict.get("file_name")
 
     def test_editor_process_txt_file(self):
         editor_metadata = {
@@ -154,7 +175,42 @@ class TestEditor(TestBackEndHandler):
         }
         error_code = self.backend_handler.editor_process_txt_file(editor_metadata,
                                                                   pathlib.Path(self.OUTPUT_PATH).resolve())
+        time.sleep(2)
+        print(self.backend_handler.editor_get_process_metadata())
         print(f"ERROR: {error_code}")
+        time.sleep(10)
+
+        error_code = self.backend_handler.editor_process_txt_file(editor_metadata,
+                                                                  pathlib.Path(self.OUTPUT_PATH).resolve())
+        time.sleep(10)
+        print(self.backend_handler.editor_get_process_metadata())
+
+        # error_code = self.backend_handler.editor_process_txt_file(editor_metadata,
+        #                                                           pathlib.Path(self.OUTPUT_PATH).resolve())
+
+    def test_valid_txt_file(self):
+        editor_metadata = {
+            'txt_file_name': "2024-01-31_16-32-36"
+        }
+        error_code = self.backend_handler.editor_validate_txt_file(editor_metadata)
+        print(f"ERROR: {error_code}")
+
+    def test_invalid_txt_file(self):
+        editor_metadata = {
+            'txt_file_name': "2024-01-31_16-32-36_invalid"
+        }
+
+        with self.assertRaises(ValueError) as context:
+            self.backend_handler.editor_validate_txt_file(editor_metadata)
+        error_dict = context.exception.args[0]
+        assert type(error_dict) is dict
+        assert "Values less than 0" == error_dict.get("message")
+        assert "13:-3\n" == error_dict.get("string")
+        assert 0 == error_dict.get("hour")
+        assert 13 == error_dict.get("minute")
+        assert -3 == error_dict.get("second")
+        assert 0 == error_dict.get("line_index")
+        assert "chromecast-controller/editor_raw_files/2024-01-31_16-32-36_invalid.txt" in error_dict.get("file_name")
 
     def test_editor_cmd_list(self):
         editor_metadata = {
