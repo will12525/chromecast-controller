@@ -134,13 +134,41 @@ async function play_media(media_id, playlist_id=null) {
     });
 }
 
+async function load_txt_file(element) {
+    var url = "/load_txt_file";
+    var editor_txt_file_name = element.innerText || element.textContent;
+    let data = {
+        "editor_txt_file_name": editor_txt_file_name
+    };
+    let response = await fetch(url, {
+        "method": "POST",
+        "headers": {"Content-Type": "application/json"},
+        "body": JSON.stringify(data),
+    });
+    console.log(response)
+    if (!response.ok) {
+        throw new Error("HTTP ERROR FAILED: " + response.status);
+    } else {
+        let response_data = await response.json();
+        console.log(response_data)
+        const editor_txt_file_name = document.getElementById("editor_txt_file_name");
+        const editor_txt_file_content = document.getElementById("editor_txt_file_content");
+        if (response_data["selected_txt_file_title"] !== undefined) {
+            editor_txt_file_name.innerHTML = response_data?.selected_txt_file_title;
+        }
+        if (response_data["selected_txt_file_content"] !== undefined) {
+            editor_txt_file_content.innerHTML = response_data?.selected_txt_file_content;
+        }
+    }
+}
+
 async function save_txt_file() {
     var url = "/save_txt_file";
     const editor_txt_file_name = document.getElementById("editor_txt_file_name");
     const editor_txt_file_content = document.getElementById("editor_txt_file_content");
     let data = {
         "txt_file_name": editor_txt_file_name.textContent,
-        "txt_file_content": editor_txt_file_content.value 
+        "txt_file_content": editor_txt_file_content.value
     };
     // Send POST request
     let response = await fetch(url, {
@@ -154,14 +182,37 @@ async function process_txt_file() {
     var url = "/process_txt_file";
     const editor_txt_file_name = document.getElementById("editor_txt_file_name");
     let data = {
-        "txt_file_name": editor_txt_file_name.textContent
+        "txt_file_name": editor_txt_file_name.textContent,
+        "txt_file_content": editor_txt_file_content.value
     };
-    // Send POST request
+
     let response = await fetch(url, {
         "method": "POST",
         "headers": {"Content-Type": "application/json"},
         "body": JSON.stringify(data),
     });
+    console.log(response)
+    if (!response.ok) {
+        throw new Error("HTTP ERROR FAILED: " + response.status);
+    } else {
+        let response_data = await response.json();
+        console.log(response_data)
+        editor_txt_file_log = document.getElementById("editor_txt_file_log")
+        prepend_text = ""
+        if (response_data["line_index"] !== undefined) {
+            prepend_text += "Line Number: " + response_data?.line_index + "\n";
+        }
+        if (response_data["message"] !== undefined) {
+            prepend_text += response_data?.message + "\n";
+        }
+        if (response_data["expected_path"] !== undefined) {
+            prepend_text += response_data?.expected_path + "\n";
+        }
+        if (response_data["string"] !== undefined) {
+            prepend_text += response_data?.string + "\n";
+        }
+        editor_txt_file_log.value = prepend_text + editor_txt_file_log.value
+    }
 }
 
 async function scan_media_directories() {
@@ -179,6 +230,22 @@ async function scan_media_directories() {
         "body": JSON.stringify(data),
     });
     button_element.classList.remove(disable_class);
+}
+
+async function updateEditorMetadata() {
+    var editor_process_metadata_name = document.getElementById("editor_process_metadata_name");
+    if (editor_process_metadata_name)
+    {
+        var url = "/process_metadata";
+        let response = await fetch(url);
+        if (response.ok) {
+            let response_data = await response.json();
+            console.log(response_data)
+            editor_process_metadata_name.innerText = response_data?.process_name;
+            document.getElementById("editor_process_metadata_time").innerText = response_data?.process_time;
+            document.getElementById("editor_process_metadata_queue_size").innerText = response_data?.process_queue_size;
+        }
+    }
 }
 
 async function updateSeekSelector() {
@@ -265,6 +332,7 @@ document.addEventListener("DOMContentLoaded", function(event){
     }
 
     setInterval(updateSeekSelector, 1000);
+    setInterval(updateEditorMetadata, 5000);
     getChromecastList();
     setNavbarLinks();
     setMediaControlButtons();

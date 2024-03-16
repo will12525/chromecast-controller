@@ -150,8 +150,14 @@ class SubclipMetadata:
             raise InvalidContentCount(error_dict)
 
         if start_time and end_time:
-            self.start_time = str(convert_timestamp(start_time))
-            self.end_time = str(convert_timestamp(end_time))
+            start_time = convert_timestamp(start_time)
+            end_time = convert_timestamp(end_time)
+            if end_time <= start_time:
+                error_dict = {"message": "End time >= start time", "string": subclip_metadata, "start_time": start_time,
+                              "end_time": end_time}
+                raise InvalidTimestamp(error_dict)
+            self.start_time = start_time
+            self.end_time = end_time
         if episode_index:
             try:
                 self.episode_index = int(episode_index)
@@ -224,7 +230,7 @@ class SubclipMetadata:
             destination_file_path = destination_file_path / f'{media_title}_{source_file_path.stem}.mp4'
 
         if destination_file_path.exists():
-            raise FileExistsError({"message": "File already exists", "expected_path": destination_file_path})
+            raise FileExistsError({"message": "File already exists", "expected_path": str(destination_file_path.stem)})
 
         if not self.media_title:
             self.media_title = media_title
@@ -246,7 +252,7 @@ def get_subclips_as_objs(txt_file_content):
     for index, file_text in enumerate(txt_file_content):
         try:
             sub_clips.append(SubclipMetadata(file_text))
-        except ValueError as e:
+        except Exception as e:
             error_dict = e.args[0]
             error_dict["line_index"] = index
             raise ValueError(error_dict) from e
@@ -287,7 +293,7 @@ def get_cmd_list(sub_clips: list[SubclipMetadata], sub_clip_file, media_output_p
 def extract_subclip(sub_clip):
     cmd = sub_clip.get_cmd()
     output_dir = pathlib.Path(cmd[2]).resolve().parent
-    print(cmd)
+    # print(cmd)
     time.sleep(5)
     # print(output_dir)
     # output_dir.mkdir(parents=True, exist_ok=True)
@@ -305,6 +311,7 @@ class SubclipProcessHandler(threading.Thread):
             self.process_start = datetime.now()
             self.current_cmd = self.subclip_process_queue.get()
             extract_subclip(self.current_cmd)
+        self.current_cmd = None
         print("Queue empty")
 
     def add_cmds_to_queue(self, cmd_list):
@@ -315,9 +322,15 @@ class SubclipProcessHandler(threading.Thread):
             self.start()
 
     def get_metadata(self):
+        process_name = "Split queue empty"
+        process_time = 0
+        if current_cmd := self.current_cmd:
+            process_name = current_cmd.media_title
+            process_time = str(datetime.now() - self.process_start)
+
         return {
-            "process_name": self.current_cmd.media_title,
-            "process_time": str(datetime.now() - self.process_start),
+            "process_name": process_name,
+            "process_time": process_time,
             "process_queue_size": self.subclip_process_queue.qsize()
         }
 

@@ -105,7 +105,7 @@ class BackEndHandler:
             editor_txt_files = self.get_editor_txt_files()
         return [editor_txt_file.stem for editor_txt_file in editor_txt_files]
 
-    def get_editor_metadata(self, input_txt_file):
+    def get_editor_metadata(self, input_txt_file=None):
         editor_txt_files = self.get_editor_txt_files()
         if len(editor_txt_files) >= 1:
             assert ".mp4" not in str(editor_txt_files[0])
@@ -126,17 +126,29 @@ class BackEndHandler:
             "selected_txt_file_title": selected_txt_file,
             "selected_txt_file_content": selected_txt_file_content
         }
-
+        editor_metadata.update(self.editor_get_process_metadata())
         return editor_metadata
 
     def editor_save_txt_file(self, editor_metadata):
-        output_file_path = f"{EDITOR_RAW_FOLDER}{editor_metadata.get('txt_file_name')}.txt"
-        save_txt_file_content(output_file_path, editor_metadata.get('txt_file_content'))
-        print(output_file_path)
+        sub_clip_file = f"{EDITOR_RAW_FOLDER}{editor_metadata.get('txt_file_name')}.txt"
+        save_txt_file_content(sub_clip_file, editor_metadata.get('txt_file_content'))
+        print(sub_clip_file)
         print(editor_metadata.get('txt_file_content'))
+
+    # def editor_load_txt_file(self, editor_metadata):
+    #     sub_clip_file = f"{EDITOR_RAW_FOLDER}{editor_metadata.get('txt_file_name')}.txt"
+    #     editor_metadata['txt_file_content'] = load_txt_file_content(sub_clip_file)
+    #     # load_txt_file(sub_clip_file, editor_metadata.get('txt_file_content'))
+    #     # return { "load_txt_file":  }
 
     def editor_process_txt_file(self, editor_metadata, media_output_parent_path):
         sub_clip_file = f"{EDITOR_RAW_FOLDER}{editor_metadata.get('txt_file_name')}.txt"
+        try:
+            save_txt_file_content(sub_clip_file, editor_metadata.get('txt_file_content'))
+        except FileExistsError as e:
+            print("HELLO WORLD!")
+            pass
+
         try:
             sub_clips = self.editor_validate_txt_file(editor_metadata)
             mp4_splitter.get_cmd_list(sub_clips, sub_clip_file, media_output_parent_path)
@@ -145,6 +157,10 @@ class BackEndHandler:
             raise ValueError(e.args[0]) from e
         except FileNotFoundError as e:
             raise FileNotFoundError(e.args[0]) from e
+        except FileExistsError as e:
+            error_dict = e.args[0]
+            error_dict["txt_file_name"] = editor_metadata.get('txt_file_name')
+            raise FileExistsError(error_dict) from e
 
     def editor_validate_txt_file(self, editor_metadata):
         txt_file_name = f"{EDITOR_RAW_FOLDER}{editor_metadata.get('txt_file_name')}.txt"

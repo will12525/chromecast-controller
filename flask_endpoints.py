@@ -28,7 +28,9 @@ class APIEndpoints(Enum):
     MAIN = "/"
     EDITOR = "/editor"
     EDITOR_SAVE_TXT_FILE = "/save_txt_file"
+    EDITOR_LOAD_TXT_FILE = "/load_txt_file"
     EDITOR_PROCESS_TXT_FILE = "/process_txt_file"
+    EDITOR_PROCESSOR_METADATA = "/process_metadata"
     GET_CHROMECAST_CONTROLS = "/get_chromecast_controls"
     GET_MEDIA_CONTENT_TYPES = "/get_media_content_types"
     SET_CURRENT_MEDIA_RUNTIME = "/set_current_media_runtime"
@@ -89,10 +91,10 @@ def build_main_content(request_args):
 
 @app.route(APIEndpoints.EDITOR.value)
 def editor():
-    selected_txt_file = request.args.get(key="selected_file", default=None, type=str)
+    # selected_txt_file = request.args.get(key="selected_file", default=None, type=str)
     try:
         return render_template("editor.html", homepage_url="/", button_dict=media_controller_button_dict,
-                               editor_metadata=backend_handler.get_editor_metadata(selected_txt_file))
+                               editor_metadata=backend_handler.get_editor_metadata())
     except Exception as e:
         print("Exception class: ", e.__class__)
         print(f"ERROR: {e}")
@@ -114,9 +116,25 @@ def editor_save_txt_file():
     return data, 200
 
 
+@app.route(APIEndpoints.EDITOR_LOAD_TXT_FILE.value, methods=['POST'])
+def editor_load_txt_file():
+    data = {}
+    if json_request := request.get_json():
+        if editor_txt_file_name := json_request.get("editor_txt_file_name"):
+            try:
+                data = backend_handler.get_editor_metadata(editor_txt_file_name)
+            except Exception as e:
+                print("Exception class: ", e.__class__)
+                print(f"ERROR: {e}")
+                print(traceback.print_exc())
+                data = e.args[0]
+
+    return data, 200
+
+
 @app.route(APIEndpoints.EDITOR_PROCESS_TXT_FILE.value, methods=['POST'])
 def editor_process_txt_file():
-    data = {}
+    data = {"message": "Success!"}
     if json_request := request.get_json():
         try:
             with DatabaseHandler() as db_connection:
@@ -124,12 +142,27 @@ def editor_process_txt_file():
             print(media_metadata)
             output_path = pathlib.Path(media_metadata.get(MEDIA_DIRECTORY_PATH_COLUMN)).resolve()
             err_code = backend_handler.editor_process_txt_file(json_request, output_path)
-            print(f"ERROR: {err_code}")
+            # print(f"ERROR: {err_code}")
         except Exception as e:
-            print("Exception class: ", e.__class__)
-            print(f"ERROR: {e}")
-            print(traceback.print_exc())
+            print(e.args[0])
+            data = e.args[0]
+            # print("Exception class: ", e.__class__)
+            # print(f"ERROR: {e}")
+            # print(traceback.print_exc())
+    print(data)
+    return data, 200
 
+
+@app.route(APIEndpoints.EDITOR_PROCESSOR_METADATA.value, methods=['GET'])
+def editor_processor_get_metadata():
+    data = {}
+    try:
+        if media_metadata := backend_handler.editor_get_process_metadata():
+            data = media_metadata
+    except Exception as e:
+        print("Exception class: ", e.__class__)
+        print(f"ERROR: {e}")
+        print(traceback.print_exc())
     return data, 200
 
 
