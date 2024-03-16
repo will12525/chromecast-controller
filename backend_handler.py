@@ -113,21 +113,23 @@ class BackEndHandler:
 
         selected_index = 0
         editor_txt_file_names = self.get_editor_txt_file_names(editor_txt_files)
-        selected_txt_file = editor_txt_file_names[selected_index]
-        selected_txt_file_content = load_txt_file_content(editor_txt_files[selected_index])
+        if editor_txt_file_names:
+            selected_txt_file = editor_txt_file_names[selected_index]
+            selected_txt_file_content = load_txt_file_content(editor_txt_files[selected_index])
 
-        if input_txt_file and input_txt_file in editor_txt_file_names:
-            selected_txt_file = input_txt_file
-            selected_txt_file_content = load_txt_file_content(
-                editor_txt_files[editor_txt_file_names.index(selected_txt_file)])
+            if input_txt_file and input_txt_file in editor_txt_file_names:
+                selected_txt_file = input_txt_file
+                selected_txt_file_content = load_txt_file_content(
+                    editor_txt_files[editor_txt_file_names.index(selected_txt_file)])
 
-        editor_metadata = {
-            "txt_file_list": editor_txt_file_names,
-            "selected_txt_file_title": selected_txt_file,
-            "selected_txt_file_content": selected_txt_file_content
-        }
-        editor_metadata.update(self.editor_get_process_metadata())
-        return editor_metadata
+            editor_metadata = {
+                "txt_file_list": editor_txt_file_names,
+                "selected_txt_file_title": selected_txt_file,
+                "selected_txt_file_content": selected_txt_file_content
+            }
+            editor_metadata.update(self.editor_get_process_metadata())
+            return editor_metadata
+        return {}
 
     def editor_save_txt_file(self, editor_metadata):
         sub_clip_file = f"{EDITOR_RAW_FOLDER}{editor_metadata.get('txt_file_name')}.txt"
