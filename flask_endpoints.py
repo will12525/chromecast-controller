@@ -42,6 +42,7 @@ class APIEndpoints(Enum):
     PLAY_MEDIA = "/play_media"
     SCAN_MEDIA_DIRECTORIES = "/scan_media_directories"
     GET_MEDIA_MENU_DATA = "/get_media_menu_data"
+    GET_DISK_SPACE = "/get_disk_space"
 
 
 app = Flask(__name__)
@@ -259,6 +260,17 @@ def get_media_menu_data():
     with DBCreator() as db_connection:
         pass
     return data, 200
+
+
+@app.route(APIEndpoints.GET_DISK_SPACE.value, methods=['GET'])
+def get_disk_space():
+    try:
+        data = {"free_space": backend_handler.get_free_disk_space()}
+        return data, 200
+    except Exception as e:
+        print("Exception class: ", e.__class__)
+        print(f"ERROR: {e}")
+        print(traceback.print_exc())
 
 
 if __name__ == "__main__":

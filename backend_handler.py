@@ -1,3 +1,4 @@
+import subprocess
 import threading
 import git
 import pathlib
@@ -174,3 +175,10 @@ class BackEndHandler:
 
     def editor_get_process_metadata(self):
         return self.editor_processor.get_metadata()
+
+    def get_free_disk_space(self):
+        df = subprocess.Popen(["df", f"{EDITOR_FOLDER}"], stdout=subprocess.PIPE)
+        output = df.communicate()[0]
+        print(output)
+        device, size, used, available, percent, mountpoint = output.decode("utf-8").split("\n")[1].split()
+        return available
