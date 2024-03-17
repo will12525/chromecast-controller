@@ -43,6 +43,7 @@ class APIEndpoints(Enum):
     SCAN_MEDIA_DIRECTORIES = "/scan_media_directories"
     GET_MEDIA_MENU_DATA = "/get_media_menu_data"
     GET_DISK_SPACE = "/get_disk_space"
+    SET_NEW_MEDIA_METADATA = "/set_new_media_metadata"
 
 
 app = Flask(__name__)
@@ -241,8 +242,9 @@ def play_media():
     data = {}
     if json_request := request.get_json():
         if json_request.get(common_objects.MEDIA_ID_COLUMN, None):
-            playlist_id = json_request.get(common_objects.PLAYLIST_ID_COLUMN, None)
             backend_handler.play_media_on_chromecast(json_request)
+        else:
+            print(f"Media ID not provided: {json_request}")
     return data, 200
 
 
@@ -251,6 +253,17 @@ def scan_media_directories():
     data = {}
     with DBCreator() as db_connection:
         db_connection.scan_all_media_directories()
+    return data, 200
+
+
+@app.route(APIEndpoints.SET_NEW_MEDIA_METADATA.value, methods=['POST'])
+def set_new_media_metadata():
+    data = {}
+    if json_request := request.get_json():
+        with DatabaseHandler() as db_connection:
+            # db_connection.set_new_media_metadata(json_request)
+            print(f"Not implemented: {APIEndpoints.SET_NEW_MEDIA_METADATA.value}")
+
     return data, 200
 
 

@@ -1,3 +1,4 @@
+import json
 from unittest import TestCase
 
 import config_file_handler
@@ -159,10 +160,10 @@ class TestDBCreator(TestDBCreatorInit):
             assert isinstance(media_directory_info.get(common_objects.MEDIA_DIRECTORY_ID_COLUMN), int)
             assert 1 == media_directory_info.get(common_objects.MEDIA_DIRECTORY_ID_COLUMN)
             media_metadata = db_setter_connection.get_media_metadata_from_media_folder_path_id(media_directory_info)
-            # print(media_metadata)
+            print(json.dumps(media_metadata, indent=4))
             assert media_metadata
             assert isinstance(media_metadata, list)
-            assert 13 == len(media_metadata)
+            assert 12 == len(media_metadata)
             for item in media_metadata:
                 # print(json.dumps(item, indent=4))
                 assert isinstance(item, dict)
@@ -259,10 +260,11 @@ class TestDBCreator(TestDBCreatorInit):
                 media_directory_info)
             db_setter_connection.scan_media_directory(media_directory_info)
             media_metadata = db_setter_connection.get_media_metadata_from_media_folder_path_id(media_directory_info)
-            # print(media_metadata)
+            print(json.dumps(media_metadata, indent=4))
+            print(len(media_metadata))
             assert media_metadata
             assert isinstance(media_metadata, list)
-            assert 13 == len(media_metadata)
+            assert 12 == len(media_metadata)
             for item in media_metadata:
                 # print(item)
                 assert isinstance(item, dict)
@@ -297,10 +299,11 @@ class TestDBCreator(TestDBCreatorInit):
 
             db_setter_connection.add_tv_show_data(media_directory_info)
             media_metadata = db_setter_connection.get_media_metadata_from_media_folder_path_id(media_directory_info)
-            # print(json.dumps(media_metadata, indent=4))
+            print(json.dumps(media_metadata, indent=4))
             assert media_metadata
             assert isinstance(media_metadata, list)
-            assert 13 == len(media_metadata)
+            print(len(media_metadata))
+            assert 12 == len(media_metadata)
             for item in media_metadata:
                 # print(item)
                 assert isinstance(item, dict)

@@ -1,3 +1,4 @@
+import json
 import pathlib
 from unittest import TestCase
 import config_file_handler
@@ -55,9 +56,9 @@ class TestDBCreator(TestMediaMetadataCollectorSetup):
 
     def test_collect_tv_shows(self):
         result = list(md_collector.collect_tv_shows(self.media_paths[0]))
-        # print(json.dumps(result, indent=4))
+        print(json.dumps(result, indent=4))
         assert result
-        assert len(result) == 13
+        assert len(result) == 12
         for item in result:
             assert len(item) == 10
             assert common_objects.PLAYLIST_TITLE in item

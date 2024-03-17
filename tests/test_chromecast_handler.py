@@ -162,7 +162,7 @@ class TestMediaPlayer(TestMyMediaDevice):
                          'playlist_title': 'Vampire', 'season_index': 1, 'season_title': 'Season 1',
                          'tv_show_title': 'Vampire', 'title': 'Vampire Season 1 sparkle', 'metadataType': 0}
 
-        media_metadata = self.media_controller.play_episode_from_sql(1)
+        media_metadata = self.media_controller.play_episode_from_sql({common_objects.MEDIA_ID_COLUMN: 1})
         for key in compare_value:
             assert key in media_metadata
             assert media_metadata[key] == compare_value[key]

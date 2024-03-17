@@ -12,8 +12,7 @@ import mp4_splitter
 EDITOR_FOLDER = "/media/hdd1/plex_media/splitter/"
 EDITOR_RAW_FOLDER = f"{EDITOR_FOLDER}raw_files/"
 
-
-# EDITOR_RAW_FOLDER = "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/"
+EDITOR_RAW_FOLDER = "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/"
 
 
 def setup_db():
@@ -81,8 +80,8 @@ class BackEndHandler:
     def get_chromecast_media_controller_metadata(self):
         return self.chromecast_handler.get_media_controller_metadata()
 
-    def play_media_on_chromecast(self, media_id):
-        self.chromecast_handler.play_from_sql(media_id)
+    def play_media_on_chromecast(self, media_request_ids):
+        self.chromecast_handler.play_from_sql(media_request_ids)
 
     def get_mp4_txt_files(self):
         RAW_PATH = pathlib.Path(EDITOR_RAW_FOLDER).resolve()
@@ -146,10 +145,11 @@ class BackEndHandler:
 
     def editor_process_txt_file(self, editor_metadata, media_output_parent_path):
         sub_clip_file = f"{EDITOR_RAW_FOLDER}{editor_metadata.get('txt_file_name')}.txt"
-        try:
-            save_txt_file_content(sub_clip_file, editor_metadata.get('txt_file_content'))
-        except FileExistsError as e:
-            pass
+        if editor_metadata.get('txt_file_content', None):
+            try:
+                save_txt_file_content(sub_clip_file, editor_metadata.get('txt_file_content'))
+            except FileExistsError as e:
+                pass
 
         try:
             sub_clips = self.editor_validate_txt_file(editor_metadata)

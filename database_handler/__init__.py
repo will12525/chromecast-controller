@@ -52,7 +52,7 @@ class DBConnection:
             self.connection.close()
 
     def print_db_traceback(self, error, message):
-        return
+        # return
         print('-------SQLite error: %s-------' % (' '.join(error.args)))
         print("Exception class is: ", error.__class__)
         print('SQLite traceback: ')

@@ -121,11 +121,11 @@ class TestEditor(TestBackEndHandler):
         editor_metadata = {
             'txt_file_name': "2024hi-01-31_16-32-36"
         }
-        with self.assertRaises(FileNotFoundError) as context:
+        with self.assertRaises(ValueError) as context:
             self.backend_handler.editor_process_txt_file(editor_metadata, self.OUTPUT_PATH)
         error_dict = context.exception.args[0]
         assert type(error_dict) is dict
-        assert "Missing file" == error_dict.get("message")
+        assert "Text file empty" == error_dict.get("message")
         print(error_dict)
         assert "chromecast-controller/editor_raw_files/2024hi-01-31_16-32-36.txt" in error_dict.get("file_name")
 
@@ -162,7 +162,7 @@ class TestEditor(TestBackEndHandler):
         error_dict = context.exception.args[0]
         assert type(error_dict) is dict
         assert "Values less than 0" == error_dict.get("message")
-        assert "13:-3\n" == error_dict.get("string")
+        assert "13:-3" == error_dict.get("string")
         assert 0 == error_dict.get("hour")
         assert 13 == error_dict.get("minute")
         assert -3 == error_dict.get("second")
@@ -203,9 +203,10 @@ class TestEditor(TestBackEndHandler):
         with self.assertRaises(ValueError) as context:
             self.backend_handler.editor_validate_txt_file(editor_metadata)
         error_dict = context.exception.args[0]
+        print(error_dict)
         assert type(error_dict) is dict
         assert "Values less than 0" == error_dict.get("message")
-        assert "13:-3\n" == error_dict.get("string")
+        assert "13:-3" == error_dict.get("string")
         assert 0 == error_dict.get("hour")
         assert 13 == error_dict.get("minute")
         assert -3 == error_dict.get("second")
