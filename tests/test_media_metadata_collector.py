@@ -96,7 +96,7 @@ class TestDBCreator(TestMediaMetadataCollectorSetup):
         result = list(md_collector.collect_tv_shows(self.media_paths[2]))
         counts_of_length_8 = 0
         counts_of_length_10 = 0
-        # print(json.dumps(result, indent=4))
+        print(json.dumps(result, indent=4))
         assert result
         assert len(result) == 20
         for item in result:

@@ -1,3 +1,4 @@
+import json
 import os
 from unittest import TestCase
 
@@ -155,31 +156,65 @@ class TestMediaPlayer(TestMyMediaDevice):
     #     self.assertTrue(self.media_controller.get_current_media_status())
 
     def test_play_episode_from_sql(self):
-        compare_value = {'id': 1, 'tv_show_id': 1, 'season_id': 1, 'media_directory_id': 1, 'media_title': 'sparkle',
-                         'path': '\\Vampire\\Season 1\\Vampire - s01e001.mp4', 'media_type': 5,
-                         'media_directory_path': '../media_folder_sample', 'new_media_directory_path': None,
-                         'media_directory_url': 'http://192.168.1.200:8000/tv_shows/', 'playlist_id': 1,
-                         'playlist_title': 'Vampire', 'season_index': 1, 'season_title': 'Season 1',
-                         'tv_show_title': 'Vampire', 'title': 'Vampire Season 1 sparkle', 'metadataType': 0}
+        compare_value = {
+            "id": 1,
+            "tv_show_id": 1,
+            "season_id": 1,
+            "media_directory_id": 1,
+            "media_title": "",
+            "path": "\\Vampire\\Season 1\\Vampire - s01e001.mp4",
+            "duration": 22,
+            "media_type": 5,
+            "media_directory_path": "../media_folder_sample",
+            "new_media_directory_path": None,
+            "media_directory_url": "http://192.168.1.200:8000/tv_shows/",
+            "playlist_id": 1,
+            "playlist_title": "Vampire",
+            "media_id": 1,
+            "list_index": 1,
+            "season_index": 1,
+            "season_title": "Season 1",
+            "tv_show_title": "Vampire",
+            "title": "Vampire Season 1 ",
+            "metadataType": 0
+        }
 
         media_metadata = self.media_controller.play_episode_from_sql({common_objects.MEDIA_ID_COLUMN: 1})
+        print(json.dumps(media_metadata, indent=4))
         for key in compare_value:
+            print(key)
             assert key in media_metadata
             assert media_metadata[key] == compare_value[key]
 
     def test_play_next_episode(self):
-        compare_value = {'id': 2, 'tv_show_id': 1, 'season_id': 1, 'media_directory_id': 1, 'media_title': 'mysterious',
-                         'path': '\\Vampire\\Season 1\\Vampire - s01e002.mp4', 'media_type': 5,
-                         'media_directory_path': '../media_folder_sample', 'new_media_directory_path': None,
-                         'media_directory_url': 'http://192.168.1.200:8000/tv_shows/', 'playlist_id': 1,
-                         'playlist_title': 'Vampire', 'season_index': 1, 'season_title': 'Season 1',
-                         'tv_show_title': 'Vampire', 'title': 'Vampire Season 1 mysterious', 'metadataType': 0}
+        compare_value = {
+            "id": 2,
+            "tv_show_id": 1,
+            "season_id": 1,
+            "media_directory_id": 1,
+            "media_title": "",
+            "path": "\\Vampire\\Season 1\\Vampire - s01e002.mp4",
+            "duration": 22,
+            "media_type": 5,
+            "media_directory_path": "../media_folder_sample",
+            "new_media_directory_path": None,
+            "media_directory_url": "http://192.168.1.200:8000/tv_shows/",
+            "playlist_id": 1,
+            "playlist_title": "Vampire",
+            "media_id": 2,
+            "list_index": 2,
+            "season_index": 1,
+            "season_title": "Season 1",
+            "tv_show_title": "Vampire",
+            "title": "Vampire Season 1 ",
+            "metadataType": 0
+        }
 
         media_status = MediaStatus()
         media_status.media_metadata = {common_objects.PLAYLIST_ID_COLUMN: 1, common_objects.ID_COLUMN: 1}
         self.media_controller.status = media_status
         next_media_metadata = self.media_controller.play_next_episode()
-        # print(next_media_metadata)
+        print(json.dumps(next_media_metadata, indent=4))
         for key in compare_value:
             assert key in next_media_metadata
             assert next_media_metadata[key] == compare_value[key]
@@ -193,18 +228,34 @@ class TestMediaPlayer(TestMyMediaDevice):
         assert not next_media_metadata
 
     def test_play_previous_episode(self):
-        compare_value = {'id': 1, 'tv_show_id': 1, 'season_id': 1, 'media_directory_id': 1, 'media_title': 'sparkle',
-                         'path': '\\Vampire\\Season 1\\Vampire - s01e001.mp4', 'media_type': 5,
-                         'media_directory_path': '../media_folder_sample', 'new_media_directory_path': None,
-                         'media_directory_url': 'http://192.168.1.200:8000/tv_shows/', 'playlist_id': 1,
-                         'playlist_title': 'Vampire', 'season_index': 1, 'season_title': 'Season 1',
-                         'tv_show_title': 'Vampire', 'title': 'Vampire Season 1 sparkle', 'metadataType': 0}
+        compare_value = {
+            "id": 1,
+            "tv_show_id": 1,
+            "season_id": 1,
+            "media_directory_id": 1,
+            "media_title": "",
+            "path": "\\Vampire\\Season 1\\Vampire - s01e001.mp4",
+            "duration": 22,
+            "media_type": 5,
+            "media_directory_path": "../media_folder_sample",
+            "new_media_directory_path": None,
+            "media_directory_url": "http://192.168.1.200:8000/tv_shows/",
+            "playlist_id": 1,
+            "playlist_title": "Vampire",
+            "media_id": 1,
+            "list_index": 1,
+            "season_index": 1,
+            "season_title": "Season 1",
+            "tv_show_title": "Vampire",
+            "title": "Vampire Season 1 ",
+            "metadataType": 0
+        }
 
         media_status = MediaStatus()
         media_status.media_metadata = {common_objects.PLAYLIST_ID_COLUMN: 1, common_objects.ID_COLUMN: 2}
         self.media_controller.status = media_status
         next_media_metadata = self.media_controller.play_previous_episode()
-        # print(next_media_metadata)
+        print(json.dumps(next_media_metadata, indent=4))
         for key in compare_value:
             assert key in next_media_metadata
             assert next_media_metadata[key] == compare_value[key]

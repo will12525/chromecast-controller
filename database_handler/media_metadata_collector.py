@@ -204,7 +204,7 @@ def collect_tv_shows(media_directory_info):
         yield from collect_new_tv_shows(media_directory_info)
 
     media_folder_path = pathlib.Path(media_directory_info.get(common_objects.MEDIA_DIRECTORY_PATH_COLUMN))
-    media_folder_titles = get_title_txt_files(media_folder_path)
+    # media_folder_titles = get_title_txt_files(media_folder_path)
     for media_folder_mp4 in list(media_folder_path.rglob(mp4_file_ext)):
         media_metadata = default_metadata.copy()
         media_metadata[common_objects.MEDIA_DIRECTORY_ID_COLUMN] = media_directory_info.get(
@@ -220,21 +220,17 @@ def collect_tv_shows(media_directory_info):
             media_metadata['episode_index'] = int(mp4_index_content[mp4_episode_start_index + 1:])
             media_metadata[common_objects.SEASON_INDEX_COLUMN] = int(mp4_index_content[:mp4_episode_start_index])
 
-            media_metadata[common_objects.MEDIA_TITLE_COLUMN] = f"Episode {media_metadata['episode_index']}"
-            if (media_folder_txt_file_parent := str(media_folder_mp4.parent)) in media_folder_titles:
-                if len(media_folder_titles[media_folder_txt_file_parent]) >= media_metadata['episode_index']:
-                    media_metadata[common_objects.MEDIA_TITLE_COLUMN] = \
-                        media_folder_titles[media_folder_txt_file_parent][media_metadata['episode_index'] - 1]
+            # media_metadata[common_objects.MEDIA_TITLE_COLUMN] = f"Episode {media_metadata['episode_index']}"
+            # if (media_folder_txt_file_parent := str(media_folder_mp4.parent)) in media_folder_titles:
+            #     if len(media_folder_titles[media_folder_txt_file_parent]) >= media_metadata['episode_index']:
+            #         media_metadata[common_objects.MEDIA_TITLE_COLUMN] = \
+            #             media_folder_titles[media_folder_txt_file_parent][media_metadata['episode_index'] - 1]
 
             media_metadata[common_objects.PATH_COLUMN] = get_url(media_folder_mp4, media_folder_path)
             media_metadata[common_objects.LIST_INDEX_COLUMN] = get_playlist_list_index(
                 media_metadata[common_objects.SEASON_INDEX_COLUMN], media_metadata['episode_index'])
 
-            get_title = True
-            if media_metadata[common_objects.MEDIA_TITLE_COLUMN]:
-                get_title = False
-
-            media_metadata.update(get_extra_metadata(media_folder_mp4, title=get_title))
+            media_metadata.update(get_extra_metadata(media_folder_mp4, title=True))
 
             yield media_metadata
         except ValueError as e:
