@@ -27,6 +27,7 @@ from database_handler.create_database import DBCreator
 class APIEndpoints(Enum):
     MAIN = "/"
     EDITOR = "/editor"
+    EDITOR_VALIDATE_TXT_FILE = "/validate_txt_file"
     EDITOR_SAVE_TXT_FILE = "/save_txt_file"
     EDITOR_LOAD_TXT_FILE = "/load_txt_file"
     EDITOR_PROCESS_TXT_FILE = "/process_txt_file"
@@ -104,6 +105,20 @@ def editor():
         return str(traceback.print_exc())
 
 
+@app.route(APIEndpoints.EDITOR_VALIDATE_TXT_FILE.value, methods=['POST'])
+def editor_validate_txt_file():
+    data = {}
+    if json_request := request.get_json():
+        try:
+            backend_handler.editor_validate_txt_file(json_request)
+        except Exception as e:
+            print("Exception class: ", e.__class__)
+            print(f"ERROR: {e}")
+            print(traceback.print_exc())
+            data = e.args[0]
+    return data, 200
+
+
 @app.route(APIEndpoints.EDITOR_SAVE_TXT_FILE.value, methods=['POST'])
 def editor_save_txt_file():
     data = {}
@@ -114,7 +129,7 @@ def editor_save_txt_file():
             print("Exception class: ", e.__class__)
             print(f"ERROR: {e}")
             print(traceback.print_exc())
-
+            data = e.args[0]
     return data, 200
 
 
