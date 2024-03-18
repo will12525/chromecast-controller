@@ -294,11 +294,11 @@ def get_cmd_list(sub_clips: list[SubclipMetadata], sub_clip_file, media_output_p
 def extract_subclip(sub_clip):
     cmd = sub_clip.get_cmd()
     output_dir = pathlib.Path(cmd[2]).resolve().parent
-    time.sleep(1)
+    # time.sleep(1)
     print(cmd)
     print(output_dir)
-    # output_dir.mkdir(parents=True, exist_ok=True)
-    # subprocess.run(cmd, check=True, text=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    subprocess.run(cmd, check=True, text=True)
 
 
 class SubclipProcessHandler(threading.Thread):
