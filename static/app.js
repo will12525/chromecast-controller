@@ -290,11 +290,11 @@ async function setNavbarLinks() {
         let response_data = await response.json();
         if (tv_show_select_button !== null)
         {
-            tv_show_select_button.setAttribute('href', "?content_type=" + response_data["TV"]);
+            tv_show_select_button.setAttribute('href', "/?content_type=" + response_data["TV"]);
         }
         if (movie_select_button !== null)
         {
-            movie_select_button.setAttribute('href', "?content_type=" + response_data["MOVIE"]);
+            movie_select_button.setAttribute('href', "/?content_type=" + response_data["MOVIE"]);
         }
         if (editor_button !== null)
         {

@@ -49,46 +49,48 @@
 </nav>
 <div id="mediaContentSelectDiv" class="main-content-container">
     <p>{{ sha }}</p>
-    {% if 'container_content_type' in media_metadata %}
     <div class="container">
-        <div class="card h-100">
-            <div class="row g-0">
-                <div class="col-md-4">
-                </div>
-                <div class="col-md-8">
-                    <div id="metadata_card_body" class="card-body">
-                        <h5 class="card-title">{{ media_metadata.get("playlist_title") }}</h5>
-                        {% if 'season_title' in media_metadata %}
-                        <p class="card-text">{{ media_metadata['season_title'] }}</p>
-                        {% endif %}
-                        {% if 'season_count' in media_metadata %}
-                        <p class="card-text">Seasons: {{ media_metadata['season_count'] }}</p>
-                        {% endif %}
-                        {% if 'episode_count' in media_metadata %}
-                        <p class="card-text">Episodes: {{ media_metadata['episode_count'] }}</p>
-                        {% endif %}
-                        <a href="?content_type={{ media_metadata['container_content_type'] }}&media_id={{ media_metadata.get('tv_show_id', '') }}"
-                           class="stretched-link"></a>
+        {% if 'container_content_type' in media_metadata %}
+        <div class="row">
+            <div class="col-lg-12">
+                <div class="card h-100">
+                    <div class="row">
+                        <div class="col-md-3">
+                        </div>
+                        <div class="col-md-8">
+                            <div id="metadata_card_body" class="card-body">
+                                <h5 class="card-title">{{ media_metadata.get("playlist_title") }}</h5>
+                                {% if 'season_title' in media_metadata %}
+                                <p class="card-text">{{ media_metadata['season_title'] }}</p>
+                                {% endif %}
+                                {% if 'season_count' in media_metadata %}
+                                <p class="card-text">Seasons: {{ media_metadata['season_count'] }}</p>
+                                {% endif %}
+                                {% if 'episode_count' in media_metadata %}
+                                <p class="card-text">Episodes: {{ media_metadata['episode_count'] }}</p>
+                                {% endif %}
+                                <a href="?content_type={{ media_metadata['container_content_type'] }}&media_id={{ media_metadata.get('tv_show_id', '') }}"
+                                   class="stretched-link"></a>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-    {% endif %}
-    {% if 'media_list' in media_metadata %}
-    <div class="container">
+        {% endif %}
+        {% if 'media_list' in media_metadata %}
         <div class="row row-cols-1 row-cols-sm-2 row-cols-md-4">
             {% for media_item in media_metadata['media_list']: %}
-            <div class="col col-md-3">
+            <div class="col">
                 <div class="card h-100">
                     <div class="card-body">
                         <h5 class="card-title">{{ media_item.get("playlist_title",
                             media_item.get("season_title", media_item.get("media_title"))) }}</h5>
                         {% if 'list_index' in media_item %}
-                        <h6 class="card-subtitle mb-2 text-body-secondary">Index: {{ media_item.get("list_index")
+                        <h6 class="card-subtitle mb-2 text-body-secondary">Index: {{
+                            media_item.get("list_index")
                             }}</h6>
                         {% endif %}
-
                         {% if 'media_list_content_type' in media_metadata %}
                         {% if media_metadata['media_list_content_type'] == 1 %}
                         <a class="stretched-link" href="javascript:play_media({{ media_item.get('id') }})"></a>
@@ -102,19 +104,31 @@
             </div>
             {% endfor %}
         </div>
+        {% endif %}
     </div>
-    {% endif %}
 </div>
 <nav class="navbar fixed-bottom navbar-expand-xl bg-dark bg-body-tertiary" data-bs-theme="light">
-    <div class="col bottom-nav-col">
-        <div class="container-fluid" align="center">
-            <input type="range" id="mediaTimeInputId" onMouseUp="setMediaRuntime(this);" min=0 value=0 class="slider">
-            <output id="mediaTimeOutputId"></output>
-        </div>
-        <div class="container" align="center">
-            {% for key, value in button_dict.items() %}
-            <button id="{{ value['id'] }}" class="btn"><i class="fa-solid {{ value['icon'] }} fa-2xl"></i></button>
-            {% endfor %}
+    <div class="container-fluid text-center">
+        <div class="col bottom-nav-col">
+            <div class="row justify-content-center">
+                <div class="col">
+                    <input type="range" id="mediaTimeInputId" onMouseUp="setMediaRuntime(this);" min=0 value=0
+                           class="slider">
+                </div>
+            </div>
+            <div class="row justify-content-center">
+                <div class="col">
+                    <output id="mediaTimeOutputId"></output>
+                </div>
+            </div>
+            <div class="row justify-content-center">
+                {% for key, value in button_dict.items() %}
+                <div class="col-1">
+                    <button id="{{ value['id'] }}" class="btn"><i class="fa-solid {{ value['icon'] }} fa-2xl"></i>
+                    </button>
+                </div>
+                {% endfor %}
+            </div>
         </div>
     </div>
 </nav>
