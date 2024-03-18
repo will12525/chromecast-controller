@@ -257,12 +257,24 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
                 assert movie in compare
 
     def test_get_tv_show_season_episode_title_list(self):
-        compare = [{'id': 1, 'media_title': ''},
-                   {'id': 2, 'media_title': ''}]
+        compare = [
+            {
+                "id": 1,
+                "media_title": "",
+                "season_index": 1,
+                "list_index": 1001
+            },
+            {
+                "id": 2,
+                "media_title": "",
+                "season_index": 1,
+                "list_index": 1002
+            }
+        ]
         data = {common_objects.SEASON_ID_COLUMN: 1}
         with DatabaseHandler() as db_connection:
             metadata = db_connection.get_content_title_list(ContentType.SEASON, data)
-            # # print(json.dumps(metadata, indent=4))
+            print(json.dumps(metadata, indent=4))
             assert metadata
             assert isinstance(metadata, dict)
             assert metadata.get("media_list_content_type") == ContentType.MEDIA.value
@@ -323,13 +335,23 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
             assert metadata.get("media_list_content_type") == ContentType.MEDIA.value
 
     def test_get_tv_show_season_metadata(self):
-        compare = [{'id': 1, 'media_title': ''},
-                   {'id': 2, 'media_title': ''}]
+        compare = [{
+            "id": 1,
+            "media_title": "",
+            "season_index": 1,
+            "list_index": 1
+        },
+            {
+                "id": 2,
+                "media_title": "",
+                "season_index": 1,
+                "list_index": 2
+            }]
         data = {common_objects.SEASON_ID_COLUMN: 1}
 
         with DatabaseHandler() as db_connection:
             metadata = db_connection.get_media_content(content_type=ContentType.SEASON, params_dict=data)
-            # # print(json.dumps(metadata, indent=4))
+            print(json.dumps(metadata, indent=4))
             assert metadata
             assert isinstance(metadata, dict)
             assert metadata.get("container_content_type") == ContentType.TV_SHOW.value
@@ -344,6 +366,8 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
             assert isinstance(metadata.get("media_list"), list)
             assert len(metadata.get("media_list")) == 2
             for movie in metadata.get("media_list"):
+                # print(json.dumps(movie, indent=4))
+
                 assert isinstance(movie, dict)
                 assert common_objects.ID_COLUMN in movie
                 assert common_objects.MEDIA_TITLE_COLUMN in movie
@@ -355,7 +379,7 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
     def test_get_season_list_index(self):
         with DatabaseHandler() as db_connection:
             metadata = db_connection.get_season_list_index({common_objects.SEASON_ID_COLUMN: 1})
-            # print(metadata)
+            print(json.dumps(metadata, indent=4))
             assert metadata
             assert isinstance(metadata, int)
             assert metadata == 1
@@ -391,7 +415,7 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
                    {'id': 3, 'playlist_title': 'Warewolf'}]
         with DatabaseHandler() as db_connection:
             metadata = db_connection.get_media_content(content_type=content_type)
-            # # print(json.dumps(metadata, indent=4))
+            print(json.dumps(metadata, indent=4))
             assert metadata
             assert metadata.get("media_list")
             assert isinstance(metadata.get("media_list"), list)
@@ -421,7 +445,7 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
         params = {common_objects.TV_SHOW_ID_COLUMN: media_id}
         with DatabaseHandler() as db_connection:
             metadata = db_connection.get_media_content(content_type=content_type, params_dict=params)
-            # # print(json.dumps(metadata, indent=4))
+            print(json.dumps(metadata, indent=4))
             assert metadata
             assert isinstance(metadata, dict)
             assert metadata.get(common_objects.ID_COLUMN) == 1
@@ -444,12 +468,24 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
     def test_get_media_content(self):
         content_type = ContentType.SEASON
         media_id = 1
-        compare = [{'id': 1, 'media_title': ''},
-                   {'id': 2, 'media_title': ''}]
+        compare = [
+            {
+                "id": 1,
+                "media_title": "",
+                "season_index": 1,
+                "list_index": 1
+            },
+            {
+                "id": 2,
+                "media_title": "",
+                "season_index": 1,
+                "list_index": 2
+            }
+        ]
         params = {common_objects.SEASON_ID_COLUMN: media_id}
         with DatabaseHandler() as db_connection:
             metadata = db_connection.get_media_content(content_type=content_type, params_dict=params)
-            # print(json.dumps(metadata, indent=4))
+        print(json.dumps(metadata, indent=4))
         assert metadata
         assert isinstance(metadata, dict)
         assert metadata.get(common_objects.ID_COLUMN) == 1

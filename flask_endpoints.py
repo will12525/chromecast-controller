@@ -82,7 +82,7 @@ def build_main_content(request_args):
     try:
         with DatabaseHandler() as db_connection:
             media_metadata = db_connection.get_media_content(content_type, params_dict=data)
-        return render_template("index.html", homepage_url="/",
+        return render_template("index.html", homepage_url=APIEndpoints.MAIN.value,
                                button_dict=media_controller_button_dict, media_metadata=media_metadata)
     except Exception as e:
         print("Exception class: ", e.__class__)

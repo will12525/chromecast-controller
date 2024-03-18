@@ -84,6 +84,11 @@
                     <div class="card-body">
                         <h5 class="card-title">{{ media_item.get("playlist_title",
                             media_item.get("season_title", media_item.get("media_title"))) }}</h5>
+                        {% if 'list_index' in media_item %}
+                        <h6 class="card-subtitle mb-2 text-body-secondary">Index: {{ media_item.get("list_index")
+                            }}</h6>
+                        {% endif %}
+
                         {% if 'media_list_content_type' in media_metadata %}
                         {% if media_metadata['media_list_content_type'] == 1 %}
                         <a class="stretched-link" href="javascript:play_media({{ media_item.get('id') }})"></a>
