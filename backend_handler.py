@@ -16,8 +16,9 @@ EDITOR_FOLDER = "/media/hdd1/plex_media/splitter/"
 EDITOR_RAW_FOLDER = f"{EDITOR_FOLDER}raw_files/"
 EDITOR_METADATA_FILE = f"{EDITOR_RAW_FOLDER}editor_metadata.json"
 
-EDITOR_RAW_FOLDER = "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/"
-EDITOR_METADATA_FILE = f"{EDITOR_RAW_FOLDER}editor_metadata.json"
+
+# EDITOR_RAW_FOLDER = "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/"
+# EDITOR_METADATA_FILE = f"{EDITOR_RAW_FOLDER}editor_metadata.json"
 
 
 def setup_db():
