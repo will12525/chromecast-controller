@@ -156,7 +156,6 @@ def editor_process_txt_file():
         try:
             with DatabaseHandler() as db_connection:
                 media_metadata = db_connection.get_media_folder_path(1)
-            print(media_metadata)
             output_path = pathlib.Path(media_metadata.get(MEDIA_DIRECTORY_PATH_COLUMN)).resolve()
             err_code = backend_handler.editor_process_txt_file(json_request, output_path)
             # print(f"ERROR: {err_code}")

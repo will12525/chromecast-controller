@@ -6,6 +6,8 @@ import os
 import pathlib
 import subprocess
 import threading
+from json import JSONDecodeError
+
 import time
 from datetime import datetime
 import re
@@ -301,8 +303,8 @@ def extract_subclip(sub_clip):
     time.sleep(1)
     print(cmd)
     print(output_dir)
-    # output_dir.mkdir(parents=True, exist_ok=True)
-    # subprocess.run(cmd, check=True, text=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    subprocess.run(cmd, check=True, text=True)
 
 
 class CmdData:
@@ -325,11 +327,7 @@ class SubclipProcessHandler(threading.Thread):
             current_cmd = self.subclip_process_queue.get()
             self.current_cmd = current_cmd.cmd
             extract_subclip(self.current_cmd)
-            with open(current_cmd.metadata_file_path, 'r', encoding="utf-8") as f:
-                editor_metadata = json.loads(f.read())
-            editor_metadata[self.current_cmd.file_name] = {"processed": True}
-            with open(current_cmd.metadata_file_path, "w+") as of:
-                json.dump(editor_metadata, of)
+
         self.current_cmd = None
 
     def add_cmds_to_queue(self, metadata_file_path, cmd_list):

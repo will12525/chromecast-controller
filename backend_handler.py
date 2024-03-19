@@ -46,7 +46,6 @@ def load_txt_file_content(path):
 
 
 def save_json_file_content(txt_file_content, json_file_path):
-    print(f"saving: {json_file_path}")
     if ".json" in json_file_path:
         with open(json_file_path, "w+") as of:
             json.dump(txt_file_content, of)
@@ -58,11 +57,14 @@ def save_json_file_content(txt_file_content, json_file_path):
 
 
 def load_json_file_content(path):
-    if path.suffix == ".json" and path.is_file():
-        with open(path, 'r', encoding="utf-8") as f:
-            return json.loads(f.read())
-    else:
-        print(f"Not a json file: {path}")
+    try:
+        if path.suffix == ".json" and path.is_file():
+            with open(path, 'r', encoding="utf-8") as f:
+                return json.loads(f.read())
+        else:
+            print(f"Not a json file: {path}")
+    except JSONDecodeError as e:
+        pass
     return {}
 
 
@@ -196,11 +198,19 @@ class BackEndHandler:
                 save_txt_file_content(sub_clip_file, editor_metadata.get('txt_file_content'))
             except FileExistsError as e:
                 pass
-
         try:
             sub_clips = self.editor_validate_txt_file(editor_metadata)
             mp4_splitter.get_cmd_list(sub_clips, sub_clip_file, media_output_parent_path)
             self.editor_processor.add_cmds_to_queue(EDITOR_METADATA_FILE, sub_clips)
+            editor_metadata_content = {}
+            editor_metadata_file = pathlib.Path(EDITOR_METADATA_FILE).resolve()
+            try:
+                editor_metadata_content = load_json_file_content(editor_metadata_file)
+            except (FileNotFoundError, JSONDecodeError) as e:
+                pass
+            editor_metadata_content[editor_metadata.get('txt_file_name')] = {"processed": True}
+            save_json_file_content(editor_metadata_content, EDITOR_METADATA_FILE)
+
         except ValueError as e:
             raise ValueError(e.args[0]) from e
         except FileNotFoundError as e:

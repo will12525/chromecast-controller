@@ -54,9 +54,14 @@
             <div class="col">
                 {% if 'txt_file_list' in editor_metadata %}
                 <div class="list-group">
-                    {% for key, editor_txt_file in editor_metadata['txt_file_list'].items(): %}
-                    <a onclick="javascript:load_txt_file(this)"
+                    {% for editor_txt_file in editor_metadata['txt_file_list']: %}
+                    {% if editor_txt_file['processed'] %}
+                    <a style="background-color:MediumSeaGreen;" onclick="javascript:load_txt_file(this)"
                        class="list-group-item list-group-item-action">{{ editor_txt_file['file_name'] }}</a>
+                    {% else %}
+                    <a style="background-color:Tomato;" onclick="javascript:load_txt_file(this)"
+                       class="list-group-item list-group-item-action">{{ editor_txt_file['file_name'] }}</a>
+                    {% endif %}
                     {% endfor %}
                 </div>
                 {% endif %}
