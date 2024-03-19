@@ -1,5 +1,8 @@
+import json
 import subprocess
 import threading
+from json import JSONDecodeError
+
 import git
 import pathlib
 
@@ -11,9 +14,10 @@ import mp4_splitter
 
 EDITOR_FOLDER = "/media/hdd1/plex_media/splitter/"
 EDITOR_RAW_FOLDER = f"{EDITOR_FOLDER}raw_files/"
+EDITOR_METADATA_FILE = f"{EDITOR_RAW_FOLDER}editor_metadata.json"
 
-
-# EDITOR_RAW_FOLDER = "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/"
+EDITOR_RAW_FOLDER = "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/"
+EDITOR_METADATA_FILE = f"{EDITOR_RAW_FOLDER}editor_metadata.json"
 
 
 def setup_db():
@@ -38,6 +42,27 @@ def load_txt_file_content(path):
     else:
         print(f"Not a txt file: {path}")
     return ""
+
+
+def save_json_file_content(txt_file_content, json_file_path):
+    print(f"saving: {json_file_path}")
+    if ".json" in json_file_path:
+        with open(json_file_path, "w+") as of:
+            json.dump(txt_file_content, of)
+        # json.dump(txt_file_content, json_file_path)
+        # with open(json_file_path, 'w+') as f:
+        #     f.write(txt_file_content)
+    else:
+        print(f"Not a txt file: {json_file_path}")
+
+
+def load_json_file_content(path):
+    if path.suffix == ".json" and path.is_file():
+        with open(path, 'r', encoding="utf-8") as f:
+            return json.loads(f.read())
+    else:
+        print(f"Not a json file: {path}")
+    return {}
 
 
 class BackEndHandler:
@@ -106,6 +131,23 @@ class BackEndHandler:
             editor_txt_files = self.get_editor_txt_files()
         return [editor_txt_file.stem for editor_txt_file in editor_txt_files]
 
+    def check_editor_txt_file_processed(self, editor_txt_file_names):
+        editor_txt_file_processed = []
+        metadata_file = pathlib.Path(EDITOR_METADATA_FILE).resolve()
+        metadata_file_content = load_json_file_content(metadata_file)
+        for editor_txt_file in editor_txt_file_names:
+            if editor_txt_file in metadata_file_content:
+                editor_txt_file_processed.append({
+                    "file_name": editor_txt_file,
+                    "processed": metadata_file_content.get(editor_txt_file).get("processed")
+                })
+            else:
+                editor_txt_file_processed.append({
+                    "file_name": editor_txt_file,
+                    "processed": False
+                })
+        return editor_txt_file_processed
+
     def get_editor_metadata(self, input_txt_file=None):
         editor_txt_files = self.get_editor_txt_files()
         if len(editor_txt_files) >= 1:
@@ -123,8 +165,10 @@ class BackEndHandler:
                 selected_txt_file_content = load_txt_file_content(
                     editor_txt_files[editor_txt_file_names.index(selected_txt_file)])
 
+            filtered_editor_txt_files_list = self.check_editor_txt_file_processed(editor_txt_file_names)
+            # print(filtered_editor_txt_files_list)
             editor_metadata = {
-                "txt_file_list": editor_txt_file_names,
+                "txt_file_list": filtered_editor_txt_files_list,
                 "selected_txt_file_title": selected_txt_file,
                 "selected_txt_file_content": selected_txt_file_content
             }
@@ -155,7 +199,7 @@ class BackEndHandler:
         try:
             sub_clips = self.editor_validate_txt_file(editor_metadata)
             mp4_splitter.get_cmd_list(sub_clips, sub_clip_file, media_output_parent_path)
-            self.editor_processor.add_cmds_to_queue(sub_clips)
+            self.editor_processor.add_cmds_to_queue(EDITOR_METADATA_FILE, sub_clips)
         except ValueError as e:
             raise ValueError(e.args[0]) from e
         except FileNotFoundError as e:

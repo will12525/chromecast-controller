@@ -1,4 +1,5 @@
 import argparse
+import json
 import queue
 import shutil
 import os
@@ -111,6 +112,7 @@ class SubclipMetadata:
     end_time = ""
     destination_file_path = None
     source_file_path = None
+    file_name = None
 
     def __init__(self, subclip_metadata):
         playlist_title = ""
@@ -235,6 +237,8 @@ class SubclipMetadata:
 
         if not self.media_title:
             self.media_title = media_title
+
+        self.file_name = source_file_path.stem
         self.source_file_path = str(source_file_path.as_posix())
         self.destination_file_path = str(destination_file_path.as_posix())
 
@@ -294,11 +298,20 @@ def get_cmd_list(sub_clips: list[SubclipMetadata], sub_clip_file, media_output_p
 def extract_subclip(sub_clip):
     cmd = sub_clip.get_cmd()
     output_dir = pathlib.Path(cmd[2]).resolve().parent
-    # time.sleep(1)
+    time.sleep(1)
     print(cmd)
     print(output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-    subprocess.run(cmd, check=True, text=True)
+    # output_dir.mkdir(parents=True, exist_ok=True)
+    # subprocess.run(cmd, check=True, text=True)
+
+
+class CmdData:
+    metadata_file_path = ""
+    cmd = None
+
+    def __init__(self, metadata_file_path, cmd):
+        self.metadata_file_path = metadata_file_path
+        self.cmd = cmd
 
 
 class SubclipProcessHandler(threading.Thread):
@@ -309,13 +322,19 @@ class SubclipProcessHandler(threading.Thread):
     def run(self):
         while not self.subclip_process_queue.empty():
             self.process_start = datetime.now()
-            self.current_cmd = self.subclip_process_queue.get()
+            current_cmd = self.subclip_process_queue.get()
+            self.current_cmd = current_cmd.cmd
             extract_subclip(self.current_cmd)
+            with open(current_cmd.metadata_file_path, 'r', encoding="utf-8") as f:
+                editor_metadata = json.loads(f.read())
+            editor_metadata[self.current_cmd.file_name] = {"processed": True}
+            with open(current_cmd.metadata_file_path, "w+") as of:
+                json.dump(editor_metadata, of)
         self.current_cmd = None
 
-    def add_cmds_to_queue(self, cmd_list):
+    def add_cmds_to_queue(self, metadata_file_path, cmd_list):
         for cmd in cmd_list:
-            self.subclip_process_queue.put(cmd)
+            self.subclip_process_queue.put(CmdData(metadata_file_path, cmd))
         if not self.is_alive():
             threading.Thread.__init__(self, daemon=True)
             self.start()

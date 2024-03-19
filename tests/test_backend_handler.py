@@ -179,7 +179,9 @@ class TestEditor(TestBackEndHandler):
         print(self.backend_handler.editor_get_process_metadata())
         print(f"ERROR: {error_code}")
         time.sleep(10)
-
+        editor_metadata = {
+            'txt_file_name': "2024-01-31_16-32-38"
+        }
         error_code = self.backend_handler.editor_process_txt_file(editor_metadata,
                                                                   pathlib.Path(self.OUTPUT_PATH).resolve())
         time.sleep(10)
@@ -220,3 +222,6 @@ class TestEditor(TestBackEndHandler):
         error_code = self.backend_handler.editor_process_txt_file(editor_metadata,
                                                                   pathlib.Path(self.OUTPUT_PATH).resolve())
         print(f"ERROR: {error_code}")
+
+    def test_get_editor_metadata(self):
+        print(self.backend_handler.get_editor_metadata())

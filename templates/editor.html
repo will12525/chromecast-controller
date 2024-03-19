@@ -54,9 +54,9 @@
             <div class="col">
                 {% if 'txt_file_list' in editor_metadata %}
                 <div class="list-group">
-                    {% for editor_txt_file in editor_metadata['txt_file_list']: %}
+                    {% for key, editor_txt_file in editor_metadata['txt_file_list'].items(): %}
                     <a onclick="javascript:load_txt_file(this)"
-                       class="list-group-item list-group-item-action">{{ editor_txt_file }}</a>
+                       class="list-group-item list-group-item-action">{{ editor_txt_file['file_name'] }}</a>
                     {% endfor %}
                 </div>
                 {% endif %}
