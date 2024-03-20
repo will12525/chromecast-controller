@@ -108,9 +108,10 @@ class BackEndHandler:
         raw_path = pathlib.Path(editor_raw_folder).resolve()
         editor_txt_files = []
         for editor_mp4_file in list(sorted(raw_path.rglob(mp4_file_ext))):
-            editor_txt_file_path = pathlib.Path(str(editor_mp4_file).replace("mp4", "txt")).resolve()
-            editor_txt_file_path.touch()
-            editor_txt_files.append(editor_txt_file_path)
+            if "old" not in editor_mp4_file.parts:
+                editor_txt_file_path = pathlib.Path(str(editor_mp4_file).replace("mp4", "txt")).resolve()
+                editor_txt_file_path.touch()
+                editor_txt_files.append(editor_txt_file_path)
         return editor_txt_files
 
     def check_editor_txt_file_processed(self, editor_metadata_file, editor_txt_file_names):
