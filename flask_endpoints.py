@@ -111,7 +111,7 @@ def editor():
 
 @app.route(APIEndpoints.EDITOR_VALIDATE_TXT_FILE.value, methods=['POST'])
 def editor_validate_txt_file():
-    data = {}
+    data = {"message": "File valid"}
     if json_request := request.get_json():
         try:
             backend_handler.editor_validate_txt_file(EDITOR_RAW_FOLDER, json_request)
@@ -125,7 +125,7 @@ def editor_validate_txt_file():
 
 @app.route(APIEndpoints.EDITOR_SAVE_TXT_FILE.value, methods=['POST'])
 def editor_save_txt_file():
-    data = {}
+    data = {"message": "File saved"}
     if json_request := request.get_json():
         try:
             backend_handler.editor_save_txt_file(EDITOR_RAW_FOLDER, json_request)
