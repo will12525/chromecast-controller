@@ -160,7 +160,7 @@ class BackEndHandler:
 
     def editor_process_txt_file(self, editor_metadata_file, editor_raw_folder, editor_metadata,
                                 media_output_parent_path):
-        sub_clip_file = f"{editor_raw_folder}{editor_metadata.get('txt_file_name')}.txt"
+        sub_clip_file = f"{editor_raw_folder}{editor_metadata.get('txt_file_name')}"
         if editor_metadata.get('txt_file_content', None):
             try:
                 save_txt_file_content(sub_clip_file, editor_metadata.get('txt_file_content'))
@@ -189,7 +189,7 @@ class BackEndHandler:
             raise FileExistsError(error_dict) from e
 
     def editor_validate_txt_file(self, editor_raw_folder, editor_metadata):
-        txt_file_name = f"{editor_raw_folder}{editor_metadata.get('txt_file_name')}.txt"
+        txt_file_name = f"{editor_raw_folder}{editor_metadata.get('txt_file_name')}"
         try:
             return mp4_splitter.get_sub_clips_from_txt_file(txt_file_name)
         except ValueError as e:
