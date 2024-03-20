@@ -308,8 +308,8 @@ def extract_subclip(sub_clip):
     # time.sleep(1)
     print(cmd)
     print(output_dir)
-    # output_dir.mkdir(parents=True, exist_ok=True)
-    # subprocess.run(cmd, check=True, text=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    subprocess.run(cmd, check=True, text=True)
 
 
 class CmdData:
