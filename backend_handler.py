@@ -12,14 +12,6 @@ from database_handler.create_database import DBCreator
 from database_handler.media_metadata_collector import mp4_file_ext, txt_file_ext
 import mp4_splitter
 
-EDITOR_FOLDER = "/media/hdd1/plex_media/splitter/"
-EDITOR_RAW_FOLDER = f"{EDITOR_FOLDER}raw_files/"
-EDITOR_METADATA_FILE = f"{EDITOR_RAW_FOLDER}editor_metadata.json"
-
-
-# EDITOR_RAW_FOLDER = "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/"
-# EDITOR_METADATA_FILE = f"{EDITOR_RAW_FOLDER}editor_metadata.json"
-
 
 def setup_db():
     with DBCreator() as db_connection:
@@ -112,31 +104,18 @@ class BackEndHandler:
     def play_media_on_chromecast(self, media_request_ids):
         self.chromecast_handler.play_from_sql(media_request_ids)
 
-    def get_mp4_txt_files(self):
-        RAW_PATH = pathlib.Path(EDITOR_RAW_FOLDER).resolve()
-        return list(sorted(RAW_PATH.rglob(mp4_file_ext)))
-
-    def get_editor_txt_files(self, editor_mp4_files=None):
+    def get_editor_txt_files(self, editor_raw_folder):
+        raw_path = pathlib.Path(editor_raw_folder).resolve()
         editor_txt_files = []
-
-        if not editor_mp4_files:
-            editor_mp4_files = self.get_mp4_txt_files()
-
-        for editor_mp4_file in editor_mp4_files:
+        for editor_mp4_file in list(sorted(raw_path.rglob(mp4_file_ext))):
             editor_txt_file_path = pathlib.Path(str(editor_mp4_file).replace("mp4", "txt")).resolve()
             editor_txt_file_path.touch()
             editor_txt_files.append(editor_txt_file_path)
-
         return editor_txt_files
 
-    def get_editor_txt_file_names(self, editor_txt_files=None):
-        if not editor_txt_files:
-            editor_txt_files = self.get_editor_txt_files()
-        return [editor_txt_file.stem for editor_txt_file in editor_txt_files]
-
-    def check_editor_txt_file_processed(self, editor_txt_file_names):
+    def check_editor_txt_file_processed(self, editor_metadata_file, editor_txt_file_names):
         editor_txt_file_processed = []
-        metadata_file = pathlib.Path(EDITOR_METADATA_FILE).resolve()
+        metadata_file = pathlib.Path(editor_metadata_file).resolve()
         metadata_file_content = load_json_file_content(metadata_file)
         for editor_txt_file in editor_txt_file_names:
             if editor_txt_file in metadata_file_content:
@@ -151,65 +130,53 @@ class BackEndHandler:
                 })
         return editor_txt_file_processed
 
-    def get_editor_metadata(self, input_txt_file=None):
-        editor_txt_files = self.get_editor_txt_files()
-        if len(editor_txt_files) >= 1:
-            assert ".mp4" not in str(editor_txt_files[0])
-            assert ".txt" in str(editor_txt_files[0])
-
+    def get_editor_metadata(self, editor_metadata_file, editor_raw_folder, selected_txt_file=None):
         selected_index = 0
-        editor_txt_file_names = self.get_editor_txt_file_names(editor_txt_files)
+        editor_metadata = {}
+        editor_txt_files = self.get_editor_txt_files(editor_raw_folder)
+        editor_txt_file_names = [editor_txt_file.as_posix().replace(editor_raw_folder, "") for editor_txt_file in
+                                 editor_txt_files]
+
         if editor_txt_file_names:
-            selected_txt_file = editor_txt_file_names[selected_index]
-            selected_txt_file_content = load_txt_file_content(editor_txt_files[selected_index])
+            if not selected_txt_file or selected_txt_file not in editor_txt_file_names:
+                selected_txt_file = editor_txt_file_names[selected_index]
 
-            if input_txt_file and input_txt_file in editor_txt_file_names:
-                selected_txt_file = input_txt_file
-                selected_txt_file_content = load_txt_file_content(
-                    editor_txt_files[editor_txt_file_names.index(selected_txt_file)])
+            selected_txt_file_path = pathlib.Path(f"{editor_raw_folder}{selected_txt_file}").resolve()
 
-            filtered_editor_txt_files_list = self.check_editor_txt_file_processed(editor_txt_file_names)
-            # print(filtered_editor_txt_files_list)
             editor_metadata = {
-                "txt_file_list": filtered_editor_txt_files_list,
+                "txt_file_list": self.check_editor_txt_file_processed(editor_metadata_file, editor_txt_file_names),
                 "selected_txt_file_title": selected_txt_file,
-                "selected_txt_file_content": selected_txt_file_content
+                "selected_txt_file_content": load_txt_file_content(selected_txt_file_path)
             }
-            editor_metadata.update(self.editor_get_process_metadata())
-            return editor_metadata
-        return {}
+        editor_metadata.update(self.editor_get_process_metadata())
+        return editor_metadata
 
-    def editor_save_txt_file(self, editor_metadata):
-        sub_clip_file = f"{EDITOR_RAW_FOLDER}{editor_metadata.get('txt_file_name')}.txt"
+    def editor_save_txt_file(self, editor_raw_folder, editor_metadata):
+        sub_clip_file = f"{editor_raw_folder}{editor_metadata.get('txt_file_name')}.txt"
         save_txt_file_content(sub_clip_file, editor_metadata.get('txt_file_content'))
         print(sub_clip_file)
         print(editor_metadata.get('txt_file_content'))
 
-    # def editor_load_txt_file(self, editor_metadata):
-    #     sub_clip_file = f"{EDITOR_RAW_FOLDER}{editor_metadata.get('txt_file_name')}.txt"
-    #     editor_metadata['txt_file_content'] = load_txt_file_content(sub_clip_file)
-    #     # load_txt_file(sub_clip_file, editor_metadata.get('txt_file_content'))
-    #     # return { "load_txt_file":  }
-
-    def editor_process_txt_file(self, editor_metadata, media_output_parent_path):
-        sub_clip_file = f"{EDITOR_RAW_FOLDER}{editor_metadata.get('txt_file_name')}.txt"
+    def editor_process_txt_file(self, editor_metadata_file, editor_raw_folder, editor_metadata,
+                                media_output_parent_path):
+        sub_clip_file = f"{editor_raw_folder}{editor_metadata.get('txt_file_name')}.txt"
         if editor_metadata.get('txt_file_content', None):
             try:
                 save_txt_file_content(sub_clip_file, editor_metadata.get('txt_file_content'))
             except FileExistsError as e:
                 pass
         try:
-            sub_clips = self.editor_validate_txt_file(editor_metadata)
+            sub_clips = self.editor_validate_txt_file(editor_raw_folder, editor_metadata)
             mp4_splitter.get_cmd_list(sub_clips, sub_clip_file, media_output_parent_path)
-            self.editor_processor.add_cmds_to_queue(EDITOR_METADATA_FILE, sub_clips)
+            self.editor_processor.add_cmds_to_queue(editor_metadata_file, sub_clips)
             editor_metadata_content = {}
-            editor_metadata_file = pathlib.Path(EDITOR_METADATA_FILE).resolve()
+            editor_metadata_file_path = pathlib.Path(editor_metadata_file).resolve()
             try:
-                editor_metadata_content = load_json_file_content(editor_metadata_file)
+                editor_metadata_content = load_json_file_content(editor_metadata_file_path)
             except (FileNotFoundError, JSONDecodeError) as e:
                 pass
             editor_metadata_content[editor_metadata.get('txt_file_name')] = {"processed": True}
-            save_json_file_content(editor_metadata_content, EDITOR_METADATA_FILE)
+            save_json_file_content(editor_metadata_content, editor_metadata_file)
 
         except ValueError as e:
             raise ValueError(e.args[0]) from e
@@ -220,8 +187,8 @@ class BackEndHandler:
             error_dict["txt_file_name"] = editor_metadata.get('txt_file_name')
             raise FileExistsError(error_dict) from e
 
-    def editor_validate_txt_file(self, editor_metadata):
-        txt_file_name = f"{EDITOR_RAW_FOLDER}{editor_metadata.get('txt_file_name')}.txt"
+    def editor_validate_txt_file(self, editor_raw_folder, editor_metadata):
+        txt_file_name = f"{editor_raw_folder}{editor_metadata.get('txt_file_name')}.txt"
         try:
             return mp4_splitter.get_sub_clips_from_txt_file(txt_file_name)
         except ValueError as e:
@@ -232,8 +199,8 @@ class BackEndHandler:
     def editor_get_process_metadata(self):
         return self.editor_processor.get_metadata()
 
-    def get_free_disk_space(self):
-        df = subprocess.Popen(["df", f"{EDITOR_FOLDER}"], stdout=subprocess.PIPE)
+    def get_free_disk_space(self, editor_folder):
+        df = subprocess.Popen(["df", f"{editor_folder}"], stdout=subprocess.PIPE)
         output = df.communicate()[0]
         print(output)
         device, size, used, available, percent, mountpoint = output.decode("utf-8").split("\n")[1].split()

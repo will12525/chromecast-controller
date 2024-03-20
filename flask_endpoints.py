@@ -11,7 +11,6 @@ from database_handler.database_handler import DatabaseHandler
 from database_handler.common_objects import ContentType, MEDIA_DIRECTORY_PATH_COLUMN
 from database_handler.create_database import DBCreator
 
-
 # TODO: Add to DB: Add media title from ffmpeg extraction
 # TODO: Add to DB: Track if media was previously watched
 # TODO: Update DB: Remove media that no longer exists
@@ -23,6 +22,11 @@ from database_handler.create_database import DBCreator
 # TODO: Update chromecast menu auto populate to remove missing chromecasts
 # TODO: Convert chromecast name strings to id values and use ID values to refer to chromecasts
 # TODO: Make local media player: https://www.tutorialspoint.com/opencv_python/opencv_python_play_video_file.htm
+
+EDITOR_FOLDER = "/media/hdd1/plex_media/splitter/"
+EDITOR_RAW_FOLDER = f"{EDITOR_FOLDER}raw_files/"
+EDITOR_METADATA_FILE = f"{EDITOR_RAW_FOLDER}editor_metadata.json"
+
 
 class APIEndpoints(Enum):
     MAIN = "/"
@@ -94,10 +98,10 @@ def build_main_content(request_args):
 
 @app.route(APIEndpoints.EDITOR.value)
 def editor():
-    # selected_txt_file = request.args.get(key="selected_file", default=None, type=str)
     try:
         return render_template("editor.html", homepage_url="/", button_dict=media_controller_button_dict,
-                               editor_metadata=backend_handler.get_editor_metadata())
+                               editor_metadata=backend_handler.get_editor_metadata(EDITOR_METADATA_FILE,
+                                                                                   EDITOR_RAW_FOLDER))
     except Exception as e:
         print("Exception class: ", e.__class__)
         print(f"ERROR: {e}")
@@ -110,7 +114,7 @@ def editor_validate_txt_file():
     data = {}
     if json_request := request.get_json():
         try:
-            backend_handler.editor_validate_txt_file(json_request)
+            backend_handler.editor_validate_txt_file(EDITOR_RAW_FOLDER, json_request)
         except Exception as e:
             print("Exception class: ", e.__class__)
             print(f"ERROR: {e}")
@@ -124,7 +128,7 @@ def editor_save_txt_file():
     data = {}
     if json_request := request.get_json():
         try:
-            backend_handler.editor_save_txt_file(json_request)
+            backend_handler.editor_save_txt_file(EDITOR_RAW_FOLDER, json_request)
         except Exception as e:
             print("Exception class: ", e.__class__)
             print(f"ERROR: {e}")
@@ -139,7 +143,8 @@ def editor_load_txt_file():
     if json_request := request.get_json():
         if editor_txt_file_name := json_request.get("editor_txt_file_name"):
             try:
-                data = backend_handler.get_editor_metadata(editor_txt_file_name)
+                data = backend_handler.get_editor_metadata(EDITOR_METADATA_FILE, EDITOR_RAW_FOLDER,
+                                                           editor_txt_file_name)
             except Exception as e:
                 print("Exception class: ", e.__class__)
                 print(f"ERROR: {e}")
@@ -157,7 +162,7 @@ def editor_process_txt_file():
             with DatabaseHandler() as db_connection:
                 media_metadata = db_connection.get_media_folder_path(1)
             output_path = pathlib.Path(media_metadata.get(MEDIA_DIRECTORY_PATH_COLUMN)).resolve()
-            err_code = backend_handler.editor_process_txt_file(json_request, output_path)
+            backend_handler.editor_process_txt_file(EDITOR_METADATA_FILE, EDITOR_RAW_FOLDER, json_request, output_path)
             # print(f"ERROR: {err_code}")
         except Exception as e:
             print(e.args[0])
@@ -292,7 +297,7 @@ def get_media_menu_data():
 @app.route(APIEndpoints.GET_DISK_SPACE.value, methods=['GET'])
 def get_disk_space():
     try:
-        data = {"free_space": backend_handler.get_free_disk_space()}
+        data = {"free_space": backend_handler.get_free_disk_space(EDITOR_FOLDER)}
         return data, 200
     except Exception as e:
         print("Exception class: ", e.__class__)

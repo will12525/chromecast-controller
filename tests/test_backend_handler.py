@@ -1,3 +1,4 @@
+import json
 import pathlib
 import time
 from unittest import TestCase
@@ -116,13 +117,16 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
 
 class TestEditor(TestBackEndHandler):
     OUTPUT_PATH = "../media_folder_modify/output"
+    EDITOR_RAW_FOLDER = "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/"
+    EDITOR_METADATA_FILE = f"{EDITOR_RAW_FOLDER}editor_metadata.json"
 
     def test_editor_process_txt_file_error_invalid_file(self):
         editor_metadata = {
             'txt_file_name': "2024hi-01-31_16-32-36"
         }
         with self.assertRaises(ValueError) as context:
-            self.backend_handler.editor_process_txt_file(editor_metadata, self.OUTPUT_PATH)
+            self.backend_handler.editor_process_txt_file(self.EDITOR_METADATA_FILE, self.EDITOR_RAW_FOLDER,
+                                                         editor_metadata, self.OUTPUT_PATH)
         error_dict = context.exception.args[0]
         assert type(error_dict) is dict
         assert "Text file empty" == error_dict.get("message")
@@ -134,7 +138,8 @@ class TestEditor(TestBackEndHandler):
             'txt_file_name': "2024-01-31_16-32-36_no_mp4"
         }
         with self.assertRaises(FileNotFoundError) as context:
-            self.backend_handler.editor_process_txt_file(editor_metadata, self.OUTPUT_PATH)
+            self.backend_handler.editor_process_txt_file(self.EDITOR_METADATA_FILE, self.EDITOR_RAW_FOLDER,
+                                                         editor_metadata, self.OUTPUT_PATH)
         error_dict = context.exception.args[0]
         print(error_dict)
         assert type(error_dict) is dict
@@ -146,7 +151,8 @@ class TestEditor(TestBackEndHandler):
             'txt_file_name': "2024-01-31_16-32-36_empty"
         }
         with self.assertRaises(ValueError) as context:
-            self.backend_handler.editor_process_txt_file(editor_metadata, self.OUTPUT_PATH)
+            self.backend_handler.editor_process_txt_file(self.EDITOR_METADATA_FILE, self.EDITOR_RAW_FOLDER,
+                                                         editor_metadata, self.OUTPUT_PATH)
         error_dict = context.exception.args[0]
         print(error_dict)
         assert type(error_dict) is dict
@@ -158,7 +164,8 @@ class TestEditor(TestBackEndHandler):
             'txt_file_name': "2024-01-31_16-32-36_invalid"
         }
         with self.assertRaises(ValueError) as context:
-            self.backend_handler.editor_process_txt_file(editor_metadata, self.OUTPUT_PATH)
+            self.backend_handler.editor_process_txt_file(self.EDITOR_METADATA_FILE, self.EDITOR_RAW_FOLDER,
+                                                         editor_metadata, self.OUTPUT_PATH)
         error_dict = context.exception.args[0]
         assert type(error_dict) is dict
         assert "Values less than 0" == error_dict.get("message")
@@ -173,18 +180,17 @@ class TestEditor(TestBackEndHandler):
         editor_metadata = {
             'txt_file_name': "2024-01-31_16-32-36"
         }
-        error_code = self.backend_handler.editor_process_txt_file(editor_metadata,
-                                                                  pathlib.Path(self.OUTPUT_PATH).resolve())
-        time.sleep(2)
+        self.backend_handler.editor_process_txt_file(self.EDITOR_METADATA_FILE, self.EDITOR_RAW_FOLDER, editor_metadata,
+                                                     pathlib.Path(self.OUTPUT_PATH).resolve())
+        # time.sleep(2)
         print(self.backend_handler.editor_get_process_metadata())
-        print(f"ERROR: {error_code}")
-        time.sleep(10)
+        # time.sleep(10)
         editor_metadata = {
             'txt_file_name': "2024-01-31_16-32-38"
         }
-        error_code = self.backend_handler.editor_process_txt_file(editor_metadata,
-                                                                  pathlib.Path(self.OUTPUT_PATH).resolve())
-        time.sleep(10)
+        self.backend_handler.editor_process_txt_file(self.EDITOR_METADATA_FILE, self.EDITOR_RAW_FOLDER, editor_metadata,
+                                                     pathlib.Path(self.OUTPUT_PATH).resolve())
+        # time.sleep(10)
         print(self.backend_handler.editor_get_process_metadata())
 
         # error_code = self.backend_handler.editor_process_txt_file(editor_metadata,
@@ -194,7 +200,7 @@ class TestEditor(TestBackEndHandler):
         editor_metadata = {
             'txt_file_name': "2024-01-31_16-32-36"
         }
-        error_code = self.backend_handler.editor_validate_txt_file(editor_metadata)
+        error_code = self.backend_handler.editor_validate_txt_file(self.EDITOR_RAW_FOLDER, editor_metadata)
         print(f"ERROR: {error_code}")
 
     def test_invalid_txt_file(self):
@@ -203,7 +209,7 @@ class TestEditor(TestBackEndHandler):
         }
 
         with self.assertRaises(ValueError) as context:
-            self.backend_handler.editor_validate_txt_file(editor_metadata)
+            self.backend_handler.editor_validate_txt_file(self.EDITOR_RAW_FOLDER, editor_metadata)
         error_dict = context.exception.args[0]
         print(error_dict)
         assert type(error_dict) is dict
@@ -219,9 +225,11 @@ class TestEditor(TestBackEndHandler):
         editor_metadata = {
             'txt_file_name': "2024-01-31_16-32-36"
         }
-        error_code = self.backend_handler.editor_process_txt_file(editor_metadata,
+        error_code = self.backend_handler.editor_process_txt_file(self.EDITOR_METADATA_FILE, self.EDITOR_RAW_FOLDER,
+                                                                  editor_metadata,
                                                                   pathlib.Path(self.OUTPUT_PATH).resolve())
         print(f"ERROR: {error_code}")
 
     def test_get_editor_metadata(self):
-        print(self.backend_handler.get_editor_metadata())
+        editor_metadata = self.backend_handler.get_editor_metadata(self.EDITOR_METADATA_FILE, self.EDITOR_RAW_FOLDER)
+        print(json.dumps(editor_metadata, indent=4))

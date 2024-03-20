@@ -40,6 +40,10 @@ ERROR_TXT_FILE_INVALID_CONTENT = 4
 ERROR_MP4_FILE_ALREADY_EXISTS = 5
 
 
+class JobQueueFull(ValueError):
+    pass
+
+
 class EmptyTextFile(ValueError):
     pass
 
@@ -300,11 +304,11 @@ def get_cmd_list(sub_clips: list[SubclipMetadata], sub_clip_file, media_output_p
 def extract_subclip(sub_clip):
     cmd = sub_clip.get_cmd()
     output_dir = pathlib.Path(cmd[2]).resolve().parent
-    time.sleep(1)
+    # time.sleep(1)
     print(cmd)
     print(output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-    subprocess.run(cmd, check=True, text=True)
+    # output_dir.mkdir(parents=True, exist_ok=True)
+    # subprocess.run(cmd, check=True, text=True)
 
 
 class CmdData:
@@ -331,6 +335,8 @@ class SubclipProcessHandler(threading.Thread):
         self.current_cmd = None
 
     def add_cmds_to_queue(self, metadata_file_path, cmd_list):
+        if self.subclip_process_queue.qsize() > 10:
+            raise JobQueueFull({"message": "Job queue full"})
         for cmd in cmd_list:
             self.subclip_process_queue.put(CmdData(metadata_file_path, cmd))
         if not self.is_alive():
