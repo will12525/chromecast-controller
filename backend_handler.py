@@ -153,7 +153,7 @@ class BackEndHandler:
         return editor_metadata
 
     def editor_save_txt_file(self, editor_raw_folder, editor_metadata):
-        sub_clip_file = f"{editor_raw_folder}{editor_metadata.get('txt_file_name')}.txt"
+        sub_clip_file = f"{editor_raw_folder}{editor_metadata.get('txt_file_name')}"
         save_txt_file_content(sub_clip_file, editor_metadata.get('txt_file_content'))
         print(sub_clip_file)
         print(editor_metadata.get('txt_file_content'))
