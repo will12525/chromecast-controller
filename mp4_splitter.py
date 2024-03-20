@@ -244,9 +244,10 @@ class SubclipMetadata:
         if not self.media_title:
             self.media_title = media_title
 
-        self.file_name = source_file_path.stem
-        self.source_file_path = str(source_file_path.as_posix())
-        self.destination_file_path = str(destination_file_path.as_posix())
+        self.media_title = self.media_title.strip().replace('"', "")
+        self.file_name = source_file_path.stem.strip()
+        self.source_file_path = str(source_file_path.as_posix()).strip()
+        self.destination_file_path = str(destination_file_path.as_posix()).strip()
 
     def get_cmd(self):
         return [SPLITTER_BASH_CMD, self.source_file_path, self.destination_file_path, str(self.start_time),
