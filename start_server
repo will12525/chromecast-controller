@@ -4,12 +4,18 @@
 PRODUCTION_ENV=$1
 WORKSPACE=$(pwd)
 PORT=5001
+EXIT_CODE=0
 
 # Check if .venv exists
 if [ ! -d "${WORKSPACE}/.venv/" ]; then
     echo "Creating virtual environment ${WORKSPACE}/.venv"
     # Create virtual environment
     python3 -m venv "$WORKSPACE/.venv"
+    EXIT_CODE=$?
+fi
+if [ "$EXIT_CODE" -ne "0" ]; then
+    echo "Install Python virtual env: apt install python3-virtualenv"
+    exit 1
 fi
 
 # Source virtual environment
