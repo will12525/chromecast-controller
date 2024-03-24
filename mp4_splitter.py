@@ -323,6 +323,7 @@ class CmdData:
 
 class SubclipProcessHandler(threading.Thread):
     subclip_process_queue = queue.Queue()
+    log_queue = queue.Queue()
     current_cmd = None
     process_start = 0
 
@@ -331,7 +332,14 @@ class SubclipProcessHandler(threading.Thread):
             self.process_start = datetime.now()
             current_cmd = self.subclip_process_queue.get()
             self.current_cmd = current_cmd.cmd
-            extract_subclip(self.current_cmd)
+            try:
+                extract_subclip(self.current_cmd)
+                self.log_queue.put(
+                    {"message": "Finished splitting", "file_name": self.current_cmd.destination_file_path})
+            except subprocess.CalledProcessError as e:
+                self.log_queue.put(
+                    {"message": "Error encountered while splitting",
+                     "file_name": self.current_cmd.destination_file_path})
 
         self.current_cmd = None
 
@@ -347,14 +355,19 @@ class SubclipProcessHandler(threading.Thread):
     def get_metadata(self):
         process_name = "Split queue empty"
         process_time = 0
+        process_log = []
         if current_cmd := self.current_cmd:
             process_name = current_cmd.media_title
             process_time = str(datetime.now() - self.process_start)
 
+        while not self.log_queue.empty():
+            process_log.append(self.log_queue.get())
+
         return {
             "process_name": process_name,
             "process_time": process_time,
-            "process_queue_size": self.subclip_process_queue.qsize()
+            "process_queue_size": self.subclip_process_queue.qsize(),
+            "process_log": process_log
         }
 
 

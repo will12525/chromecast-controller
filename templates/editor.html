@@ -48,12 +48,32 @@
     </div>
 </nav>
 <div id="mediaContentSelectDiv" class="main-content-container">
-    <p>{{ sha }}</p>
-    <div class="container">
-        <div class="row">
-            <div class="col">
+    <div class="container text-left">
+        <div class="row row-cols-left row-cols-12">
+            <div class="col-sm-1">
+                <button type="button" class="btn btn-success" onclick="javascript:validate_txt_file()">Validate</button>
+            </div>
+            <div class="col-sm-1">
+                <button type="button" class="btn btn-success" onclick="javascript:save_txt_file()">Save</button>
+            </div>
+            <div class="col-sm-1">
+                <button type="button" class="btn btn-primary" onclick="javascript:process_txt_file()">Run</button>
+            </div>
+            <div class="col-sm-4">
+                <p>Processing: <span id="editor_process_metadata_name">{{ editor_metadata['process_name'] }}</span></p>
+            </div>
+            <div class="col-sm-3">
+                <p>Time: <span id="editor_process_metadata_time">{{ editor_metadata['process_time'] }}</span></p>
+            </div>
+            <div class="col-sm-2">
+                <p>Remaining: <span
+                        id="editor_process_metadata_queue_size">{{ editor_metadata['process_queue_size'] }}</span></p>
+            </div>
+        </div>
+        <div class="row row-cols-12">
+            <div class="col-lg-4">
                 {% if 'txt_file_list' in editor_metadata %}
-                <div class="list-group">
+                <div class="list-group overflow-auto" style="min-height: 100%; height: 200px;">
                     {% for editor_txt_file in editor_metadata['txt_file_list']: %}
                     {% if editor_txt_file['processed'] %}
                     <a style="background-color:MediumSeaGreen;" onclick="javascript:load_txt_file(this)"
@@ -66,45 +86,21 @@
                 </div>
                 {% endif %}
             </div>
-            <div class="col">
-                <!--                <div class="mb-3">-->
-                <button type="button" class="btn btn-success" onclick="javascript:validate_txt_file()">Validate</button>
-                <button type="button" class="btn btn-success" onclick="javascript:save_txt_file()">Save</button>
-                <button type="button" class="btn btn-primary" onclick="javascript:process_txt_file()">Run</button>
-                <label for="editor_txt_file_content" id="editor_txt_file_name" class="form-label">{{
-                    editor_metadata['selected_txt_file_title'] }}</label>
-                <textarea class="form-control" id="editor_txt_file_content" rows="20">{{ editor_metadata['selected_txt_file_content'] }}</textarea>
-                <p id="editor_process_metadata_example">e.g.</p>
-                <p>show name, episode name, season index, episode index, start time:end time</p>
-                <p>Hilda, Hildas a Troll!, 2, 1, 7, 13:43</p>
-                <!--                </div>-->
+            <div class="col-lg-8">
+                <label for="editor_txt_file_content" class="form-label">File name: <span
+                        id="editor_txt_file_name">{{ editor_metadata['selected_txt_file_title'] }}</span></label>
+                <textarea class="form-control" id="editor_txt_file_content" rows="15"
+                          style="white-space: nowrap;overflow: auto;">{{ editor_metadata['selected_txt_file_content'] }}</textarea>
+                <p>Examples:<br/>show name, episode name, season index, episode index, start time:end time<br/>Hilda,
+                    Hildas a Troll!, 2, 1, 7, 13:43
+                </p>
             </div>
-            <div class="col">
-                <!--                <div class="mb-3">-->
-                <!--                    <textarea class="form-control" id="editor_txt_file_content" rows="20">{{ editor_metadata['selected_txt_file_content'] }}</textarea>-->
-                <div class="container">
-                    <div class="row">
-                        <div class="col-6">
-                            <label for="editor_process_metadata_name"
-                                   id="editor_process_metadata_name_label">Processing:</label>
-                            <p id="editor_process_metadata_name">{{ editor_metadata['process_name'] }}</p>
-                        </div>
-                        <div class="col">
-                            <label for="editor_process_metadata_time"
-                                   id="editor_process_metadata_time_label">Time:</label>
-                            <p id="editor_process_metadata_time">{{ editor_metadata['process_time'] }}</p>
-                        </div>
-                        <div class="col">
-                            <label for="editor_process_metadata_queue_size"
-                                   id="editor_process_metadata_queue_size_label">Remaining:</label>
-                            <p id="editor_process_metadata_queue_size">{{ editor_metadata['process_queue_size'] }}</p>
-                        </div>
-                    </div>
-                </div>
-
-                <label for="editor_txt_file_log" id="editor_txt_file_log_label">Editor logs</label>
-                <textarea class="form-control" id="editor_txt_file_log" rows="20"></textarea>
-                <!--                </div>-->
+        </div>
+        <div class="row">
+            <div class="col-lg">
+                <button type="button" class="btn btn-danger" onclick="javascript:clear_editor_log()">Clear</button>
+                <label for="editor_txt_file_log" id="editor_txt_file_log_label" class="form-label">Editor logs</label>
+                <textarea class="form-control" id="editor_txt_file_log" rows="10" disabled></textarea>
             </div>
         </div>
     </div>

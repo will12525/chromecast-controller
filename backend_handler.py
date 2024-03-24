@@ -147,9 +147,10 @@ class BackEndHandler:
             editor_metadata = {
                 "txt_file_list": self.check_editor_txt_file_processed(editor_metadata_file, editor_txt_file_names),
                 "selected_txt_file_title": selected_txt_file,
-                "selected_txt_file_content": load_txt_file_content(selected_txt_file_path)
+                "selected_txt_file_content": load_txt_file_content(selected_txt_file_path),
+                "editor_process_metadata": self.editor_processor.get_metadata()
             }
-        editor_metadata.update(self.editor_get_process_metadata())
+
         return editor_metadata
 
     def editor_save_txt_file(self, editor_raw_folder, editor_metadata):

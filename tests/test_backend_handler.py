@@ -178,7 +178,7 @@ class TestEditor(TestBackEndHandler):
 
     def test_editor_process_txt_file(self):
         editor_metadata = {
-            'txt_file_name': "2024-01-31_16-32-36"
+            'txt_file_name': "2024-01-31_16-32-36.txt"
         }
         self.backend_handler.editor_process_txt_file(self.EDITOR_METADATA_FILE, self.EDITOR_RAW_FOLDER, editor_metadata,
                                                      pathlib.Path(self.OUTPUT_PATH).resolve())
@@ -186,7 +186,7 @@ class TestEditor(TestBackEndHandler):
         print(self.backend_handler.editor_get_process_metadata())
         # time.sleep(10)
         editor_metadata = {
-            'txt_file_name': "2024-01-31_16-32-38"
+            'txt_file_name': "2024-01-31_16-32-38.txt"
         }
         self.backend_handler.editor_process_txt_file(self.EDITOR_METADATA_FILE, self.EDITOR_RAW_FOLDER, editor_metadata,
                                                      pathlib.Path(self.OUTPUT_PATH).resolve())
@@ -221,15 +221,49 @@ class TestEditor(TestBackEndHandler):
         assert 0 == error_dict.get("line_index")
         assert "chromecast-controller/editor_raw_files/2024-01-31_16-32-36_invalid.txt" in error_dict.get("file_name")
 
-    def test_editor_cmd_list(self):
+    def test_editor_process_txt_file_name(self):
         editor_metadata = {
-            'txt_file_name': "2024-01-31_16-32-36"
+            'txt_file_name': "2024-01-31_16-32-36.txt"
         }
         error_code = self.backend_handler.editor_process_txt_file(self.EDITOR_METADATA_FILE, self.EDITOR_RAW_FOLDER,
                                                                   editor_metadata,
                                                                   pathlib.Path(self.OUTPUT_PATH).resolve())
         print(f"ERROR: {error_code}")
+        new_editor_metadata = self.backend_handler.get_editor_metadata(self.EDITOR_METADATA_FILE,
+                                                                       self.EDITOR_RAW_FOLDER)
+        # print(new_editor_metadata)
+        print(json.dumps(new_editor_metadata, indent=4))
+
+        assert type(new_editor_metadata) is dict
+        assert 'txt_file_list' in new_editor_metadata
+        assert type(new_editor_metadata.get('txt_file_list')) is list
+        for txt_file in new_editor_metadata.get('txt_file_list'):
+            assert type(txt_file) is dict
+            assert type(txt_file.get("file_name")) is str
+            assert type(txt_file.get("processed")) is bool
+        assert 'selected_txt_file_title' in new_editor_metadata
+        assert type(new_editor_metadata.get('selected_txt_file_title')) is str
+        assert 'selected_txt_file_content' in new_editor_metadata
+        assert type(new_editor_metadata.get('selected_txt_file_content')) is str
+        assert 'editor_process_metadata' in new_editor_metadata
+        assert type(new_editor_metadata.get('editor_process_metadata')) is dict
+        process_metadata = new_editor_metadata.get('editor_process_metadata')
+        assert 'process_name' in process_metadata
+        assert type(process_metadata.get('process_name')) is str
+        assert 'process_time' in process_metadata
+        assert type(process_metadata.get('process_time')) is int
+        assert 'process_queue_size' in process_metadata
+        assert type(process_metadata.get('process_queue_size')) is int
+        assert 'process_log' in process_metadata
+        assert type(process_metadata.get('process_log')) is list
+        for process_log in process_metadata.get('process_log'):
+            assert type(process_log) is dict
+            assert 'message' in process_log
+            assert type(process_log.get('message')) is str
+            assert 'file_name' in process_log
+            assert type(process_log.get('file_name')) is str
 
     def test_get_editor_metadata(self):
         editor_metadata = self.backend_handler.get_editor_metadata(self.EDITOR_METADATA_FILE, self.EDITOR_RAW_FOLDER)
+        print(editor_metadata)
         print(json.dumps(editor_metadata, indent=4))

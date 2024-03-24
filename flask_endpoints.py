@@ -99,41 +99,52 @@ def build_main_content(request_args):
 @app.route(APIEndpoints.EDITOR.value)
 def editor():
     try:
-        return render_template("editor.html", homepage_url="/", button_dict=media_controller_button_dict,
+        return render_template("editor.html",
+                               homepage_url="/",
+                               button_dict=media_controller_button_dict,
                                editor_metadata=backend_handler.get_editor_metadata(EDITOR_METADATA_FILE,
                                                                                    EDITOR_RAW_FOLDER))
     except Exception as e:
+        error_str = str(traceback.print_exc())
+        if len(e.args) > 0:
+            data = {"error": e.args[0]}
+            error_str = f"{error_str}\n{data}"
+            print(data)
         print("Exception class: ", e.__class__)
         print(f"ERROR: {e}")
         print(traceback.print_exc())
-        return str(traceback.print_exc())
+        return error_str
 
 
 @app.route(APIEndpoints.EDITOR_VALIDATE_TXT_FILE.value, methods=['POST'])
 def editor_validate_txt_file():
-    data = {"message": "File valid"}
+    data = {"error": {"message": "File valid"}}
     if json_request := request.get_json():
         try:
             backend_handler.editor_validate_txt_file(EDITOR_RAW_FOLDER, json_request)
         except Exception as e:
+            if len(e.args) > 0:
+                data = {"error": e.args[0]}
+                print(data)
             print("Exception class: ", e.__class__)
             print(f"ERROR: {e}")
             print(traceback.print_exc())
-            data = e.args[0]
     return data, 200
 
 
 @app.route(APIEndpoints.EDITOR_SAVE_TXT_FILE.value, methods=['POST'])
 def editor_save_txt_file():
-    data = {"message": "File saved"}
+    data = {"error": {"message": "File saved"}}
     if json_request := request.get_json():
         try:
             backend_handler.editor_save_txt_file(EDITOR_RAW_FOLDER, json_request)
         except Exception as e:
+            if len(e.args) > 0:
+                data = {"error": e.args[0]}
+                print(data)
             print("Exception class: ", e.__class__)
             print(f"ERROR: {e}")
             print(traceback.print_exc())
-            data = e.args[0]
     return data, 200
 
 
@@ -146,31 +157,31 @@ def editor_load_txt_file():
                 data = backend_handler.get_editor_metadata(EDITOR_METADATA_FILE, EDITOR_RAW_FOLDER,
                                                            editor_txt_file_name)
             except Exception as e:
+                if len(e.args) > 0:
+                    data = {"error": e.args[0]}
+                    print(data)
                 print("Exception class: ", e.__class__)
                 print(f"ERROR: {e}")
                 print(traceback.print_exc())
-                data = e.args[0]
-
     return data, 200
 
 
 @app.route(APIEndpoints.EDITOR_PROCESS_TXT_FILE.value, methods=['POST'])
 def editor_process_txt_file():
-    data = {"message": "Success!"}
+    data = {"error": {"message": "Success!"}}
     if json_request := request.get_json():
         try:
             with DatabaseHandler() as db_connection:
                 media_metadata = db_connection.get_media_folder_path(1)
             output_path = pathlib.Path(media_metadata.get(MEDIA_DIRECTORY_PATH_COLUMN)).resolve()
             backend_handler.editor_process_txt_file(EDITOR_METADATA_FILE, EDITOR_RAW_FOLDER, json_request, output_path)
-            # print(f"ERROR: {err_code}")
         except Exception as e:
-            print(e.args[0])
-            data = e.args[0]
-            # print("Exception class: ", e.__class__)
-            # print(f"ERROR: {e}")
-            # print(traceback.print_exc())
-    print(data)
+            if len(e.args) > 0:
+                data = {"error": e.args[0]}
+                print(data)
+            print("Exception class: ", e.__class__)
+            print(f"ERROR: {e}")
+            print(traceback.print_exc())
     return data, 200
 
 
@@ -178,9 +189,11 @@ def editor_process_txt_file():
 def editor_processor_get_metadata():
     data = {}
     try:
-        if media_metadata := backend_handler.editor_get_process_metadata():
-            data = media_metadata
+        data = backend_handler.editor_get_process_metadata()
     except Exception as e:
+        if len(e.args) > 0:
+            data = {"error": e.args[0]}
+            print(data)
         print("Exception class: ", e.__class__)
         print(f"ERROR: {e}")
         print(traceback.print_exc())

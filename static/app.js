@@ -134,6 +134,44 @@ async function play_media(media_id, playlist_id=null) {
     });
 }
 
+async function update_editor_log(response_data) {
+        editor_txt_file_log = document.getElementById("editor_txt_file_log");
+        prepend_text = "";
+        if (response_data["line_index"] !== undefined) {
+            prepend_text += "Line Number: " + response_data?.line_index + "\n";
+        }
+        if (response_data["message"] !== undefined) {
+            prepend_text += response_data?.message;
+        }
+        if (response_data["expected_path"] !== undefined) {
+            prepend_text += ": " + response_data?.expected_path + "\n";
+        }
+        if (response_data["string"] !== undefined) {
+            prepend_text += response_data?.string + "\n";
+        }
+        editor_txt_file_log.value = prepend_text + "\n" + editor_txt_file_log.value;
+}
+
+async function update_editor_webpage(response_data) {
+    const editor_txt_file_name = document.getElementById("editor_txt_file_name");
+    const editor_txt_file_content = document.getElementById("editor_txt_file_content");
+    const editor_txt_file_log = document.getElementById("editor_txt_file_log");
+    console.log(response_data)
+    if (response_data["selected_txt_file_title"] !== undefined) {
+        editor_txt_file_name.innerHTML = response_data?.selected_txt_file_title;
+    }
+    if (response_data["selected_txt_file_content"] !== undefined) {
+        editor_txt_file_content.innerHTML = response_data?.selected_txt_file_content;
+    }
+    if (response_data["error"] !== undefined) {
+          update_editor_log(response_data?.error)
+    }
+    if (response_data["process_log"] !== undefined) {
+        response_data?.process_log.forEach((element) => prepend_text = prepend_text + element["message"] + ": " + element["file_name"] + "\n");
+        editor_txt_file_log.value += prepend_text + "\n" + editor_txt_file_log.value;
+    }
+}
+
 async function load_txt_file(element) {
     var url = "/load_txt_file";
     var editor_txt_file_name = element.innerText || element.textContent;
@@ -145,20 +183,35 @@ async function load_txt_file(element) {
         "headers": {"Content-Type": "application/json"},
         "body": JSON.stringify(data),
     });
-    console.log(response)
+    // Send POST request
     if (!response.ok) {
         throw new Error("HTTP ERROR FAILED: " + response.status);
     } else {
-        let response_data = await response.json();
-        console.log(response_data)
-        const editor_txt_file_name = document.getElementById("editor_txt_file_name");
-        const editor_txt_file_content = document.getElementById("editor_txt_file_content");
-        if (response_data["selected_txt_file_title"] !== undefined) {
-            editor_txt_file_name.innerHTML = response_data?.selected_txt_file_title;
-        }
-        if (response_data["selected_txt_file_content"] !== undefined) {
-            editor_txt_file_content.innerHTML = response_data?.selected_txt_file_content;
-        }
+        update_editor_webpage(await response.json());
+    }
+}
+async function clear_editor_log() {
+    document.getElementById("editor_txt_file_log").value = "";
+}
+
+async function save_txt_file() {
+    var url = "/save_txt_file";
+    const editor_txt_file_name = document.getElementById("editor_txt_file_name");
+    const editor_txt_file_content = document.getElementById("editor_txt_file_content");
+    let data = {
+        "txt_file_name": editor_txt_file_name.textContent,
+        "txt_file_content": editor_txt_file_content.value
+    };
+    // Send POST request
+    let response = await fetch(url, {
+        "method": "POST",
+        "headers": {"Content-Type": "application/json"},
+        "body": JSON.stringify(data),
+    });
+    if (!response.ok) {
+        throw new Error("HTTP ERROR FAILED: " + response.status);
+    } else {
+        update_editor_webpage(await response.json());
     }
 }
 
@@ -179,75 +232,48 @@ async function validate_txt_file() {
     if (!response.ok) {
         throw new Error("HTTP ERROR FAILED: " + response.status);
     } else {
-        let response_data = await response.json();
-        console.log(response_data)
-        editor_txt_file_log = document.getElementById("editor_txt_file_log")
-        prepend_text = ""
-        if (response_data["line_index"] !== undefined) {
-            prepend_text += "Line Number: " + response_data?.line_index + "\n";
-        }
-        if (response_data["message"] !== undefined) {
-            prepend_text += response_data?.message + "\n";
-        }
-        if (response_data["expected_path"] !== undefined) {
-            prepend_text += response_data?.expected_path + "\n";
-        }
-        if (response_data["string"] !== undefined) {
-            prepend_text += response_data?.string + "\n";
-        }
-        editor_txt_file_log.value = prepend_text + editor_txt_file_log.value
+        update_editor_webpage(await response.json());
     }
 }
-async function save_txt_file() {
-    var url = "/save_txt_file";
+
+async function process_txt_file() {
+    var url = "/process_txt_file";
     const editor_txt_file_name = document.getElementById("editor_txt_file_name");
     const editor_txt_file_content = document.getElementById("editor_txt_file_content");
     let data = {
         "txt_file_name": editor_txt_file_name.textContent,
         "txt_file_content": editor_txt_file_content.value
     };
-    // Send POST request
     let response = await fetch(url, {
         "method": "POST",
         "headers": {"Content-Type": "application/json"},
         "body": JSON.stringify(data),
     });
-}
-
-async function process_txt_file() {
-    var url = "/process_txt_file";
-    const editor_txt_file_name = document.getElementById("editor_txt_file_name");
-    let data = {
-        "txt_file_name": editor_txt_file_name.textContent,
-        "txt_file_content": editor_txt_file_content.value
-    };
-
-    let response = await fetch(url, {
-        "method": "POST",
-        "headers": {"Content-Type": "application/json"},
-        "body": JSON.stringify(data),
-    });
-    console.log(response)
     if (!response.ok) {
         throw new Error("HTTP ERROR FAILED: " + response.status);
     } else {
-        let response_data = await response.json();
-        console.log(response_data)
-        editor_txt_file_log = document.getElementById("editor_txt_file_log")
-        prepend_text = ""
-        if (response_data["line_index"] !== undefined) {
-            prepend_text += "Line Number: " + response_data?.line_index + "\n";
+        update_editor_webpage(await response.json());
+    }
+}
+
+async function updateEditorMetadata() {
+    var editor_process_metadata_name = document.getElementById("editor_process_metadata_name");
+    if (editor_process_metadata_name)
+    {
+        var url = "/process_metadata";
+        let response = await fetch(url);
+        if (response.ok) {
+            let response_data = await response.json();
+            console.log(response_data)
+            editor_process_metadata_name.innerText = response_data?.process_name;
+            document.getElementById("editor_process_metadata_time").innerText = response_data?.process_time;
+            document.getElementById("editor_process_metadata_queue_size").innerText = response_data?.process_queue_size;
+            response_data?.process_log.forEach((element) => console.log(element));
+            if (response_data["process_log"] !== undefined) {
+                response_data?.process_log.forEach((element) => prepend_text = prepend_text + element["message"] + ": " + element["file_name"] + "\n");
+                editor_txt_file_log.value += prepend_text + "\n" + editor_txt_file_log.value;
+            }
         }
-        if (response_data["message"] !== undefined) {
-            prepend_text += response_data?.message + "\n";
-        }
-        if (response_data["expected_path"] !== undefined) {
-            prepend_text += response_data?.expected_path + "\n";
-        }
-        if (response_data["string"] !== undefined) {
-            prepend_text += response_data?.string + "\n";
-        }
-        editor_txt_file_log.value = prepend_text + editor_txt_file_log.value
     }
 }
 
@@ -266,22 +292,6 @@ async function scan_media_directories() {
         "body": JSON.stringify(data),
     });
     button_element.classList.remove(disable_class);
-}
-
-async function updateEditorMetadata() {
-    var editor_process_metadata_name = document.getElementById("editor_process_metadata_name");
-    if (editor_process_metadata_name)
-    {
-        var url = "/process_metadata";
-        let response = await fetch(url);
-        if (response.ok) {
-            let response_data = await response.json();
-            console.log(response_data)
-            editor_process_metadata_name.innerText = response_data?.process_name;
-            document.getElementById("editor_process_metadata_time").innerText = response_data?.process_time;
-            document.getElementById("editor_process_metadata_queue_size").innerText = response_data?.process_queue_size;
-        }
-    }
 }
 
 async function updateSeekSelector() {
