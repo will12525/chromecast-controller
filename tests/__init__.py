@@ -47,15 +47,6 @@ def patch_collect_tv_shows(test_class):
     test_class.addCleanup(patcher.stop)
 
 
-def patch_collect_new_tv_shows(test_class):
-    collect_new_tv_shows_metadata = config_file_handler.load_js_file("collect_new_tv_shows_metadata.json")
-
-    patcher = patch('database_handler.media_metadata_collector.collect_new_tv_shows')
-    test_class.collect_new_tv_shows = patcher.start()
-    test_class.collect_new_tv_shows.return_value = collect_new_tv_shows_metadata
-    test_class.addCleanup(patcher.stop)
-
-
 def patch_collect_movies(test_class):
     collect_movies_metadata = config_file_handler.load_js_file("collect_movies_metadata.json")
 

@@ -1,6 +1,6 @@
 from . import DBConnection
 from .common_objects import ContentType
-from .media_metadata_collector import collect_tv_shows, collect_movies
+from .media_metadata_collector import collect_tv_shows, collect_movies, get_extra_metadata
 from . import common_objects
 
 # playlist_info and media_info are the sources
@@ -119,6 +119,8 @@ class DBCreator(DBConnection):
 
     def scan_all_media_directories(self):
         for media_directory_info in self.get_all_media_directory_info():
+            media_directory_info[common_objects.MEDIA_DIRECTORY_ID_COLUMN] = media_directory_info.get(
+                common_objects.ID_COLUMN)
             self.scan_media_directory(media_directory_info)
 
     def add_tv_show_data(self, media_directory_info):
@@ -139,6 +141,9 @@ class DBCreator(DBConnection):
                 if not tv_show.get(common_objects.SEASON_ID_COLUMN):
                     tv_show[common_objects.SEASON_ID_COLUMN] = self.get_season_id_from_tv_show_id_season_index(tv_show)
 
+                if tv_show.get("full_file_path"):
+                    get_extra_metadata(tv_show, title=True)
+
                 tv_show[common_objects.MEDIA_ID_COLUMN] = self.set_media_metadata(tv_show)
                 if tv_show.get(common_objects.MEDIA_ID_COLUMN):
                     self.add_media_to_playlist(tv_show)
@@ -147,6 +152,8 @@ class DBCreator(DBConnection):
         for movie in collect_movies(media_directory_info):
             movie[common_objects.TV_SHOW_ID_COLUMN] = None
             movie[common_objects.SEASON_ID_COLUMN] = None
+            if movie.get("full_file_path"):
+                get_extra_metadata(movie, title=True)
             self.set_media_metadata(movie)
 
     def set_media_directory_info(self, media_directory_info) -> int:
