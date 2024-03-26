@@ -23,7 +23,6 @@ class TestDatabaseHandler(TestCase):
         __init__.patch_get_ffmpeg_metadata(self)
         __init__.patch_move_media_file(self)
         __init__.patch_collect_tv_shows(self)
-        __init__.patch_collect_new_tv_shows(self)
         __init__.patch_collect_movies(self)
 
         if os.path.exists(self.DB_PATH):
@@ -639,3 +638,16 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
         assert data.items() >= metadata.items()
 
         assert new_media_metadata == metadata
+
+    def test_update_play_count(self):
+        data = {common_objects.MEDIA_ID_COLUMN: 1}
+        with DatabaseHandler() as db_connection:
+            metadata = db_connection.get_media_content(content_type=ContentType.MEDIA, params_dict=data)
+            print(json.dumps(metadata, indent=4))
+            assert metadata.get(common_objects.PLAY_COUNT) == 0
+            assert metadata.get(common_objects.MEDIA_ID_COLUMN) == data[common_objects.MEDIA_ID_COLUMN]
+            db_connection.update_play_count(params=data)
+            metadata = db_connection.get_media_content(content_type=ContentType.MEDIA, params_dict=data)
+            print(json.dumps(metadata, indent=4))
+            assert metadata.get(common_objects.PLAY_COUNT) == 1
+            assert metadata.get(common_objects.MEDIA_ID_COLUMN) == data[common_objects.MEDIA_ID_COLUMN]

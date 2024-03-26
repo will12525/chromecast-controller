@@ -16,7 +16,7 @@
             integrity="sha384-BBtl+eGJRgqQAUMxJ7pMwbEyER4l1g+O15P+16Ep7Q9Q+zqX6gSbd85u4mG4QzX+"
             crossorigin="anonymous"></script>
 </head>
-<body>
+<body style="background-color:aquamarine;">
 <nav class="navbar fixed-top navbar-expand-lg bg-dark" data-bs-theme="dark">
     <div class="container-fluid"><a class="navbar-brand" href="{{ homepage_url }}">&#x1F422;&#x1F995;</a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent"
@@ -52,15 +52,32 @@
         {% if 'container_content_type' in media_metadata %}
         <div class="row">
             <div class="col-lg-12">
-                <div class="card h-100">
-                    <div class="row">
-                        <div class="col-md-3">
-                        </div>
-                        <div class="col-md-8">
-                            <div id="metadata_card_body" class="card-body">
-                                <h5 class="card-title">{{ media_metadata.get("playlist_title") }}</h5>
+                <div class="card mb-3" style="background-color:Linen;">
+                    <div class="card-header">
+                        <ul class="nav nav-tabs card-header-tabs">
+                            <li class="nav-item">
+                                <a class="nav-link active" aria-current="true" href="#">{{
+                                    media_metadata.get("playlist_title") }}</a>
+                            </li>
+                            <li class="nav-item">
                                 {% if 'season_title' in media_metadata %}
-                                <p class="card-text">{{ media_metadata['season_title'] }}</p>
+                                <a class="nav-link" aria-current="true"
+                                   href="?content_type={{ media_metadata['container_content_type'] }}&media_id={{ media_metadata.get('tv_show_id', '') }}">Seasons</a>
+                                {% else %}
+                                <a class="nav-link" aria-current="true"
+                                   href="?content_type={{ media_metadata['container_content_type'] }}&media_id={{ media_metadata.get('tv_show_id', '') }}">TV
+                                    Shows</a>
+                                {% endif %}
+                            </li>
+                        </ul>
+                    </div>
+                    <div id="metadata_card_body" class="card-body">
+                        <div class="row">
+                            <div class="col-md-3">
+                            </div>
+                            <div class="col-md-8">
+                                {% if 'season_title' in media_metadata %}
+                                <h4 class="card-title">{{ media_metadata['season_title'] }}</h4>
                                 {% endif %}
                                 {% if 'season_count' in media_metadata %}
                                 <p class="card-text">Seasons: {{ media_metadata['season_count'] }}</p>
@@ -68,8 +85,6 @@
                                 {% if 'episode_count' in media_metadata %}
                                 <p class="card-text">Episodes: {{ media_metadata['episode_count'] }}</p>
                                 {% endif %}
-                                <a href="?content_type={{ media_metadata['container_content_type'] }}&media_id={{ media_metadata.get('tv_show_id', '') }}"
-                                   class="stretched-link"></a>
                             </div>
                         </div>
                     </div>
@@ -78,10 +93,19 @@
         </div>
         {% endif %}
         {% if 'media_list' in media_metadata %}
-        <div class="row row-cols-1 row-cols-sm-2 row-cols-md-4">
+        <div class="row row-cols-1 row-cols-sm-2 row-cols-md-4 gy-3">
             {% for media_item in media_metadata['media_list']: %}
-            <div class="col">
-                <div class="card h-100">
+            <div class="col-md-3">
+                <div class="card" style="background-color:Linen;min-height: 100%;">
+                    <div class="card-header">
+                        <a>{{ media_item.get("playlist_title",
+                            media_item.get("season_title", media_item.get("media_title"))) }}</a>
+                        {% if 'play_count' in media_item %}
+                        {% if media_item['play_count'] == 0 %}
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill text-bg-warning">New</span>
+                        {% endif %}
+                        {% endif %}
+                    </div>
                     <div class="card-body">
                         <h5 class="card-title">{{ media_item.get("playlist_title",
                             media_item.get("season_title", media_item.get("media_title"))) }}</h5>

@@ -7,13 +7,13 @@ import config_file_handler
 from database_handler import common_objects
 
 
-def get_file_hash(media_folder_mp4, extra_metadata):
+def get_file_hash(extra_metadata):
     time_hash = hashlib.md5()
     time_hash.update(str(time.time() + random.randint(1000, 1000000)).encode("utf-8"))
     extra_metadata[common_objects.MD5SUM_COLUMN] = time_hash.hexdigest()
 
 
-def get_ffmpeg_metadata(media_folder_mp4, extra_metadata):
+def get_ffmpeg_metadata(extra_metadata):
     extra_metadata[common_objects.DURATION_COLUMN] = 22
     extra_metadata[common_objects.MEDIA_TITLE_COLUMN] = ""
 

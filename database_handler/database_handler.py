@@ -11,7 +11,7 @@ SORT_ALPHABETICAL = "GLOB '[A-Za-z]*'"
 GET_TV_SHOW_TITLE = f'SELECT {common_objects.PLAYLIST_TITLE} FROM {common_objects.TV_SHOW_INFO_TABLE} INNER JOIN {common_objects.PLAYLIST_INFO_TABLE} ON {common_objects.TV_SHOW_INFO_TABLE}.{common_objects.PLAYLIST_ID_COLUMN} = {common_objects.PLAYLIST_INFO_TABLE}.{common_objects.ID_COLUMN} WHERE {common_objects.TV_SHOW_INFO_TABLE}.{common_objects.ID_COLUMN} = :{common_objects.TV_SHOW_ID_COLUMN};'
 GET_TV_SHOW_TITLES = f'SELECT {common_objects.TV_SHOW_INFO_TABLE}.{common_objects.ID_COLUMN}, {common_objects.PLAYLIST_TITLE} FROM {common_objects.TV_SHOW_INFO_TABLE} INNER JOIN {common_objects.PLAYLIST_INFO_TABLE} ON {common_objects.TV_SHOW_INFO_TABLE}.{common_objects.PLAYLIST_ID_COLUMN} = {common_objects.PLAYLIST_INFO_TABLE}.{common_objects.ID_COLUMN} ORDER BY {common_objects.PLAYLIST_TITLE} {SORT_ALPHABETICAL} DESC, {common_objects.PLAYLIST_TITLE};'
 GET_TV_SHOW_SEASON_TITLES = f'SELECT {common_objects.ID_COLUMN}, {SEASON_TITLE_BUILDER}, {common_objects.SEASON_INDEX_COLUMN} FROM {common_objects.SEASON_INFO_TABLE} WHERE {common_objects.TV_SHOW_ID_COLUMN} = :{common_objects.TV_SHOW_ID_COLUMN} ORDER BY {common_objects.SEASON_INDEX_COLUMN} ASC;'
-GET_TV_SHOW_SEASON_EPISODE_TITLES = f'SELECT {common_objects.MEDIA_INFO_TABLE}.{common_objects.ID_COLUMN}, {common_objects.MEDIA_TITLE_COLUMN}, {common_objects.SEASON_INFO_TABLE}.{common_objects.SEASON_INDEX_COLUMN}, {common_objects.PLAYLIST_MEDIA_LIST_TABLE}.{common_objects.LIST_INDEX_COLUMN} FROM {common_objects.MEDIA_INFO_TABLE} INNER JOIN {common_objects.PLAYLIST_MEDIA_LIST_TABLE} ON {common_objects.MEDIA_INFO_TABLE}.{common_objects.ID_COLUMN} = {common_objects.PLAYLIST_MEDIA_LIST_TABLE}.{common_objects.MEDIA_ID_COLUMN} LEFT JOIN {common_objects.SEASON_INFO_TABLE} ON {common_objects.SEASON_INFO_TABLE}.{common_objects.ID_COLUMN} = {common_objects.MEDIA_INFO_TABLE}.{common_objects.SEASON_ID_COLUMN} WHERE {common_objects.SEASON_ID_COLUMN} = :{common_objects.SEASON_ID_COLUMN} ORDER BY {common_objects.LIST_INDEX_COLUMN} ASC, {common_objects.MEDIA_TITLE_COLUMN};'
+GET_TV_SHOW_SEASON_EPISODE_TITLES = f'SELECT {common_objects.MEDIA_INFO_TABLE}.{common_objects.ID_COLUMN}, {common_objects.MEDIA_TITLE_COLUMN}, {common_objects.SEASON_INFO_TABLE}.{common_objects.SEASON_INDEX_COLUMN}, {common_objects.PLAYLIST_MEDIA_LIST_TABLE}.{common_objects.LIST_INDEX_COLUMN}, {common_objects.MEDIA_INFO_TABLE}.{common_objects.PLAY_COUNT} FROM {common_objects.MEDIA_INFO_TABLE} INNER JOIN {common_objects.PLAYLIST_MEDIA_LIST_TABLE} ON {common_objects.MEDIA_INFO_TABLE}.{common_objects.ID_COLUMN} = {common_objects.PLAYLIST_MEDIA_LIST_TABLE}.{common_objects.MEDIA_ID_COLUMN} LEFT JOIN {common_objects.SEASON_INFO_TABLE} ON {common_objects.SEASON_INFO_TABLE}.{common_objects.ID_COLUMN} = {common_objects.MEDIA_INFO_TABLE}.{common_objects.SEASON_ID_COLUMN} WHERE {common_objects.SEASON_ID_COLUMN} = :{common_objects.SEASON_ID_COLUMN} ORDER BY {common_objects.LIST_INDEX_COLUMN} ASC, {common_objects.MEDIA_TITLE_COLUMN};'
 GET_MOVIE_TITLES = f'SELECT {common_objects.MEDIA_INFO_TABLE}.{common_objects.ID_COLUMN}, {common_objects.MEDIA_TITLE_COLUMN} FROM {common_objects.MEDIA_INFO_TABLE} INNER JOIN {common_objects.MEDIA_DIRECTORY_TABLE} ON {common_objects.MEDIA_INFO_TABLE}.{common_objects.MEDIA_DIRECTORY_ID_COLUMN} = {common_objects.MEDIA_DIRECTORY_TABLE}.{common_objects.ID_COLUMN} WHERE {common_objects.MEDIA_DIRECTORY_TABLE}.{common_objects.MEDIA_TYPE_COLUMN} == {ContentType.MOVIE.value} ORDER BY {common_objects.MEDIA_TITLE_COLUMN} {SORT_ALPHABETICAL} DESC, {common_objects.MEDIA_TITLE_COLUMN};'
 
 # Get content metadata
@@ -45,6 +45,8 @@ GET_PREVIOUS_IN_PLAYLIST_MEDIA_METADATA = [GET_LIST_INDEX, GET_PLAYLIST_PREVIOUS
 MEDIA_QUERY_LIST = [GET_MEDIA_METADATA]
 TV_SHOW_SEASON_MEDIA_QUERY_LIST = [GET_TV_SHOW_SEASON_METADATA, GET_TV_SHOW_SEASON_EPISODE_COUNT]
 TV_SHOW_SEASON_QUERY_LIST = [GET_TV_SHOW_METADATA, GET_TV_SHOW_SEASON_COUNT, GET_TV_SHOW_EPISODE_COUNT]
+
+INCREMENT_MEDIA_PLAY_COUNT = f"UPDATE {common_objects.MEDIA_INFO_TABLE} SET {common_objects.PLAY_COUNT} = {common_objects.PLAY_COUNT} + 1 WHERE id=:{common_objects.MEDIA_ID_COLUMN};"
 
 NEW_MEDIA_METADATA_JSON_FILE = "new_media_metadata_file.json"
 
@@ -99,12 +101,10 @@ class DatabaseHandler(DBConnection):
 
             if container_content_type := content_type.get_last():
                 media_metadata['container_content_type'] = container_content_type.value
-            print(media_metadata)
 
             for query in content_data.get('query_list', []):
                 media_metadata.update(self.get_data_from_db_first_result(query, params_dict))
             media_metadata.update(self.get_content_title_list(content_type, params_dict))
-            # media_metadata.update(self.get_new_media_metadata(content_type, params_dict))
 
             if media_metadata.get(common_objects.SEASON_INDEX_COLUMN) and media_metadata.get(
                     common_objects.LIST_INDEX_COLUMN):
@@ -117,7 +117,6 @@ class DatabaseHandler(DBConnection):
                     media_item[common_objects.LIST_INDEX_COLUMN] = media_item[common_objects.LIST_INDEX_COLUMN] - \
                                                                    media_item[
                                                                        common_objects.SEASON_INDEX_COLUMN] * 1000
-                # "{common_objects.PLAYLIST_MEDIA_LIST_TABLE}.{common_objects.LIST_INDEX_COLUMN} - {common_objects.SEASON_INFO_TABLE}.{common_objects.SEASON_INDEX_COLUMN} * 1000 AS playlist_index"
 
         else:
             print(f'Unknown content type requested: {content_type}')
@@ -168,6 +167,9 @@ class DatabaseHandler(DBConnection):
 
     def get_tv_show_title(self, params) -> str:
         return self.get_row_item(GET_TV_SHOW_TITLE, params, common_objects.PLAYLIST_TITLE)
+
+    def update_play_count(self, params):
+        self.add_data_to_db(INCREMENT_MEDIA_PLAY_COUNT, params)
 
     def get_new_media_metadata_key(self, content_type, media_metadata):
         if content_type == ContentType.MEDIA or content_type == ContentType.MOVIE:

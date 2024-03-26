@@ -94,6 +94,9 @@ class MyMediaDevice:
             self.media_controller.play_media(media_url, self.DEFAULT_MEDIA_TYPE, title=media_title, metadata=media_info)
             self.media_controller.block_until_active()
 
+            with DatabaseHandler() as db_connection:
+                db_connection.update_play_count(media_info)
+
     def get_media_controller_metadata(self):
         if self.status:
             return {
