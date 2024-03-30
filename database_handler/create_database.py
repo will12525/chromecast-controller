@@ -9,10 +9,12 @@ INSERT_IGNORE = 'INSERT OR IGNORE INTO'
 
 sql_create_playlist_info_table = f'''CREATE TABLE IF NOT EXISTS {common_objects.PLAYLIST_INFO_TABLE} (
                                     {common_objects.ID_COLUMN} integer PRIMARY KEY,
-                                    {common_objects.PLAYLIST_TITLE} text NOT NULL UNIQUE
+                                    {common_objects.PLAYLIST_TITLE} text NOT NULL UNIQUE,
+                                    {common_objects.DESCRIPTION} text DEFAULT "",
+                                    {common_objects.IMAGE_URL} text DEFAULT ""
                                 );'''
 
-SET_PLAYLIST_METADATA = f'{INSERT_IGNORE} {common_objects.PLAYLIST_INFO_TABLE} VALUES(:{common_objects.ID_COLUMN}, :{common_objects.PLAYLIST_TITLE});'
+SET_PLAYLIST_METADATA = f'{INSERT_IGNORE} {common_objects.PLAYLIST_INFO_TABLE} VALUES(:{common_objects.ID_COLUMN}, :{common_objects.PLAYLIST_TITLE}, "", "");'
 
 sql_create_playlist_media_list_table = f'''CREATE TABLE IF NOT EXISTS {common_objects.PLAYLIST_MEDIA_LIST_TABLE} (
                                           {common_objects.ID_COLUMN} integer PRIMARY KEY,
@@ -27,22 +29,26 @@ sql_create_playlist_media_list_table = f'''CREATE TABLE IF NOT EXISTS {common_ob
 sql_insert_playlist_media_list_table = f'{INSERT_IGNORE} {common_objects.PLAYLIST_MEDIA_LIST_TABLE} VALUES(:{common_objects.ID_COLUMN}, :{common_objects.PLAYLIST_ID_COLUMN}, :{common_objects.MEDIA_ID_COLUMN}, :{common_objects.LIST_INDEX_COLUMN});'
 
 sql_create_tv_show_info_table = f'''CREATE TABLE IF NOT EXISTS {common_objects.TV_SHOW_INFO_TABLE} (
-                                   {common_objects.ID_COLUMN} integer PRIMARY KEY,
-                                   {common_objects.PLAYLIST_ID_COLUMN} integer NOT NULL UNIQUE,
-                                   FOREIGN KEY ({common_objects.PLAYLIST_ID_COLUMN}) REFERENCES {common_objects.PLAYLIST_INFO_TABLE} ({common_objects.ID_COLUMN})
-                                );'''
+                                    {common_objects.ID_COLUMN} integer PRIMARY KEY,
+                                    {common_objects.PLAYLIST_ID_COLUMN} integer NOT NULL UNIQUE,
+                                    {common_objects.DESCRIPTION} text DEFAULT "",
+                                    {common_objects.IMAGE_URL} text DEFAULT "",
+                                    FOREIGN KEY ({common_objects.PLAYLIST_ID_COLUMN}) REFERENCES {common_objects.PLAYLIST_INFO_TABLE} ({common_objects.ID_COLUMN})
+                                    );'''
 
-SET_TV_SHOW_METADATA = f'{INSERT_IGNORE} {common_objects.TV_SHOW_INFO_TABLE} VALUES(:{common_objects.ID_COLUMN}, :{common_objects.PLAYLIST_ID_COLUMN});'
+SET_TV_SHOW_METADATA = f'{INSERT_IGNORE} {common_objects.TV_SHOW_INFO_TABLE} VALUES(:{common_objects.ID_COLUMN}, :{common_objects.PLAYLIST_ID_COLUMN}, "", "");'
 
 sql_create_season_info_table = f'''CREATE TABLE IF NOT EXISTS {common_objects.SEASON_INFO_TABLE} (
                                   {common_objects.ID_COLUMN} integer PRIMARY KEY,
                                   {common_objects.TV_SHOW_ID_COLUMN} integer NOT NULL,
                                   {common_objects.SEASON_INDEX_COLUMN} integer NOT NULL,
+                                  {common_objects.DESCRIPTION} text DEFAULT "",
+                                  {common_objects.IMAGE_URL} text DEFAULT "",
                                   FOREIGN KEY ({common_objects.TV_SHOW_ID_COLUMN}) REFERENCES {common_objects.TV_SHOW_INFO_TABLE} ({common_objects.ID_COLUMN}),
                                   UNIQUE({common_objects.TV_SHOW_ID_COLUMN}, {common_objects.SEASON_INDEX_COLUMN})
                                );'''
 
-sql_insert_season_info_table = f'{INSERT_IGNORE} {common_objects.SEASON_INFO_TABLE} VALUES(:{common_objects.ID_COLUMN}, :{common_objects.TV_SHOW_ID_COLUMN}, :{common_objects.SEASON_INDEX_COLUMN});'
+sql_insert_season_info_table = f'{INSERT_IGNORE} {common_objects.SEASON_INFO_TABLE} VALUES(:{common_objects.ID_COLUMN}, :{common_objects.TV_SHOW_ID_COLUMN}, :{common_objects.SEASON_INDEX_COLUMN}, "", "");'
 
 sql_create_media_info_table = f'''CREATE TABLE IF NOT EXISTS {common_objects.MEDIA_INFO_TABLE} (
                                  {common_objects.ID_COLUMN} integer PRIMARY KEY,
@@ -54,13 +60,15 @@ sql_create_media_info_table = f'''CREATE TABLE IF NOT EXISTS {common_objects.MED
                                  {common_objects.MD5SUM_COLUMN} text UNIQUE,
                                  {common_objects.DURATION_COLUMN} integer,
                                  {common_objects.PLAY_COUNT} integer DEFAULT 0,
+                                 {common_objects.DESCRIPTION} text DEFAULT "",
+                                 {common_objects.IMAGE_URL} text DEFAULT "",
                                  FOREIGN KEY ({common_objects.TV_SHOW_ID_COLUMN}) REFERENCES {common_objects.TV_SHOW_INFO_TABLE} ({common_objects.ID_COLUMN}),
                                  FOREIGN KEY ({common_objects.SEASON_ID_COLUMN}) REFERENCES {common_objects.SEASON_INFO_TABLE} ({common_objects.ID_COLUMN}),
                                  FOREIGN KEY ({common_objects.MEDIA_DIRECTORY_ID_COLUMN}) REFERENCES {common_objects.MEDIA_DIRECTORY_ID_COLUMN} ({common_objects.ID_COLUMN}),
                                  UNIQUE({common_objects.MEDIA_DIRECTORY_ID_COLUMN}, {common_objects.MEDIA_TITLE_COLUMN}, {common_objects.PATH_COLUMN})
                               );'''
 
-sql_insert_media_info_table = f'{INSERT_IGNORE} {common_objects.MEDIA_INFO_TABLE} VALUES(:{common_objects.ID_COLUMN}, :{common_objects.TV_SHOW_ID_COLUMN}, :{common_objects.SEASON_ID_COLUMN}, :{common_objects.MEDIA_DIRECTORY_ID_COLUMN}, :{common_objects.MEDIA_TITLE_COLUMN}, :{common_objects.PATH_COLUMN}, :{common_objects.MD5SUM_COLUMN}, :{common_objects.DURATION_COLUMN}, 0);'
+sql_insert_media_info_table = f'{INSERT_IGNORE} {common_objects.MEDIA_INFO_TABLE} VALUES(:{common_objects.ID_COLUMN}, :{common_objects.TV_SHOW_ID_COLUMN}, :{common_objects.SEASON_ID_COLUMN}, :{common_objects.MEDIA_DIRECTORY_ID_COLUMN}, :{common_objects.MEDIA_TITLE_COLUMN}, :{common_objects.PATH_COLUMN}, :{common_objects.MD5SUM_COLUMN}, :{common_objects.DURATION_COLUMN}, 0, "", "");'
 
 sql_create_media_folder_path_table = f'''CREATE TABLE IF NOT EXISTS {common_objects.MEDIA_DIRECTORY_TABLE} (
                                         {common_objects.ID_COLUMN} integer PRIMARY KEY,

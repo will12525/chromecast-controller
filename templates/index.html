@@ -17,6 +17,7 @@
             crossorigin="anonymous"></script>
 </head>
 <body style="background-color:aquamarine;">
+<!-- Top Navbar -->
 <nav class="navbar fixed-top navbar-expand-lg bg-dark" data-bs-theme="dark">
     <div class="container-fluid"><a class="navbar-brand" href="{{ homepage_url }}">&#x1F422;&#x1F995;</a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent"
@@ -62,10 +63,10 @@
                             <li class="nav-item">
                                 {% if 'season_title' in media_metadata %}
                                 <a class="nav-link" aria-current="true"
-                                   href="?content_type={{ media_metadata['container_content_type'] }}&media_id={{ media_metadata.get('tv_show_id', '') }}">Seasons</a>
+                                   href="?content_type={{ media_metadata.get('container_content_type') }}&media_id={{ media_metadata.get('tv_show_id', '') }}">Seasons</a>
                                 {% else %}
                                 <a class="nav-link" aria-current="true"
-                                   href="?content_type={{ media_metadata['container_content_type'] }}&media_id={{ media_metadata.get('tv_show_id', '') }}">TV
+                                   href="?content_type={{ media_metadata.get('container_content_type') }}&media_id={{ media_metadata.get('tv_show_id', '') }}">TV
                                     Shows</a>
                                 {% endif %}
                             </li>
@@ -74,18 +75,36 @@
                     <div id="metadata_card_body" class="card-body">
                         <div class="row">
                             <div class="col-md-3">
+                                {% if media_metadata.get('image_url')|length %}
+                                <img src="http://192.168.1.200:8000/images/{{ media_metadata.get('image_url', '1.png') }}"
+                                     class="img-fluid">
+                                {% else %}
+                                <img src="http://192.168.1.200:8000/images/{{ ['10.jpg', '11.jpg', '1.png', '2.jpg', '3.jpg', '4.jpg', '5.jpg', '6.jpg', '7.jpg', '8.jpg', '9.jpg'] | random }}"
+                                     class="img-fluid">
+                                {% endif %}
                             </div>
                             <div class="col-md-8">
-                                {% if 'season_title' in media_metadata %}
-                                <h4 class="card-title">{{ media_metadata['season_title'] }}</h4>
-                                {% endif %}
-                                {% if 'season_count' in media_metadata %}
-                                <p class="card-text">Seasons: {{ media_metadata['season_count'] }}</p>
-                                {% endif %}
-                                {% if 'episode_count' in media_metadata %}
-                                <p class="card-text">Episodes: {{ media_metadata['episode_count'] }}</p>
-                                {% endif %}
+                                <h4 class="card-title">{{ media_metadata.get('season_title', '') }}</h4>
+                                <p class="card-text">{{ media_metadata.get('description', 'Description not provided')
+                                    }}</p>
+                                <p class="card-text">
+                                    {% if 'season_count' in media_metadata %}
+                                    Seasons: {{ media_metadata.get('season_count', '') }},
+                                    {% endif %}
+                                    {% if 'episode_count' in media_metadata %}
+                                    Episodes: {{ media_metadata['episode_count'] }}
+                                    {% endif %}
+                                </p>
                             </div>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button class="btn btn-primary me-md-2" type="button" data-bs-toggle="modal"
+                                    data-bs-target="#exampleModal"
+                                    onclick="javascript:edit_metadata_modal_open({{ media_metadata }}, {{ media_metadata.get('content_type', 0) }})">
+                                <i class="fa-solid fa-pencil"></i>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -96,10 +115,20 @@
         <div class="row row-cols-1 row-cols-sm-2 row-cols-md-4 gy-3">
             {% for media_item in media_metadata['media_list']: %}
             <div class="col-md-3">
-                <div class="card" style="background-color:Linen;min-height: 100%;">
+                <div class="card" id="sub_card_{{ media_item.get('id') }}"
+                     style="background-color:Linen;min-height: 100%;">
                     <div class="card-header">
-                        <a>{{ media_item.get("playlist_title",
-                            media_item.get("season_title", media_item.get("media_title"))) }}</a>
+                        {% if 'media_list_content_type' in media_metadata %}
+                        {% if media_metadata['media_list_content_type'] == 1 %}
+                        <a href="javascript:play_media({{ media_item.get('id') }})">{{ media_item.get("media_title")
+                            }}</a>
+                        {% else %}
+                        <a href="?content_type={{ media_metadata['media_list_content_type'] }}&media_id={{ media_item.get('id') }}">{{
+                            media_item.get("playlist_title",
+                            media_item.get("season_title",media_item.get("media_title"))) }}
+                        </a>
+                        {% endif %}
+                        {% endif %}
                         {% if 'play_count' in media_item %}
                         {% if media_item['play_count'] == 0 %}
                         <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill text-bg-warning">New</span>
@@ -107,21 +136,34 @@
                         {% endif %}
                     </div>
                     <div class="card-body">
-                        <h5 class="card-title">{{ media_item.get("playlist_title",
-                            media_item.get("season_title", media_item.get("media_title"))) }}</h5>
-                        {% if 'list_index' in media_item %}
-                        <h6 class="card-subtitle mb-2 text-body-secondary">Index: {{
-                            media_item.get("list_index")
-                            }}</h6>
-                        {% endif %}
-                        {% if 'media_list_content_type' in media_metadata %}
-                        {% if media_metadata['media_list_content_type'] == 1 %}
-                        <a class="stretched-link" href="javascript:play_media({{ media_item.get('id') }})"></a>
-                        {% else %}
-                        <a href="?content_type={{ media_metadata['media_list_content_type'] }}&media_id={{ media_item.get('id') }}"
-                           class="stretched-link"></a>
-                        {% endif %}
-                        {% endif %}
+                        <div class="row">
+                            <div class="col-md-4">
+                                {% if media_item.get('image_url')|length %}
+                                <img src="http://192.168.1.200:8000/images/{{ media_item.get('image_url', '1.png') }}"
+                                     class="img-fluid">
+                                {% else %}
+                                <img src="http://192.168.1.200:8000/images/{{ ['10.jpg', '11.jpg', '1.png', '2.jpg', '3.jpg', '4.jpg', '5.jpg', '6.jpg', '7.jpg', '8.jpg', '9.jpg'] | random }}"
+                                     class="img-fluid">
+                                {% endif %}
+                            </div>
+                            <div class="col-md-8">
+                                <p class="card-text">{{ media_item.get("description") }}</p>
+                                {% if 'list_index' in media_item %}
+                                <h6 class="card-subtitle mb-2 text-body-secondary">Index: {{
+                                    media_item.get("list_index")
+                                    }}</h6>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button class="btn btn-primary me-md-2" type="button" data-bs-toggle="modal"
+                                    data-bs-target="#exampleModal"
+                                    onclick="javascript:edit_metadata_modal_open({{ media_item }}, {{ media_metadata['media_list_content_type'] }})">
+                                <i class="fa-solid fa-pencil"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -130,6 +172,35 @@
         {% endif %}
     </div>
 </div>
+<!-- Modal -->
+<div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h1 class="modal-title fs-5" id="modal_title"></h1>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="mb-3">
+                        <label for="modal_text_area_image_url" class="col-form-label">Image Name:</label>
+                        <input type="text" class="form-control" id="modal_text_area_image_url">
+                    </div>
+                    <div class="mb-3">
+                        <label for="modal_text_area_description" class="col-form-label">Description:</label>
+                        <textarea class="form-control" id="modal_text_area_description"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" id="modal_metadata_save" class="btn btn-primary" data-bs-dismiss="modal">Save
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Bottom Navbar -->
 <nav class="navbar fixed-bottom navbar-expand-xl bg-dark bg-body-tertiary" data-bs-theme="light">
     <div class="container-fluid text-center">
         <div class="col bottom-nav-col">

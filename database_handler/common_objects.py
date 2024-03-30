@@ -32,6 +32,8 @@ PATH_COLUMN = 'path'
 MD5SUM_COLUMN = 'md5sum'
 DURATION_COLUMN = 'duration'
 PLAY_COUNT = 'play_count'
+DESCRIPTION = 'description'
+IMAGE_URL = 'image_url'
 MEDIA_TYPE_COLUMN = 'media_type'
 MEDIA_DIRECTORY_PATH_COLUMN = 'media_directory_path'
 NEW_MEDIA_DIRECTORY_PATH_COLUMN = 'new_media_directory_path'
@@ -45,13 +47,18 @@ class ContentType(Enum):
     TV_SHOW = auto()
     TV = auto()
     PLAYLIST = auto()
+    PLAYLISTS = auto()
 
     def get_next(self):
+        if self == self.PLAYLISTS:
+            return self.PLAYLIST
         if self == self.TV:
             return self.TV_SHOW
         if self == self.TV_SHOW:
             return self.SEASON
         if self == self.SEASON:
+            return self.MEDIA
+        if self == self.PLAYLIST:
             return self.MEDIA
         if self == self.MOVIE:
             return self.MEDIA
@@ -61,6 +68,8 @@ class ContentType(Enum):
             return self.TV_SHOW
         if self == self.TV_SHOW:
             return self.TV
+        if self == self.PLAYLIST:
+            return self.PLAYLISTS
 
     @classmethod
     def list(cls):

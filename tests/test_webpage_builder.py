@@ -49,7 +49,6 @@ class TestWebpageBuilder(TestCase):
         __init__.patch_get_ffmpeg_metadata(self)
         __init__.patch_move_media_file(self)
         __init__.patch_collect_tv_shows(self)
-        __init__.patch_collect_new_tv_shows(self)
         __init__.patch_collect_movies(self)
 
         self.app = Flask(__name__)

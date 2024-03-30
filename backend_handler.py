@@ -2,13 +2,16 @@ import json
 import subprocess
 import threading
 from json import JSONDecodeError
-
+import requests  # request img from web
+import shutil  # save img locally
 import git
 import pathlib
 
 import config_file_handler
 from chromecast_handler import ChromecastHandler
+from database_handler.common_objects import MEDIA_DIRECTORY_PATH_COLUMN
 from database_handler.create_database import DBCreator
+from database_handler.database_handler import DatabaseHandler
 from database_handler.media_metadata_collector import mp4_file_ext, txt_file_ext
 import mp4_splitter
 
@@ -207,3 +210,31 @@ class BackEndHandler:
         print(output)
         device, size, used, available, percent, mountpoint = output.decode("utf-8").split("\n")[1].split()
         return available
+
+    def download_image(self, json_request):
+        if (not json_request.get('image_url')
+                or len(json_request.get('image_url')) < 5
+                or not json_request.get('content_type')
+                or not json_request.get('id')
+                or json_request.get('image_url')[-4:] not in ['.jpg', '.png']):
+            raise ValueError
+
+        with DatabaseHandler() as db_connection:
+            db_connection.update_media_metadata(json_request)
+            media_metadata = db_connection.get_media_folder_path(1)
+
+        if not media_metadata:
+            raise ValueError
+
+        file_name = f"{json_request.get('content_type')}_{json_request.get('id')}{json_request.get('image_url')[-4:]}"
+        output_path = f"{pathlib.Path(media_metadata.get(MEDIA_DIRECTORY_PATH_COLUMN)).resolve().parent.absolute()}/{file_name}"
+
+        res = requests.get(json_request.get('image_url'), stream=True)
+
+        if res.status_code == 200:
+            with open(output_path, 'wb') as f:
+                shutil.copyfileobj(res.raw, f)
+            print('Image successfully Downloaded: ', output_path)
+
+        print(pathlib.Path(file_name).resolve())
+        print(output_path, file_name)

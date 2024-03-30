@@ -1,4 +1,6 @@
 import pathlib
+import queue
+
 from enum import Enum
 import traceback
 from flask import Flask, request, render_template
@@ -11,8 +13,6 @@ from database_handler.database_handler import DatabaseHandler
 from database_handler.common_objects import ContentType, MEDIA_DIRECTORY_PATH_COLUMN
 from database_handler.create_database import DBCreator
 
-# TODO: Add to DB: Add media title from ffmpeg extraction
-# TODO: Add to DB: Track if media was previously watched
 # TODO: Update DB: Remove media that no longer exists
 # TODO: Update DB: Use md5sum to track files
 # TODO: Update media grid to dynamically update rather than page reload
@@ -49,6 +49,7 @@ class APIEndpoints(Enum):
     GET_MEDIA_MENU_DATA = "/get_media_menu_data"
     GET_DISK_SPACE = "/get_disk_space"
     SET_NEW_MEDIA_METADATA = "/set_new_media_metadata"
+    UPDATE_MEDIA_METADATA = "/update_media_metadata"
 
 
 app = Flask(__name__)
@@ -67,6 +68,8 @@ media_controller_button_dict = {
 
 backend_handler = BackEndHandler()
 setup_thread = backend_handler.start()
+
+error_log = queue.Queue()
 
 
 def build_main_content(request_args):
@@ -295,6 +298,18 @@ def set_new_media_metadata():
         with DatabaseHandler() as db_connection:
             # db_connection.set_new_media_metadata(json_request)
             print(f"Not implemented: {APIEndpoints.SET_NEW_MEDIA_METADATA.value}")
+
+    return data, 200
+
+
+@app.route(APIEndpoints.UPDATE_MEDIA_METADATA.value, methods=['POST'])
+def update_media_metadata():
+    data = {}
+    # If exception, pass to error log
+    if json_request := request.get_json():
+        print(json_request)
+        with DatabaseHandler() as db_connection:
+            db_connection.update_media_metadata(json_request)
 
     return data, 200
 

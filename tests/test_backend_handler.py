@@ -267,3 +267,8 @@ class TestEditor(TestBackEndHandler):
         editor_metadata = self.backend_handler.get_editor_metadata(self.EDITOR_METADATA_FILE, self.EDITOR_RAW_FOLDER)
         print(editor_metadata)
         print(json.dumps(editor_metadata, indent=4))
+
+    def test_image_download(self):
+        json_request = {'content_type': 4, 'id': 1, 'image_url': 'http://192.168.1.200:8000/images/1.png',
+                        'description': 'World!!'}
+        self.backend_handler.download_image(json_request)

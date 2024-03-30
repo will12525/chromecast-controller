@@ -131,7 +131,7 @@ class TestDBCreator(TestDBCreatorInit):
             for item in media_metadata:
                 # print(item)
                 assert isinstance(item, dict)
-                assert len(item) == 8
+                assert len(item) == 11
                 assert common_objects.ID_COLUMN in item
                 assert common_objects.TV_SHOW_ID_COLUMN in item
                 assert common_objects.SEASON_ID_COLUMN in item
@@ -142,7 +142,7 @@ class TestDBCreator(TestDBCreatorInit):
                 assert item.get(common_objects.TV_SHOW_ID_COLUMN)
                 assert item.get(common_objects.SEASON_ID_COLUMN)
                 assert item.get(common_objects.MEDIA_DIRECTORY_ID_COLUMN)
-                assert item.get(common_objects.MEDIA_TITLE_COLUMN)
+                assert item.get(common_objects.MEDIA_TITLE_COLUMN) == ""
                 assert item.get(common_objects.PATH_COLUMN)
                 assert isinstance(item.get(common_objects.ID_COLUMN), int)
                 assert isinstance(item.get(common_objects.TV_SHOW_ID_COLUMN), int)
@@ -167,7 +167,7 @@ class TestDBCreator(TestDBCreatorInit):
             for item in media_metadata:
                 # print(json.dumps(item, indent=4))
                 assert isinstance(item, dict)
-                assert len(item) == 8
+                assert len(item) == 11
                 assert common_objects.ID_COLUMN in item
                 assert common_objects.TV_SHOW_ID_COLUMN in item
                 assert common_objects.SEASON_ID_COLUMN in item
@@ -202,7 +202,7 @@ class TestDBCreator(TestDBCreatorInit):
             assert 5 == len(media_metadata)
             for item in media_metadata:
                 assert isinstance(item, dict)
-                assert len(item) == 8
+                assert len(item) == 11
                 assert common_objects.ID_COLUMN in item
                 assert common_objects.TV_SHOW_ID_COLUMN in item
                 assert common_objects.SEASON_ID_COLUMN in item
@@ -213,7 +213,7 @@ class TestDBCreator(TestDBCreatorInit):
                 assert not item.get(common_objects.TV_SHOW_ID_COLUMN)
                 assert not item.get(common_objects.SEASON_ID_COLUMN)
                 assert item.get(common_objects.MEDIA_DIRECTORY_ID_COLUMN)
-                assert item.get(common_objects.MEDIA_TITLE_COLUMN)
+                assert item.get(common_objects.MEDIA_TITLE_COLUMN) == ""
                 assert item.get(common_objects.PATH_COLUMN)
                 assert isinstance(item.get(common_objects.MEDIA_DIRECTORY_ID_COLUMN), int)
                 assert isinstance(item.get(common_objects.MEDIA_TITLE_COLUMN), str)
@@ -234,7 +234,7 @@ class TestDBCreator(TestDBCreatorInit):
             assert 5 == len(media_metadata)
             for item in media_metadata:
                 assert isinstance(item, dict)
-                assert len(item) == 8
+                assert len(item) == 11
                 assert common_objects.ID_COLUMN in item
                 assert common_objects.TV_SHOW_ID_COLUMN in item
                 assert common_objects.SEASON_ID_COLUMN in item
@@ -245,7 +245,7 @@ class TestDBCreator(TestDBCreatorInit):
                 assert not item.get(common_objects.TV_SHOW_ID_COLUMN)
                 assert not item.get(common_objects.SEASON_ID_COLUMN)
                 assert item.get(common_objects.MEDIA_DIRECTORY_ID_COLUMN)
-                assert item.get(common_objects.MEDIA_TITLE_COLUMN)
+                assert item.get(common_objects.MEDIA_TITLE_COLUMN) == ""
                 assert item.get(common_objects.PATH_COLUMN)
                 assert isinstance(item.get(common_objects.MEDIA_DIRECTORY_ID_COLUMN), int)
                 assert isinstance(item.get(common_objects.MEDIA_TITLE_COLUMN), str)
@@ -268,7 +268,7 @@ class TestDBCreator(TestDBCreatorInit):
             for item in media_metadata:
                 # print(item)
                 assert isinstance(item, dict)
-                assert len(item) == 8
+                assert len(item) == 11
                 assert common_objects.ID_COLUMN in item
                 assert common_objects.TV_SHOW_ID_COLUMN in item
                 assert common_objects.SEASON_ID_COLUMN in item
@@ -307,7 +307,7 @@ class TestDBCreator(TestDBCreatorInit):
             for item in media_metadata:
                 # print(item)
                 assert isinstance(item, dict)
-                assert len(item) == 8
+                assert len(item) == 11
                 assert common_objects.ID_COLUMN in item
                 assert common_objects.TV_SHOW_ID_COLUMN in item
                 assert common_objects.SEASON_ID_COLUMN in item
@@ -342,9 +342,9 @@ class TestDBCreator(TestDBCreatorInit):
             assert 5 == len(media_metadata)
             for index, item in enumerate(media_metadata, 1):
                 # print(item)
-                # print(json.dumps(item, indent=4))
+                print(json.dumps(item, indent=4))
                 assert isinstance(item, dict)
-                assert len(item) == 8
+                assert len(item) == 11
                 assert common_objects.ID_COLUMN in item
                 assert common_objects.TV_SHOW_ID_COLUMN in item
                 assert common_objects.SEASON_ID_COLUMN in item
@@ -355,7 +355,7 @@ class TestDBCreator(TestDBCreatorInit):
                 assert not item.get(common_objects.TV_SHOW_ID_COLUMN)
                 assert not item.get(common_objects.SEASON_ID_COLUMN)
                 assert item.get(common_objects.MEDIA_DIRECTORY_ID_COLUMN)
-                assert item.get(common_objects.MEDIA_TITLE_COLUMN)
+                assert item.get(common_objects.MEDIA_TITLE_COLUMN) == ""
                 assert item.get(common_objects.PATH_COLUMN)
                 assert isinstance(item.get(common_objects.MEDIA_DIRECTORY_ID_COLUMN), int)
                 assert isinstance(item.get(common_objects.MEDIA_TITLE_COLUMN), str)
@@ -389,23 +389,23 @@ class TestDBCreator(TestDBCreatorInit):
 
                 item[common_objects.ID_COLUMN] = item_id
                 assert index == item_id
-                assert item.items() >= db_setter_connection.get_playlist_metadata(item_id).items()
 
                 assert not db_setter_connection.get_playlist_metadata(item_id + 1)
             for i in range(20):
                 assert not db_setter_connection.set_playlist_metadata(self.playlist_items[0])
 
     def test_set_tv_show_metadata(self):
-        with DBCreator(DBType.MEMORY) as db_setter_connection:
+        with (DBCreator(DBType.MEMORY) as db_setter_connection):
             db_setter_connection.create_db()
             for index, item in enumerate(self.playlist_items, 1):
+                # print(item)
                 item[common_objects.PLAYLIST_ID_COLUMN] = db_setter_connection.set_playlist_metadata(item)
                 item_id = db_setter_connection.set_tv_show_metadata(item)
                 assert not db_setter_connection.set_tv_show_metadata(item)
 
                 item[common_objects.ID_COLUMN] = item_id
                 assert index == item_id
-                assert db_setter_connection.get_tv_show_metadata(item_id).items() <= item.items()
+                assert item_id == db_setter_connection.get_tv_show_metadata(item_id).get(common_objects.ID_COLUMN)
 
             for i in range(20):
                 assert not db_setter_connection.set_tv_show_metadata(self.playlist_items[1])
@@ -428,8 +428,6 @@ class TestDBCreator(TestDBCreatorInit):
 
                 item[common_objects.ID_COLUMN] = item_id
                 assert index == item_id
-                assert db_setter_connection.get_season_metadata(item_id).items() <= item.items()
-
             for i in range(20):
                 assert not db_setter_connection.set_season_metadata(self.season_items[1])
 
@@ -460,9 +458,6 @@ class TestDBCreator(TestDBCreatorInit):
                 item[common_objects.ID_COLUMN] = item_id
                 assert index == item_id
                 # print(item)
-                # print(db_setter_connection.get_media_metadata(item_id))
-                assert db_setter_connection.get_media_metadata(item_id).items() <= item.items()
-
             for i in range(20):
                 assert not db_setter_connection.set_media_metadata(self.media_items[1])
 

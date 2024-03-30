@@ -16,7 +16,7 @@
             integrity="sha384-BBtl+eGJRgqQAUMxJ7pMwbEyER4l1g+O15P+16Ep7Q9Q+zqX6gSbd85u4mG4QzX+"
             crossorigin="anonymous"></script>
 </head>
-<body>
+<body style="background-color:aquamarine;">
 <nav class="navbar fixed-top navbar-expand-lg bg-dark" data-bs-theme="dark">
     <div class="container-fluid"><a class="navbar-brand" href="{{ homepage_url }}">&#x1F422;&#x1F995;</a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent"
@@ -49,7 +49,7 @@
 </nav>
 <div id="mediaContentSelectDiv" class="main-content-container">
     <div class="container text-left">
-        <div class="row row-cols-left row-cols-12">
+        <div class="row row-cols-auto">
             <div class="col-sm-1">
                 <button type="button" class="btn btn-success" onclick="javascript:validate_txt_file()">Validate</button>
             </div>
@@ -106,15 +106,27 @@
     </div>
 </div>
 <nav class="navbar fixed-bottom navbar-expand-xl bg-dark bg-body-tertiary" data-bs-theme="light">
-    <div class="col bottom-nav-col">
-        <div class="container-fluid" align="center">
-            <input type="range" id="mediaTimeInputId" onMouseUp="setMediaRuntime(this);" min=0 value=0 class="slider">
-            <output id="mediaTimeOutputId"></output>
-        </div>
-        <div class="container" align="center">
-            {% for key, value in button_dict.items() %}
-            <button id="{{ value['id'] }}" class="btn"><i class="fa-solid {{ value['icon'] }} fa-2xl"></i></button>
-            {% endfor %}
+    <div class="container-fluid text-center">
+        <div class="col bottom-nav-col">
+            <div class="row justify-content-center">
+                <div class="col">
+                    <input type="range" id="mediaTimeInputId" onMouseUp="setMediaRuntime(this);" min=0 value=0
+                           class="slider">
+                </div>
+            </div>
+            <div class="row justify-content-center">
+                <div class="col">
+                    <output id="mediaTimeOutputId"></output>
+                </div>
+            </div>
+            <div class="row justify-content-center">
+                {% for key, value in button_dict.items() %}
+                <div class="col-1">
+                    <button id="{{ value['id'] }}" class="btn"><i class="fa-solid {{ value['icon'] }} fa-2xl"></i>
+                    </button>
+                </div>
+                {% endfor %}
+            </div>
         </div>
     </div>
 </nav>

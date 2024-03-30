@@ -193,7 +193,39 @@ async function load_txt_file(element) {
 async function clear_editor_log() {
     document.getElementById("editor_txt_file_log").value = "";
 }
+async function edit_metadata_modal_open(metadata, content_type) {
+    console.log(metadata)
+    console.log(content_type)
+    document.getElementById("modal_title").innerHTML = metadata['playlist_title'] || metadata['season_title'] || metadata['media_title'];
+    document.getElementById("modal_text_area_image_url").value = metadata['image_url'];
+    document.getElementById("modal_text_area_description").value = metadata['description'];
+    document.getElementById("modal_metadata_save").setAttribute("onclick", "edit_metadata_modal_save(" + content_type + "," + metadata['id'] + ");");
+}
+async function edit_metadata_modal_save(content_type, content_id) {
+    image_url = document.getElementById("modal_text_area_image_url").value;
+    description = document.getElementById("modal_text_area_description").value;
+    var url = "/update_media_metadata";
+    let data = {
+        "content_type": content_type,
+        "id": content_id,
+        "image_url": image_url,
+        "description": description,
+    };
+    let response = await fetch(url, {
+        "method": "POST",
+        "headers": {"Content-Type": "application/json"},
+        "body": JSON.stringify(data),
+    });
+    location.reload();
 
+    // Send POST request
+//    if (!response.ok) {
+//        throw new Error("HTTP ERROR FAILED: " + response.status);
+//    } else {
+//        let json_response = await response.json();
+//        console.log(json_response)
+//    }
+}
 async function save_txt_file() {
     var url = "/save_txt_file";
     const editor_txt_file_name = document.getElementById("editor_txt_file_name");
