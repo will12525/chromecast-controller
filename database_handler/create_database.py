@@ -162,7 +162,7 @@ class DBCreator(DBConnection):
             movie[common_objects.TV_SHOW_ID_COLUMN] = None
             movie[common_objects.SEASON_ID_COLUMN] = None
             if movie.get("full_file_path"):
-                get_extra_metadata(movie, title=True)
+                get_extra_metadata(movie)
             self.set_media_metadata(movie)
 
     def set_media_directory_info(self, media_directory_info) -> int:
