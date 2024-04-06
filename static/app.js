@@ -168,7 +168,7 @@ async function update_editor_webpage(response_data) {
     }
     if (response_data["process_log"] !== undefined) {
         response_data?.process_log.forEach((element) => prepend_text = prepend_text + element["message"] + ": " + element["file_name"] + "\n");
-        editor_txt_file_log.value += prepend_text + "\n" + editor_txt_file_log.value;
+        editor_txt_file_log.value = prepend_text + "\n" + editor_txt_file_log.value;
     }
 }
 
