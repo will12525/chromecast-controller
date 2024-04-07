@@ -143,8 +143,11 @@ async function update_editor_log(response_data) {
         if (response_data["message"] !== undefined) {
             prepend_text += response_data?.message;
         }
+        if (response_data["file_name"] !== undefined) {
+            prepend_text += ": " + response_data?.file_name + "\n";
+        }
         if (response_data["expected_path"] !== undefined) {
-            prepend_text += ": " + response_data?.expected_path + "\n";
+            prepend_text += ": " + response_data?.expected_path;
         }
         if (response_data["string"] !== undefined) {
             prepend_text += response_data?.string + "\n";
@@ -167,8 +170,7 @@ async function update_editor_webpage(response_data) {
           update_editor_log(response_data?.error)
     }
     if (response_data["process_log"] !== undefined) {
-        response_data?.process_log.forEach((element) => prepend_text = prepend_text + element["message"] + ": " + element["file_name"] + "\n");
-        editor_txt_file_log.value = prepend_text + "\n" + editor_txt_file_log.value;
+        response_data?.process_log.forEach((element) => update_editor_log(element));
     }
 }
 
@@ -302,8 +304,7 @@ async function updateEditorMetadata() {
             document.getElementById("editor_process_metadata_queue_size").innerText = response_data?.process_queue_size;
             response_data?.process_log.forEach((element) => console.log(element));
             if (response_data["process_log"] !== undefined) {
-                response_data?.process_log.forEach((element) => prepend_text = prepend_text + element["message"] + ": " + element["file_name"] + "\n");
-                editor_txt_file_log.value += prepend_text + "\n" + editor_txt_file_log.value;
+                response_data?.process_log.forEach((element) => update_editor_log(element));
             }
         }
     }
