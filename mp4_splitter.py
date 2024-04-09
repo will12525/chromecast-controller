@@ -363,10 +363,8 @@ def editor_process_txt_file(editor_metadata_file, editor_raw_folder, editor_meta
                             editor_processor):
     sub_clip_file = f"{editor_raw_folder}{editor_metadata.get('txt_file_name')}"
     if editor_metadata.get('txt_file_content', None):
-        try:
-            save_txt_file_content(sub_clip_file, editor_metadata.get('txt_file_content'))
-        except FileExistsError as e:
-            pass
+        save_txt_file_content(sub_clip_file, editor_metadata.get('txt_file_content'))
+
     try:
         sub_clips, errors = editor_validate_txt_file(editor_raw_folder, editor_metadata)
         get_cmd_list(sub_clips, sub_clip_file, media_output_parent_path)
@@ -378,6 +376,7 @@ def editor_process_txt_file(editor_metadata_file, editor_raw_folder, editor_meta
     except FileNotFoundError as e:
         raise FileNotFoundError(e.args[0]) from e
     except FileExistsError as e:
+        update_processed_file(editor_metadata, editor_metadata_file)
         error_dict = e.args[0]
         error_dict["txt_file_name"] = editor_metadata.get('txt_file_name')
         raise FileExistsError(error_dict) from e
