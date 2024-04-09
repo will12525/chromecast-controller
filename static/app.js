@@ -137,6 +137,10 @@ async function play_media(media_id, playlist_id=null) {
 async function update_editor_log(response_data) {
         editor_txt_file_log = document.getElementById("editor_txt_file_log");
         prepend_text = "";
+        console.log(response_data)
+        if (response_data["string"] !== undefined) {
+            prepend_text += response_data?.string + "\n";
+        }
         if (response_data["line_index"] !== undefined) {
             prepend_text += "Line Number: " + response_data?.line_index + "\n";
         }
@@ -144,22 +148,19 @@ async function update_editor_log(response_data) {
             prepend_text += response_data?.message;
         }
         if (response_data["file_name"] !== undefined) {
-            prepend_text += ": " + response_data?.file_name + "\n";
+            prepend_text += ": " + response_data?.file_name;
         }
         if (response_data["expected_path"] !== undefined) {
             prepend_text += ": " + response_data?.expected_path;
         }
-        if (response_data["string"] !== undefined) {
-            prepend_text += response_data?.string + "\n";
-        }
+
         editor_txt_file_log.value = prepend_text + "\n" + editor_txt_file_log.value;
 }
 
 async function update_editor_webpage(response_data) {
     const editor_txt_file_name = document.getElementById("editor_txt_file_name");
     const editor_txt_file_content = document.getElementById("editor_txt_file_content");
-    const editor_txt_file_log = document.getElementById("editor_txt_file_log");
-    console.log(response_data)
+//    console.log(response_data)
     if (response_data["selected_txt_file_title"] !== undefined) {
         editor_txt_file_name.innerHTML = response_data?.selected_txt_file_title;
     }
@@ -298,11 +299,10 @@ async function updateEditorMetadata() {
         let response = await fetch(url);
         if (response.ok) {
             let response_data = await response.json();
-            console.log(response_data)
+//            console.log(response_data)
             editor_process_metadata_name.innerText = response_data?.process_name;
             document.getElementById("editor_process_metadata_time").innerText = response_data?.process_time;
             document.getElementById("editor_process_metadata_queue_size").innerText = response_data?.process_queue_size;
-            response_data?.process_log.forEach((element) => console.log(element));
             if (response_data["process_log"] !== undefined) {
                 response_data?.process_log.forEach((element) => update_editor_log(element));
             }
@@ -416,7 +416,7 @@ document.addEventListener("DOMContentLoaded", function(event){
     }
 
     setInterval(updateSeekSelector, 1000);
-    setInterval(updateEditorMetadata, 5000);
+    setInterval(updateEditorMetadata, 10000);
     getChromecastList();
     setNavbarLinks();
     setMediaControlButtons();

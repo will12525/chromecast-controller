@@ -116,7 +116,7 @@ def editor():
         print("Exception class: ", e.__class__)
         print(f"ERROR: {e}")
         print(traceback.print_exc())
-        return error_str
+        return str(error_str)
 
 
 @app.route(APIEndpoints.EDITOR_VALIDATE_TXT_FILE.value, methods=['POST'])
@@ -124,8 +124,10 @@ def editor_validate_txt_file():
     data = {"error": {"message": "File valid"}}
     if json_request := request.get_json():
         try:
-            backend_handler.editor_validate_txt_file(EDITOR_RAW_FOLDER, json_request)
-        except Exception as e:
+            sub_clips, errors = backend_handler.editor_validate_txt_file(EDITOR_RAW_FOLDER, json_request)
+            if errors:
+                data = {"process_log": errors}
+        except (FileNotFoundError, ValueError) as e:
             if len(e.args) > 0:
                 data = {"error": e.args[0]}
                 print(data)
@@ -177,7 +179,9 @@ def editor_process_txt_file():
             with DatabaseHandler() as db_connection:
                 media_metadata = db_connection.get_media_folder_path(1)
             output_path = pathlib.Path(media_metadata.get(MEDIA_DIRECTORY_PATH_COLUMN)).resolve()
-            backend_handler.editor_process_txt_file(EDITOR_METADATA_FILE, EDITOR_RAW_FOLDER, json_request, output_path)
+            errors = backend_handler.editor_process_txt_file(EDITOR_METADATA_FILE, EDITOR_RAW_FOLDER, json_request,
+                                                             output_path)
+            data["process_log"] = errors
         except Exception as e:
             if len(e.args) > 0:
                 data = {"error": e.args[0]}
