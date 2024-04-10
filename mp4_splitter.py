@@ -415,12 +415,13 @@ def get_editor_metadata(editor_metadata_file, editor_raw_folder, editor_processo
 
 def extract_subclip(sub_clip):
     cmd = sub_clip.get_cmd()
-    output_dir = pathlib.Path(cmd[2]).resolve().parent
-    # time.sleep(1)
-    print(cmd)
-    print(output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-    subprocess.run(cmd, check=True, text=True)
+    if len(cmd) == 6:
+        output_dir = pathlib.Path(cmd[2]).resolve().parent
+        # time.sleep(1)
+        print(cmd)
+        print(output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        subprocess.run(cmd, check=True, text=True)
 
 
 class CmdData:
@@ -442,8 +443,6 @@ class SubclipProcessHandler(threading.Thread):
         while not self.subclip_process_queue.empty():
             self.process_start = datetime.now()
             current_cmd = self.subclip_process_queue.get()
-            if len(current_cmd) != 6:
-                continue
             self.current_cmd = current_cmd.cmd
             try:
                 extract_subclip(self.current_cmd)
@@ -456,10 +455,10 @@ class SubclipProcessHandler(threading.Thread):
 
         self.current_cmd = None
 
-    def add_cmds_to_queue(self, metadata_file_path, cmd_list):
+    def add_cmds_to_queue(self, metadata_file_path, sub_clips):
         if self.subclip_process_queue.qsize() > 10:
             raise JobQueueFull({"message": "Job queue full"})
-        for cmd in cmd_list:
+        for cmd in sub_clips:
             self.subclip_process_queue.put(CmdData(metadata_file_path, cmd))
         if not self.is_alive():
             threading.Thread.__init__(self, daemon=True)
