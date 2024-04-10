@@ -234,8 +234,8 @@ class SubclipMetadata:
         if self.playlist_title:
             destination_file_path = destination_file_path / self.playlist_title
 
-        if self.season_index:
-            destination_file_path = destination_file_path / f"Season {self.season_index}"
+        # if self.season_index:
+        #     destination_file_path = destination_file_path / f"Season {self.season_index}"
 
         if self.episode_index:
             destination_file_path = destination_file_path / f'{self.playlist_title} - s{self.season_index}e{self.episode_index}.mp4'
