@@ -12,6 +12,8 @@ import time
 from datetime import datetime
 import re
 from pathvalidate import ValidationError, validate_filename
+
+import config_file_handler
 from database_handler.media_metadata_collector import mp4_file_ext, txt_file_ext
 
 ASK_QUESTION = True
@@ -77,43 +79,6 @@ class InvalidEpisodeIndex(ValueError):
     pass
 
 
-def save_txt_file_content(txt_file_path, txt_file_content):
-    if ".txt" in txt_file_path:
-        with open(txt_file_path, 'w+', encoding="utf-8") as f:
-            f.write(txt_file_content)
-    else:
-        print(f"Not a txt file: {txt_file_path}")
-
-
-def load_txt_file_content(file_path):
-    if file_path.suffix == ".txt" and file_path.is_file():
-        with open(file_path, 'r', encoding="utf-8") as f:
-            return f.readlines()
-    else:
-        print(f"Not a txt file: {file_path}")
-    return ""
-
-
-def save_json_file_content(txt_file_content, file_path):
-    if ".json" in file_path:
-        with open(file_path, "w+", encoding="utf-8") as of:
-            json.dump(txt_file_content, of)
-    else:
-        print(f"Not a json file: {file_path}")
-
-
-def load_json_file_content(file_path):
-    try:
-        if file_path.suffix == ".json" and file_path.is_file():
-            with open(file_path, 'r', encoding="utf-8") as f:
-                return json.loads(f.read())
-        else:
-            print(f"Not a json file: {file_path}")
-    except JSONDecodeError as e:
-        pass
-    return {}
-
-
 def convert_timestamp(timestamp_str):
     colon_count = timestamp_str.count(":")
     h = m = s = 0
@@ -157,6 +122,7 @@ class SubclipMetadata:
     destination_file_path = None
     source_file_path = None
     file_name = None
+    cmd_set = False
 
     def __init__(self, subclip_metadata):
         playlist_title = ""
@@ -286,10 +252,13 @@ class SubclipMetadata:
         self.file_name = source_file_path.stem.strip()
         self.source_file_path = str(source_file_path.as_posix()).strip()
         self.destination_file_path = str(destination_file_path.as_posix()).strip()
+        self.cmd_set = True
 
     def get_cmd(self):
-        return [SPLITTER_BASH_CMD, self.source_file_path, self.destination_file_path, str(self.start_time),
-                str(self.end_time), self.media_title]
+        if self.cmd_set:
+            return [SPLITTER_BASH_CMD, self.source_file_path, self.destination_file_path, str(self.start_time),
+                    str(self.end_time), self.media_title]
+        return []
 
 
 def get_subclips_as_objs(txt_file_content):
@@ -311,22 +280,21 @@ def get_sub_clips_from_txt_file(sub_clip_file):
         error_dict = {"message": "Missing file", "file_name": sub_clip_file}
         raise FileNotFoundError(error_dict)
 
-    subclip_file_content = load_txt_file_content(sub_clip_file_path)
+    subclip_file_content = config_file_handler.load_txt_file_content(sub_clip_file_path)
     if not subclip_file_content:
         error_dict = {"message": "Text file empty", "file_name": sub_clip_file_path.name}
         raise EmptyTextFile(error_dict)
-    # try:
+
     sub_clips, errors = get_subclips_as_objs(subclip_file_content)
     for error in errors:
         error.update({"file_name": sub_clip_file_path.name})
     return sub_clips, errors
-    # except ValueError as e:
-    #     error_dict = e.args[0]
-    #     error_dict["file_name"] = sub_clip_file
-    #     raise ValueError(error_dict) from e
 
 
-def get_cmd_list(sub_clips: list[SubclipMetadata], sub_clip_file, media_output_parent_path=None):
+def get_cmd_list(sub_clips: list[SubclipMetadata], sub_clip_file, media_output_parent_path=None, error_log=None):
+    if error_log is None:
+        error_log = []
+
     mp4_file = sub_clip_file.replace('.txt', '.mp4')
     source_file_path = pathlib.Path(mp4_file).resolve()
 
@@ -335,7 +303,24 @@ def get_cmd_list(sub_clips: list[SubclipMetadata], sub_clip_file, media_output_p
         raise FileNotFoundError(error_dict)
 
     for index, sub_clip in enumerate(sub_clips):
-        sub_clip.set_cmd_metadata(source_file_path, media_output_parent_path, chr(ALPHANUMERIC_INDEX_A + index))
+        try:
+            sub_clip.set_cmd_metadata(source_file_path, media_output_parent_path, chr(ALPHANUMERIC_INDEX_A + index))
+        except FileExistsError as e:
+            error_dict = e.args[0]
+            error_dict["line_index"] = index
+            error_log.append(error_dict)
+            print(error_log)
+
+
+def update_processed_file(editor_metadata, editor_metadata_file):
+    editor_metadata_content = {}
+    editor_metadata_file_path = pathlib.Path(editor_metadata_file).resolve()
+    try:
+        editor_metadata_content = config_file_handler.load_json_file_content(editor_metadata_file_path)
+    except (FileNotFoundError, JSONDecodeError) as e:
+        pass
+    editor_metadata_content[editor_metadata.get('txt_file_name')] = {"processed": True}
+    config_file_handler.save_json_file_content(editor_metadata_content, editor_metadata_file)
 
 
 def editor_validate_txt_file(editor_raw_folder, editor_metadata):
@@ -348,26 +333,15 @@ def editor_validate_txt_file(editor_raw_folder, editor_metadata):
         raise FileNotFoundError(e.args[0]) from e
 
 
-def update_processed_file(editor_metadata, editor_metadata_file):
-    editor_metadata_content = {}
-    editor_metadata_file_path = pathlib.Path(editor_metadata_file).resolve()
-    try:
-        editor_metadata_content = load_json_file_content(editor_metadata_file_path)
-    except (FileNotFoundError, JSONDecodeError) as e:
-        pass
-    editor_metadata_content[editor_metadata.get('txt_file_name')] = {"processed": True}
-    save_json_file_content(editor_metadata_content, editor_metadata_file)
-
-
 def editor_process_txt_file(editor_metadata_file, editor_raw_folder, editor_metadata, media_output_parent_path,
                             editor_processor):
     sub_clip_file = f"{editor_raw_folder}{editor_metadata.get('txt_file_name')}"
-    if editor_metadata.get('txt_file_content', None):
-        save_txt_file_content(sub_clip_file, editor_metadata.get('txt_file_content'))
+    if editor_metadata.get('txt_file_content'):
+        config_file_handler.save_txt_file_content(sub_clip_file, editor_metadata.get('txt_file_content'))
 
     try:
         sub_clips, errors = editor_validate_txt_file(editor_raw_folder, editor_metadata)
-        get_cmd_list(sub_clips, sub_clip_file, media_output_parent_path)
+        get_cmd_list(sub_clips, sub_clip_file, media_output_parent_path, errors)
         editor_processor.add_cmds_to_queue(editor_metadata_file, sub_clips)
         update_processed_file(editor_metadata, editor_metadata_file)
         return errors
@@ -394,14 +368,14 @@ def get_editor_txt_files(editor_raw_folder):
 
 
 def editor_save_txt_file(output_path, editor_metadata):
-    save_txt_file_content(txt_file_path=f"{output_path}{editor_metadata.get('txt_file_name')}",
-                          txt_file_content=editor_metadata.get('txt_file_content'))
+    config_file_handler.save_txt_file_content(txt_file_path=f"{output_path}{editor_metadata.get('txt_file_name')}",
+                                              txt_file_content=editor_metadata.get('txt_file_content'))
 
 
 def check_editor_txt_file_processed(editor_metadata_file, editor_txt_file_names):
     editor_txt_file_processed = []
     metadata_file = pathlib.Path(editor_metadata_file).resolve()
-    metadata_file_content = load_json_file_content(metadata_file)
+    metadata_file_content = config_file_handler.load_json_file_content(metadata_file)
     for editor_txt_file in editor_txt_file_names:
         if editor_txt_file in metadata_file_content:
             editor_txt_file_processed.append({
@@ -432,7 +406,7 @@ def get_editor_metadata(editor_metadata_file, editor_raw_folder, editor_processo
         editor_metadata = {
             "txt_file_list": check_editor_txt_file_processed(editor_metadata_file, editor_txt_file_names),
             "selected_txt_file_title": selected_txt_file,
-            "selected_txt_file_content": ''.join(load_txt_file_content(selected_txt_file_path)),
+            "selected_txt_file_content": ''.join(config_file_handler.load_txt_file_content(selected_txt_file_path)),
             "editor_process_metadata": editor_processor.get_metadata()
         }
 
@@ -468,6 +442,8 @@ class SubclipProcessHandler(threading.Thread):
         while not self.subclip_process_queue.empty():
             self.process_start = datetime.now()
             current_cmd = self.subclip_process_queue.get()
+            if len(current_cmd) != 6:
+                continue
             self.current_cmd = current_cmd.cmd
             try:
                 extract_subclip(self.current_cmd)
@@ -506,33 +482,3 @@ class SubclipProcessHandler(threading.Thread):
             "process_queue_size": self.subclip_process_queue.qsize(),
             "process_log": process_log
         }
-
-
-def main(sub_clip_file):
-    try:
-        sub_clips = get_sub_clips_from_txt_file(sub_clip_file)
-        cmd_list = get_cmd_list(sub_clips, sub_clip_file)
-        for cmd in cmd_list:
-            extract_subclip(cmd)
-        return cmd_list
-    except ValueError as e:
-        raise ValueError(e.args[0]) from e
-    except FileNotFoundError as e:
-        raise FileNotFoundError(e.args[0]) from e
-
-
-if __name__ == "__main__":
-    dirpath = "abc"
-    if os.path.exists(dirpath) and os.path.isdir(dirpath):
-        shutil.rmtree(dirpath)
-    # Old way
-    # main()
-
-    # CLI Way
-    parser = argparse.ArgumentParser(description='Splits mp4 files given a mp4 file with timestamp file')
-    # parser.add_argument('-f', '--file', help='File to be split', required=True, dest='input_file', type=str)
-    parser.add_argument('-f', help='File to be split', default=DEFAULT_MP4_FILE, dest='input_file', type=str)
-    args = parser.parse_args()
-    if args.input_file:
-        # print(args.input_file)
-        main(args.input_file)

@@ -74,6 +74,14 @@ class BackEndHandler:
         return mp4_splitter.get_editor_metadata(editor_metadata_file, editor_raw_folder, self.editor_processor,
                                                 selected_txt_file)
 
+    def editor_validate_txt_file(self, editor_raw_folder, editor_metadata):
+        try:
+            return mp4_splitter.editor_validate_txt_file(editor_raw_folder, editor_metadata)
+        except ValueError as e:
+            raise ValueError(e.args[0]) from e
+        except FileNotFoundError as e:
+            raise FileNotFoundError(e.args[0]) from e
+
     def editor_process_txt_file(self, editor_metadata_file, editor_raw_folder, editor_metadata,
                                 media_output_parent_path):
         try:
@@ -85,14 +93,6 @@ class BackEndHandler:
             raise FileNotFoundError(e.args[0]) from e
         except FileExistsError as e:
             raise FileExistsError(e.args[0]) from e
-
-    def editor_validate_txt_file(self, editor_raw_folder, editor_metadata):
-        try:
-            return mp4_splitter.editor_validate_txt_file(editor_raw_folder, editor_metadata)
-        except ValueError as e:
-            raise ValueError(e.args[0]) from e
-        except FileNotFoundError as e:
-            raise FileNotFoundError(e.args[0]) from e
 
     def editor_get_process_metadata(self):
         return self.editor_processor.get_metadata()
