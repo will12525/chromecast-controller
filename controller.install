@@ -15,11 +15,20 @@ if [[ $EUID -ne 0 ]]; then
     echo "RUN AS ROOT"
 fi
 
+apt install sqlite3 ffmpeg
 
 # Check if services folder exists
 if [ $ERR_CODE -eq 0 ] && [ ! -d "${SERVICES_DIR}" ]; then
     ERR_CODE=1
     echo "MISSING: ${SERVICES_DIR}"
+fi
+
+
+if [ $ERR_CODE -eq 0 ]; then
+    # https://nodejs.org/en/download/package-manager
+    apt install npm
+    npm install -g http-server
+    
 fi
 
 # Check if config file exists
