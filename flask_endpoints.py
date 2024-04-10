@@ -23,7 +23,7 @@ from database_handler.create_database import DBCreator
 # TODO: Convert chromecast name strings to id values and use ID values to refer to chromecasts
 # TODO: Make local media player: https://www.tutorialspoint.com/opencv_python/opencv_python_play_video_file.htm
 
-EDITOR_FOLDER = "/media/hdd1/plex_media/splitter/"
+EDITOR_FOLDER = "/media/ssd1/splitter/"
 EDITOR_RAW_FOLDER = f"{EDITOR_FOLDER}raw_files/"
 EDITOR_METADATA_FILE = f"{EDITOR_RAW_FOLDER}editor_metadata.json"
 
