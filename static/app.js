@@ -416,7 +416,7 @@ document.addEventListener("DOMContentLoaded", function(event){
     }
 
     setInterval(updateSeekSelector, 1000);
-    setInterval(updateEditorMetadata, 10000);
+    setInterval(updateEditorMetadata, 5000);
     getChromecastList();
     setNavbarLinks();
     setMediaControlButtons();
