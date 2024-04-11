@@ -29,7 +29,7 @@ On GAIA:
 scp willow@192.168.1.200:/home/willow/workspace/mp4_splitter/mp4_splitter.exe .\Desktop\
 """
 
-SPLITTER_BASH_CMD = "/media/hdd1/plex_media/splitter/splitter.sh"
+SPLITTER_BASH_CMD = "/media/ssd1/splitter/splitter.sh"
 DEFAULT_MP4_FILE = "raw_file/2022-06-12_06-22-06.mp4"
 DEFAULT_EPISODE_START_INDEX = 0
 DEFAULT_SEASON_START_INDEX = None
