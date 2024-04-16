@@ -434,6 +434,7 @@ class CmdData:
 
 
 class SubclipProcessHandler(threading.Thread):
+    subclip_process_queue_size = 30
     subclip_process_queue = queue.Queue()
     log_queue = queue.Queue()
     current_cmd = None
@@ -456,7 +457,7 @@ class SubclipProcessHandler(threading.Thread):
         self.current_cmd = None
 
     def add_cmds_to_queue(self, metadata_file_path, sub_clips):
-        if self.subclip_process_queue.qsize() > 10:
+        if self.subclip_process_queue.qsize() > self.subclip_process_queue_size:
             raise JobQueueFull({"message": "Job queue full"})
         for cmd in sub_clips:
             self.subclip_process_queue.put(CmdData(metadata_file_path, cmd))
@@ -466,10 +467,10 @@ class SubclipProcessHandler(threading.Thread):
 
     def get_metadata(self):
         process_name = "Split queue empty"
-        process_time = ""
+        process_time = "0"
         process_log = []
-        if current_cmd := self.current_cmd:
-            process_name = current_cmd.media_title
+        if self.current_cmd:
+            process_name = f"{self.current_cmd.media_title}, {self.current_cmd.file_name}"
             process_time = str(datetime.now() - self.process_start)
 
         while not self.log_queue.empty():
