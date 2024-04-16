@@ -26,6 +26,21 @@ class Test(TestCase):
         assert subclip_metadata.media_title == "episode 1"
         assert subclip_metadata.playlist_title == "Hilda"
 
+    def test_splitter_remove_quotes(self):
+        subclip_metadata_str = 'Hilda,"episode 1",2,1,1:20:47,1:40:43'
+        subclip_metadata = mp4_splitter.SubclipMetadata(subclip_metadata_str)
+        assert subclip_metadata.start_time == 4847
+        assert subclip_metadata.end_time == 6043
+        assert subclip_metadata.episode_index == 1
+        assert subclip_metadata.season_index == 2
+        assert subclip_metadata.media_title == "episode 1"
+        assert subclip_metadata.playlist_title == "Hilda"
+
+        subclip_metadata.set_cmd_metadata()
+
+        print(subclip_metadata.media_title)
+        print(subclip_metadata.get_cmd())
+
     def test_validate_editor_txt_file(self):
         txt_file_content = [
             "Hilda,episode name,2,1,7,13:43",
@@ -124,6 +139,40 @@ class Test(TestCase):
             assert cmd[
                        1] == 'C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/2024-01-31_16-32-36.mp4'
 
+            current_index += 1
+        # print(cmd_list)
+
+    def test_validate_editor_cmd_list_remove_quotes(self):
+        txt_file_name = "2024-01-31_16-32-36_quotes.txt"
+        txt_process_file = f"{EDITOR_RAW_FOLDER}{txt_file_name}"
+        text_path = pathlib.Path(txt_process_file).resolve()
+        mp4_process_file = txt_process_file.replace('.txt', '.mp4')
+        video_path = pathlib.Path(mp4_process_file).resolve()
+        assert text_path
+        assert video_path
+
+        time_lines = config_file_handler.load_txt_file_content(text_path)
+        # print(time_lines)
+        # print(''.join(time_lines))
+        assert time_lines
+        sub_clips, errors = mp4_splitter.get_subclips_as_objs(time_lines)
+        # cmd_list = mp4_splitter.get_cmd_list(sub_clips, mp4_process_file, pathlib.Path(OUTPUT_PATH).resolve())
+        mp4_splitter.get_cmd_list(sub_clips, mp4_process_file, pathlib.Path(OUTPUT_PATH).resolve())
+        # assert cmd_list
+        print(sub_clips[0])
+        assert 5 == len(sub_clips)
+        assert 0 == len(errors)
+
+        current_index = mp4_splitter.ALPHANUMERIC_INDEX_A
+        for sub_clip in sub_clips:
+            cmd = sub_clip.get_cmd()
+            print(cmd)
+            assert 6 == len(cmd)
+            assert cmd[0] == mp4_splitter.SPLITTER_BASH_CMD
+            assert cmd[
+                       1] == 'C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/2024-01-31_16-32-36_quotes.mp4'
+            assert type(cmd[5]) is str
+            assert '"' not in cmd[5]
             current_index += 1
         # print(cmd_list)
 
