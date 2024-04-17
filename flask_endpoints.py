@@ -311,10 +311,16 @@ def update_media_metadata():
     data = {}
     # If exception, pass to error log
     if json_request := request.get_json():
-        print(json_request)
+        if json_request.get("image_url"):
+            try:
+                backend_handler.download_image(json_request)
+            except ValueError as e:
+                if len(e.args) > 0:
+                    data = {"error": e.args[0]}
+                    print(data)
+            print(f"image url: {json_request.get('image_url')}")
         with DatabaseHandler() as db_connection:
             db_connection.update_media_metadata(json_request)
-
     return data, 200
 
 

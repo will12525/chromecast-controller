@@ -112,6 +112,10 @@ class DatabaseHandler(DBConnection):
 
         if content_data := media_content_query_data.get(content_type):
             if 'requires_id' in content_data and not content_data.get('requires_id') in params_dict:
+                # if common_objects.ID_COLUMN in params_dict:
+                #     params_dict[content_data.get('requires_id')] = params_dict.get(common_objects.ID_COLUMN)
+                # else:
+                #     return {}
                 return {}
             media_metadata['content_type'] = content_type.value
 

@@ -13,6 +13,7 @@ venv/
 media_folder*/
 tests/static/
 editor_raw_files/
+images/
 
 # media database
 *.db

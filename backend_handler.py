@@ -9,7 +9,7 @@ import pathlib
 
 import config_file_handler
 from chromecast_handler import ChromecastHandler
-from database_handler.common_objects import MEDIA_DIRECTORY_PATH_COLUMN
+from database_handler.common_objects import MEDIA_DIRECTORY_PATH_COLUMN, ContentType
 from database_handler.create_database import DBCreator
 from database_handler.database_handler import DatabaseHandler
 from database_handler.media_metadata_collector import mp4_file_ext, txt_file_ext
@@ -110,17 +110,32 @@ class BackEndHandler:
                 or not json_request.get('content_type')
                 or not json_request.get('id')
                 or json_request.get('image_url')[-4:] not in ['.jpg', '.png']):
-            raise ValueError
-
-        with DatabaseHandler() as db_connection:
-            db_connection.update_media_metadata(json_request)
-            media_metadata = db_connection.get_media_folder_path(1)
-
-        if not media_metadata:
-            raise ValueError
+            raise ValueError({{"message": "Image url must be .jpg or .png"}})
 
         file_name = f"{json_request.get('content_type')}_{json_request.get('id')}{json_request.get('image_url')[-4:]}"
-        output_path = f"{pathlib.Path(media_metadata.get(MEDIA_DIRECTORY_PATH_COLUMN)).resolve().parent.absolute()}/{file_name}"
+
+        with DatabaseHandler() as db_connection:
+            media_folder_path = db_connection.get_media_folder_path(1)
+            if len(ContentType) > json_request.get('content_type'):
+                content_type = ContentType(json_request.get('content_type'))
+                media_metadata = db_connection.get_media_content(content_type, params_dict=json_request)
+            else:
+                raise ValueError(
+                    {"message": 'Unknown content type provided', 'value': json_request.get('content_type')})
+
+        if json_request.get('image_url') == media_metadata.get("image_url"):
+            json_request['image_url'] = file_name
+            return
+
+        if not media_folder_path:
+            raise ValueError({"message": "Error media directory table missing paths"})
+
+        output_path = f"{pathlib.Path(media_folder_path.get(MEDIA_DIRECTORY_PATH_COLUMN)).resolve().parent.absolute()}/images/{file_name}"
+
+        if pathlib.Path(output_path).resolve().exists():
+            json_request['image_url'] = file_name
+            raise ValueError({"message": "Image url already exists, assigning existing image",
+                              "file_name": json_request.get('image_url'), "string": f"{file_name}"})
 
         res = requests.get(json_request.get('image_url'), stream=True)
 
@@ -128,6 +143,8 @@ class BackEndHandler:
             with open(output_path, 'wb') as f:
                 shutil.copyfileobj(res.raw, f)
             print('Image successfully Downloaded: ', output_path)
-
-        print(pathlib.Path(file_name).resolve())
-        print(output_path, file_name)
+            json_request['image_url'] = file_name
+        else:
+            raise ValueError(
+                {"message": "requests error encountered while saving image", "file_name": json_request.get('image_url'),
+                 "string": f"{res.status_code}"})
