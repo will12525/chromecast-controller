@@ -158,14 +158,11 @@ async function update_editor_log(response_data) {
 }
 
 async function update_editor_webpage(response_data) {
-    const editor_txt_file_name = document.getElementById("editor_txt_file_name");
-    const editor_txt_file_content = document.getElementById("editor_txt_file_content");
-//    console.log(response_data)
     if (response_data["selected_txt_file_title"] !== undefined) {
-        editor_txt_file_name.innerHTML = response_data?.selected_txt_file_title;
+        document.getElementById("editor_txt_file_name").innerHTML = response_data["selected_txt_file_title"];
     }
     if (response_data["selected_txt_file_content"] !== undefined) {
-        editor_txt_file_content.innerHTML = response_data?.selected_txt_file_content;
+        document.getElementById("editor_txt_file_content").value = response_data["selected_txt_file_content"];
     }
     if (response_data["error"] !== undefined) {
           update_editor_log(response_data?.error)
@@ -175,24 +172,6 @@ async function update_editor_webpage(response_data) {
     }
 }
 
-async function load_txt_file(element) {
-    var url = "/load_txt_file";
-    var editor_txt_file_name = element.innerText || element.textContent;
-    let data = {
-        "editor_txt_file_name": editor_txt_file_name
-    };
-    let response = await fetch(url, {
-        "method": "POST",
-        "headers": {"Content-Type": "application/json"},
-        "body": JSON.stringify(data),
-    });
-    // Send POST request
-    if (!response.ok) {
-        throw new Error("HTTP ERROR FAILED: " + response.status);
-    } else {
-        update_editor_webpage(await response.json());
-    }
-}
 async function clear_editor_log() {
     document.getElementById("editor_txt_file_log").value = "";
 }
@@ -229,6 +208,27 @@ async function edit_metadata_modal_save(content_type, content_id) {
 //        console.log(json_response)
 //    }
 }
+
+async function load_txt_file(element) {
+    var url = "/load_txt_file";
+    var editor_txt_file_name = element.textContent;
+    let data = {
+        "editor_txt_file_name": editor_txt_file_name
+    };
+    console.log(data)
+    let response = await fetch(url, {
+        "method": "POST",
+        "headers": {"Content-Type": "application/json"},
+        "body": JSON.stringify(data),
+    });
+    // Send POST request
+    if (!response.ok) {
+        throw new Error("HTTP ERROR FAILED: " + response.status);
+    } else {
+        update_editor_webpage(await response.json());
+    }
+}
+
 async function save_txt_file() {
     var url = "/save_txt_file";
     const editor_txt_file_name = document.getElementById("editor_txt_file_name");
