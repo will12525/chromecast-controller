@@ -811,9 +811,6 @@ class TestProcessSubclipFile(TestCase):
         # print(len(sub_clips))
         # assert len(sub_clips) == 4
         for index, sub_clip in enumerate(sub_clips):
-            if index == 3:
-                assert not sub_clip.get_cmd()
-                continue
             cmd = sub_clip.get_cmd()
             print(cmd)
             assert type(cmd) is list
@@ -853,8 +850,6 @@ class TestProcessSubclipFile(TestCase):
         assert cmd[4] == "2792"
         assert cmd[5] == "episode name"
         cmd = sub_clips[3].get_cmd()
-        assert not cmd
-        cmd = sub_clips[4].get_cmd()
         assert cmd[
                    1] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/2024-01-31_16-32-36_already_exists.mp4"
         assert cmd[

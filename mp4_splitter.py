@@ -25,9 +25,6 @@ scp willow@192.168.1.200:/home/willow/workspace/mp4_splitter/mp4_splitter.exe .\
 """
 
 SPLITTER_BASH_CMD = "/media/ssd1/splitter/splitter.sh"
-DEFAULT_MP4_FILE = "raw_file/2022-06-12_06-22-06.mp4"
-DEFAULT_EPISODE_START_INDEX = 0
-DEFAULT_SEASON_START_INDEX = None
 ALPHANUMERIC_INDEX_A = 97
 
 ERROR_SUCCESS = 0
@@ -294,6 +291,7 @@ def get_cmd_list(sub_clips: list[SubclipMetadata], sub_clip_file, media_output_p
         error_dict = {"message": "Missing file", "file_name": mp4_file}
         raise FileNotFoundError(error_dict)
 
+    remove_sub_clips = []
     for index, sub_clip in enumerate(sub_clips):
         try:
             sub_clip.set_cmd_metadata(source_file_path, media_output_parent_path, chr(ALPHANUMERIC_INDEX_A + index))
@@ -302,6 +300,9 @@ def get_cmd_list(sub_clips: list[SubclipMetadata], sub_clip_file, media_output_p
             error_dict["line_index"] = index
             error_log.append(error_dict)
             print(error_log)
+            remove_sub_clips.append(index)
+    for index in remove_sub_clips:
+        sub_clips.pop(index)
 
 
 def update_processed_file(editor_metadata, editor_metadata_file):
