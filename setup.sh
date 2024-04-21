@@ -15,7 +15,7 @@ if [[ $EUID -ne 0 ]]; then
     echo "RUN AS ROOT"
 fi
 
-apt install sqlite3 ffmpeg
+apt install sqlite3 ffmpeg npm
 
 # Check if services folder exists
 if [ $ERR_CODE -eq 0 ] && [ ! -d "${SERVICES_DIR}" ]; then
@@ -26,9 +26,7 @@ fi
 
 if [ $ERR_CODE -eq 0 ]; then
     # https://nodejs.org/en/download/package-manager
-    apt install npm
     npm install -g http-server
-    
 fi
 
 # Check if config file exists
@@ -42,10 +40,13 @@ if [ $ERR_CODE -eq 0 ]; then
             ERR_CODE=1
             echo "Source of $WORKSPACE/$CONFIG_FILE failed, fix file"
         fi
+        if [[ -z "${MEDIA_DIR}" ]]; then
+            ERR_CODE=1
+            echo "Config file not set, update file param ${CONFIG_FILE}: MEDIA_DIR"
+        fi
     else
         ERR_CODE=1
-        echo "Please update $CONFIG_FILE file: ${WORKSPACE}/${CONFIG_FILE}"
-        cp --preserve=mode,ownership config.default config.cfg
+        echo "Missing ${CONFIG_FILE}: ${WORKSPACE}/${CONFIG_FILE}"
     fi
 fi
 

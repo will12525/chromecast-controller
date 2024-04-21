@@ -79,3 +79,12 @@ class ContentType(Enum):
 class DBType(Enum):
     PHYSICAL = auto()
     MEMORY = auto()
+
+
+default_media_directory_info = {
+    "id": None,
+    "media_type": None,
+    "media_directory_path": None,
+    "new_media_directory_path": None,
+    "media_directory_url": None
+}

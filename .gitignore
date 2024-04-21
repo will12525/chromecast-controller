@@ -1,6 +1,5 @@
 __pycache__/
 .venv/
-config.cfg
 *.log
 
 # PyCharm
@@ -17,4 +16,3 @@ images/
 
 # media database
 *.db
-config.json

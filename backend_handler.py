@@ -8,19 +8,20 @@ import git
 import pathlib
 
 import config_file_handler
+import database_handler.common_objects as common_objects
 from chromecast_handler import ChromecastHandler
-from database_handler.common_objects import MEDIA_DIRECTORY_PATH_COLUMN, ContentType
 from database_handler.create_database import DBCreator
 from database_handler.database_handler import DatabaseHandler
-from database_handler.media_metadata_collector import mp4_file_ext, txt_file_ext
 import mp4_splitter
 
 
 def setup_db():
     with DBCreator() as db_connection:
         db_connection.create_db()
-        for media_folder_info in config_file_handler.load_js_file():
-            db_connection.setup_media_directory(media_folder_info)
+        for media_folder_info in config_file_handler.load_js_file().get("media_folders"):
+            media_directory_info = common_objects.default_media_directory_info.copy()
+            media_directory_info.update(media_folder_info)
+            db_connection.setup_media_directory(media_directory_info)
 
 
 class BackEndHandler:
@@ -116,8 +117,8 @@ class BackEndHandler:
 
         with DatabaseHandler() as db_connection:
             media_folder_path = db_connection.get_media_folder_path(1)
-            if len(ContentType) > json_request.get('content_type'):
-                content_type = ContentType(json_request.get('content_type'))
+            if len(common_objects.ContentType) > json_request.get('content_type'):
+                content_type = common_objects.ContentType(json_request.get('content_type'))
                 media_metadata = db_connection.get_media_content(content_type, params_dict=json_request)
             else:
                 raise ValueError(
@@ -130,7 +131,7 @@ class BackEndHandler:
         if not media_folder_path:
             raise ValueError({"message": "Error media directory table missing paths"})
 
-        output_path = f"{pathlib.Path(media_folder_path.get(MEDIA_DIRECTORY_PATH_COLUMN)).resolve().parent.absolute()}/images/{file_name}"
+        output_path = f"{pathlib.Path(media_folder_path.get(common_objects.MEDIA_DIRECTORY_PATH_COLUMN)).resolve().parent.absolute()}/images/{file_name}"
 
         if pathlib.Path(output_path).resolve().exists():
             json_request['image_url'] = file_name
