@@ -6,7 +6,7 @@ import traceback
 from flask import Flask, request, render_template
 
 # jsonify, redirect, current_app, render_template
-from backend_handler import BackEndHandler
+import backend_handler as bh
 from chromecast_handler import CommandList
 from database_handler import common_objects
 from database_handler.database_handler import DatabaseHandler
@@ -17,7 +17,7 @@ from database_handler.create_database import DBCreator
 # TODO: Update DB: Use md5sum to track files
 # TODO: Update media grid to dynamically update rather than page reload
 # TODO: Extract default values to json config file <- in progress
-# TODO: Update all js function references to eventlisteneres on js side
+# TODO: Update all js function references to event listeners on js side
 # TODO: Add notification when media scan completes
 # TODO: Update chromecast menu auto populate to remove missing chromecasts
 # TODO: Convert chromecast name strings to id values and use ID values to refer to chromecasts
@@ -48,7 +48,6 @@ class APIEndpoints(Enum):
     SCAN_MEDIA_DIRECTORIES = "/scan_media_directories"
     GET_MEDIA_MENU_DATA = "/get_media_menu_data"
     GET_DISK_SPACE = "/get_disk_space"
-    SET_NEW_MEDIA_METADATA = "/set_new_media_metadata"
     UPDATE_MEDIA_METADATA = "/update_media_metadata"
 
 
@@ -66,7 +65,7 @@ media_controller_button_dict = {
     "stop": {"icon": "fa-stop", "id": f"{CommandList.CMD_STOP.name}_media_button"}
 }
 
-backend_handler = BackEndHandler()
+backend_handler = bh.BackEndHandler()
 setup_thread = backend_handler.start()
 
 error_log = queue.Queue()
@@ -124,7 +123,7 @@ def editor_validate_txt_file():
     data = {"error": {"message": "File valid"}}
     if json_request := request.get_json():
         try:
-            sub_clips, errors = backend_handler.editor_validate_txt_file(EDITOR_RAW_FOLDER, json_request)
+            sub_clips, errors = bh.editor_validate_txt_file(EDITOR_RAW_FOLDER, json_request)
             if errors:
                 data = {"process_log": errors}
         except (FileNotFoundError, ValueError) as e:
@@ -142,7 +141,7 @@ def editor_save_txt_file():
     data = {"error": {"message": "File saved"}}
     if json_request := request.get_json():
         try:
-            backend_handler.editor_save_txt_file(EDITOR_RAW_FOLDER, json_request)
+            bh.editor_save_txt_file(EDITOR_RAW_FOLDER, json_request)
         except Exception as e:
             if len(e.args) > 0:
                 data = {"error": e.args[0]}
@@ -295,17 +294,6 @@ def scan_media_directories():
     return data, 200
 
 
-@app.route(APIEndpoints.SET_NEW_MEDIA_METADATA.value, methods=['POST'])
-def set_new_media_metadata():
-    data = {}
-    if json_request := request.get_json():
-        with DatabaseHandler() as db_connection:
-            # db_connection.set_new_media_metadata(json_request)
-            print(f"Not implemented: {APIEndpoints.SET_NEW_MEDIA_METADATA.value}")
-
-    return data, 200
-
-
 @app.route(APIEndpoints.UPDATE_MEDIA_METADATA.value, methods=['POST'])
 def update_media_metadata():
     data = {}
@@ -313,7 +301,7 @@ def update_media_metadata():
     if json_request := request.get_json():
         if json_request.get("image_url"):
             try:
-                backend_handler.download_image(json_request)
+                bh.download_image(json_request)
             except ValueError as e:
                 if len(e.args) > 0:
                     data = {"error": e.args[0]}
@@ -327,15 +315,14 @@ def update_media_metadata():
 @app.route(APIEndpoints.GET_MEDIA_MENU_DATA.value, methods=['POST'])
 def get_media_menu_data():
     data = {}
-    with DBCreator() as db_connection:
-        pass
+    print(f"Not implemented: {APIEndpoints.GET_MEDIA_MENU_DATA.value}")
     return data, 200
 
 
 @app.route(APIEndpoints.GET_DISK_SPACE.value, methods=['GET'])
 def get_disk_space():
     try:
-        data = {"free_space": backend_handler.get_free_disk_space(EDITOR_FOLDER)}
+        data = {"free_space": bh.get_free_disk_space(EDITOR_FOLDER)}
         return data, 200
     except Exception as e:
         print("Exception class: ", e.__class__)

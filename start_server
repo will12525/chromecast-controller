@@ -41,5 +41,3 @@ export FLASK_APP=$WORKSPACE/flask_endpoints.py
 echo "Starting flask app"
 flask run --host=0.0.0.0 -p "$PORT"
 #flask run --host=0.0.0.0 -p "$PORT" --cert=adhoc
-
-

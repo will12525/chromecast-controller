@@ -1,11 +1,9 @@
 import json
 import shutil
 import os
-import pathlib
-import time
 from unittest import TestCase
 
-from backend_handler import BackEndHandler
+import backend_handler as bh
 from database_handler.common_objects import ContentType
 
 
@@ -14,7 +12,8 @@ class TestBackEndHandler(TestCase):
     image_folder_path = "../images"
 
     def setUp(self):
-        self.backend_handler = BackEndHandler()
+        self.backend_handler = bh.BackEndHandler()
+        self.backend_handler.start()
         if os.path.exists(self.image_folder_path):
             shutil.rmtree(self.image_folder_path)
             os.mkdir(self.image_folder_path)
@@ -125,14 +124,14 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
         # Add test for each content type
         json_request = {'content_type': 4, 'id': 1, 'image_url': 'http://192.168.1.201:8000/images/3.jpg',
                         'description': 'World!!'}
-        self.backend_handler.download_image(json_request)
+        bh.download_image(json_request)
 
     def test_image_download_media(self):
         # Add test for each content type
         json_request = {'content_type': ContentType.MEDIA.value, 'id': 1,
                         'image_url': 'http://192.168.1.201:8000/images/3.jpg',
                         'description': 'World!!'}
-        self.backend_handler.download_image(json_request)
+        bh.download_image(json_request)
         print(json.dumps(json_request, indent=4))
         assert json_request.get("image_url") == f"{json_request.get('content_type')}_{json_request.get('id')}.jpg"
 
@@ -141,7 +140,7 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
         json_request = {'content_type': ContentType.SEASON.value, 'id': 1,
                         'image_url': 'http://192.168.1.201:8000/images/3.jpg',
                         'description': 'World!!'}
-        self.backend_handler.download_image(json_request)
+        bh.download_image(json_request)
         assert json_request.get("image_url") == f"{json_request.get('content_type')}_{json_request.get('id')}.jpg"
 
     def test_image_download_tv_show(self):
@@ -149,7 +148,7 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
         json_request = {'content_type': ContentType.TV_SHOW.value, 'id': 1,
                         'image_url': 'http://192.168.1.201:8000/images/3.jpg',
                         'description': 'World!!'}
-        self.backend_handler.download_image(json_request)
+        bh.download_image(json_request)
         assert json_request.get("image_url") == f"{json_request.get('content_type')}_{json_request.get('id')}.jpg"
 
     def test_image_download_playlist(self):
@@ -157,10 +156,10 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
         json_request = {'content_type': ContentType.PLAYLIST.value, 'id': 1,
                         'image_url': 'http://192.168.1.201:8000/images/3.jpg',
                         'description': 'World!!'}
-        self.backend_handler.download_image(json_request)
+        bh.download_image(json_request)
         assert json_request.get("image_url") == f"{json_request.get('content_type')}_{json_request.get('id')}.jpg"
         json_request = {'content_type': ContentType.PLAYLIST.value, 'id': 1,
                         'image_url': 'http://192.168.1.201:8000/images/3.jpg',
                         'description': 'World!!'}
 
-        self.assertRaises(ValueError, self.backend_handler.download_image, json_request)
+        self.assertRaises(ValueError, bh.download_image, json_request)

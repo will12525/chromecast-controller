@@ -86,7 +86,7 @@ def load_js_file(filename):
             with open(filename, mode='r') as f_in:
                 try:
                     return json.load(f_in)
-                except ValueError as e:
+                except ValueError:
                     pass
     return {}
 
@@ -142,12 +142,12 @@ class DatabaseHandler(DBConnection):
         return media_metadata
 
     def get_increment_episode_metadata(self, query_list, data) -> dict:
-        '''
+        """
 
         :param query_list:
         :param data: dict {media_id, playlist_id}
         :return: media_metadata
-        '''
+        """
         if not data.get(common_objects.PLAYLIST_ID_COLUMN) or not data.get(common_objects.MEDIA_ID_COLUMN):
             print("ERROR: get_increment_episode_metadata requires data: dict {media_id, playlist_id}")
             print(f"ERROR: get_increment_episode_metadata provided: {data}")
@@ -162,19 +162,19 @@ class DatabaseHandler(DBConnection):
             return {}
 
     def get_next_in_playlist_media_metadata(self, data) -> dict:
-        '''
+        """
 
         :param data: dict {media_id, playlist_id}
         :return:
-        '''
+        """
         return self.get_increment_episode_metadata(GET_NEXT_IN_PLAYLIST_MEDIA_METADATA, data)
 
     def get_previous_in_playlist_media_metadata(self, data) -> dict:
-        '''
+        """
 
         :param data: dict {media_id, playlist_id}
         :return:
-        '''
+        """
         return self.get_increment_episode_metadata(GET_PREVIOUS_IN_PLAYLIST_MEDIA_METADATA, data)
 
     def get_media_folder_path(self, content_id) -> dict:
@@ -200,58 +200,3 @@ class DatabaseHandler(DBConnection):
             self.add_data_to_db(UPDATE_PLAYLIST_METADATA, params)
         else:
             print(f"Unknown content type: {params}")
-
-    def get_new_media_metadata_key(self, content_type, media_metadata):
-        if content_type == ContentType.MEDIA or content_type == ContentType.MOVIE:
-            return media_metadata.get(common_objects.MD5SUM_COLUMN)
-        elif content_type == ContentType.SEASON:
-            return f"{media_metadata.get(common_objects.PLAYLIST_TITLE)}_{media_metadata.get('season_title')}"
-        elif content_type == ContentType.TV_SHOW:
-            return f"{media_metadata.get(common_objects.PLAYLIST_TITLE)}"
-
-    def get_new_media_metadata(self, content_type, params):
-        content_id = None
-        media_metadata = None
-        new_media_metadata_key = None
-
-        if 'requires_id' in media_content_query_data.get(content_type):
-            content_id = params.get(media_content_query_data.get(content_type).get('requires_id'))
-
-        if content_id:
-            media_metadata = self.get_media_content(content_type=content_type, params_dict=params)
-
-        if media_metadata:
-            new_media_metadata_key = self.get_new_media_metadata_key(content_type, media_metadata)
-
-        if new_media_metadata_key:
-            new_media_metadata_file_content = load_js_file(NEW_MEDIA_METADATA_JSON_FILE)
-
-            return new_media_metadata_file_content.get(new_media_metadata_key)
-
-    def set_new_media_metadata(self, content_type, params):
-        content_id = None
-        media_metadata = None
-        new_media_metadata_key = None
-        # new_media_metadata_file_content = {}
-
-        if 'requires_id' in media_content_query_data.get(content_type):
-            content_id = params.get(media_content_query_data.get(content_type).get('requires_id'))
-
-        if content_id:
-            media_metadata = self.get_media_content(content_type=content_type, params_dict=params)
-
-        if media_metadata:
-            new_media_metadata_key = self.get_new_media_metadata_key(content_type, media_metadata)
-
-        if new_media_metadata_key:
-            new_media_metadata_file_content = load_js_file(NEW_MEDIA_METADATA_JSON_FILE)
-
-            if new_media_metadata_key not in new_media_metadata_file_content:
-                new_media_metadata_file_content[new_media_metadata_key] = {}
-
-            new_media_metadata_file_content[new_media_metadata_key]["description"] = params.get("description")
-            new_media_metadata_file_content[new_media_metadata_key]["image_url"] = params.get("image_url")
-
-            save_js_file(NEW_MEDIA_METADATA_JSON_FILE, new_media_metadata_file_content)
-
-            return new_media_metadata_file_content[new_media_metadata_key]

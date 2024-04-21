@@ -41,6 +41,6 @@ def load_json_file_content(file_path):
                 return json.loads(f.read())
         else:
             print(f"Not a json file: {file_path}")
-    except JSONDecodeError as e:
+    except JSONDecodeError:
         pass
     return {}

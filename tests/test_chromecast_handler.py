@@ -20,7 +20,7 @@ class TestChromecastHandler(TestCase):
         __init__.patch_get_ffmpeg_metadata(self)
         __init__.patch_move_media_file(self)
 
-        self.media_paths = config_file_handler.load_js_file()
+        self.media_paths = config_file_handler.load_js_file().get("media_folders")
         assert self.media_paths
         assert isinstance(self.media_paths, list)
         assert len(self.media_paths) == 3
@@ -125,13 +125,12 @@ class TestMyMediaDevice(TestCase):
         __init__.patch_get_ffmpeg_metadata(self)
         __init__.patch_move_media_file(self)
         __init__.patch_collect_tv_shows(self)
-        __init__.patch_collect_new_tv_shows(self)
         __init__.patch_collect_movies(self)
 
         if os.path.exists(self.DB_PATH):
             os.remove(self.DB_PATH)
 
-        self.media_paths = config_file_handler.load_js_file()
+        self.media_paths = config_file_handler.load_js_file().get("media_folders")
         assert self.media_paths
         assert isinstance(self.media_paths, list)
         assert len(self.media_paths) == 3
@@ -162,12 +161,12 @@ class TestMediaPlayer(TestMyMediaDevice):
             "season_id": 1,
             "media_directory_id": 1,
             "media_title": "",
-            "path": "\\Vampire\\Season 1\\Vampire - s01e001.mp4",
+            "path": "\\Vampire\\Vampire - s01e001.mp4",
             "duration": 22,
             "media_type": 5,
             "media_directory_path": "../media_folder_sample",
             "new_media_directory_path": None,
-            "media_directory_url": "http://192.168.1.200:8000/tv_shows/",
+            "media_directory_url": "http://192.168.1.201:8000/tv_shows/",
             "playlist_id": 1,
             "playlist_title": "Vampire",
             "media_id": 1,
@@ -193,12 +192,12 @@ class TestMediaPlayer(TestMyMediaDevice):
             "season_id": 1,
             "media_directory_id": 1,
             "media_title": "",
-            "path": "\\Vampire\\Season 1\\Vampire - s01e002.mp4",
+            "path": "\\Vampire\\Vampire - s01e002.mp4",
             "duration": 22,
             "media_type": 5,
             "media_directory_path": "../media_folder_sample",
             "new_media_directory_path": None,
-            "media_directory_url": "http://192.168.1.200:8000/tv_shows/",
+            "media_directory_url": "http://192.168.1.201:8000/tv_shows/",
             "playlist_id": 1,
             "playlist_title": "Vampire",
             "media_id": 2,
@@ -216,6 +215,7 @@ class TestMediaPlayer(TestMyMediaDevice):
         next_media_metadata = self.media_controller.play_next_episode()
         print(json.dumps(next_media_metadata, indent=4))
         for key in compare_value:
+            print(key)
             assert key in next_media_metadata
             assert next_media_metadata[key] == compare_value[key]
 
@@ -224,7 +224,7 @@ class TestMediaPlayer(TestMyMediaDevice):
         media_status.media_metadata = {common_objects.ID_COLUMN: 1}
         self.media_controller.status = media_status
         next_media_metadata = self.media_controller.play_next_episode()
-        # print(next_media_metadata)
+        print(json.dumps(next_media_metadata, indent=4))
         assert not next_media_metadata
 
     def test_play_previous_episode(self):
@@ -234,12 +234,12 @@ class TestMediaPlayer(TestMyMediaDevice):
             "season_id": 1,
             "media_directory_id": 1,
             "media_title": "",
-            "path": "\\Vampire\\Season 1\\Vampire - s01e001.mp4",
+            "path": "\\Vampire\\Vampire - s01e001.mp4",
             "duration": 22,
             "media_type": 5,
             "media_directory_path": "../media_folder_sample",
             "new_media_directory_path": None,
-            "media_directory_url": "http://192.168.1.200:8000/tv_shows/",
+            "media_directory_url": "http://192.168.1.201:8000/tv_shows/",
             "playlist_id": 1,
             "playlist_title": "Vampire",
             "media_id": 1,

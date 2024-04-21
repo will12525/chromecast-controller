@@ -1,7 +1,5 @@
-import json
 import subprocess
 import threading
-from json import JSONDecodeError
 import requests  # request img from web
 import shutil  # save img locally
 import git
@@ -22,6 +20,73 @@ def setup_db():
             media_directory_info = common_objects.default_media_directory_info.copy()
             media_directory_info.update(media_folder_info)
             db_connection.setup_media_directory(media_directory_info)
+
+
+def editor_save_txt_file(output_path, editor_metadata):
+    mp4_splitter.editor_save_txt_file(output_path, editor_metadata)
+
+
+def editor_validate_txt_file(editor_raw_folder, editor_metadata):
+    try:
+        return mp4_splitter.editor_validate_txt_file(editor_raw_folder, editor_metadata)
+    except ValueError as e:
+        raise ValueError(e.args[0]) from e
+    except FileNotFoundError as e:
+        raise FileNotFoundError(e.args[0]) from e
+
+
+def get_free_disk_space(editor_folder):
+    df = subprocess.Popen(["df", f"{editor_folder}"], stdout=subprocess.PIPE)
+    output = df.communicate()[0]
+    print(output)
+    device, size, used, available, percent, mount_point = output.decode("utf-8").split("\n")[1].split()
+    return available
+
+
+def download_image(json_request):
+    if (not json_request.get('image_url')
+            or len(json_request.get('image_url')) < 5
+            or not json_request.get('content_type')
+            or not json_request.get('id')
+            or json_request.get('image_url')[-4:] not in ['.jpg', '.png']):
+        raise ValueError({{"message": "Image url must be .jpg or .png"}})
+
+    file_name = f"{json_request.get('content_type')}_{json_request.get('id')}{json_request.get('image_url')[-4:]}"
+
+    with DatabaseHandler() as db_connection:
+        media_folder_path = db_connection.get_media_folder_path(1)
+        if len(common_objects.ContentType) > json_request.get('content_type'):
+            content_type = common_objects.ContentType(json_request.get('content_type'))
+            media_metadata = db_connection.get_media_content(content_type, params_dict=json_request)
+        else:
+            raise ValueError(
+                {"message": 'Unknown content type provided', 'value': json_request.get('content_type')})
+
+    if json_request.get('image_url') == media_metadata.get("image_url"):
+        json_request['image_url'] = file_name
+        return
+
+    if not media_folder_path:
+        raise ValueError({"message": "Error media directory table missing paths"})
+
+    output_path = f"{pathlib.Path(media_folder_path.get(common_objects.MEDIA_DIRECTORY_PATH_COLUMN)).resolve().parent.absolute()}/images/{file_name}"
+
+    if pathlib.Path(output_path).resolve().exists():
+        json_request['image_url'] = file_name
+        raise ValueError({"message": "Image url already exists, assigning existing image",
+                          "file_name": json_request.get('image_url'), "string": f"{file_name}"})
+
+    res = requests.get(json_request.get('image_url'), stream=True)
+
+    if res.status_code == 200:
+        with open(output_path, 'wb') as f:
+            shutil.copyfileobj(res.raw, f)
+        print('Image successfully Downloaded: ', output_path)
+        json_request['image_url'] = file_name
+    else:
+        raise ValueError(
+            {"message": "requests error encountered while saving image", "file_name": json_request.get('image_url'),
+             "string": f"{res.status_code}"})
 
 
 class BackEndHandler:
@@ -68,20 +133,9 @@ class BackEndHandler:
     def play_media_on_chromecast(self, media_request_ids):
         self.chromecast_handler.play_from_sql(media_request_ids)
 
-    def editor_save_txt_file(self, output_path, editor_metadata):
-        mp4_splitter.editor_save_txt_file(output_path, editor_metadata)
-
     def get_editor_metadata(self, editor_metadata_file, editor_raw_folder, selected_txt_file=None):
         return mp4_splitter.get_editor_metadata(editor_metadata_file, editor_raw_folder, self.editor_processor,
                                                 selected_txt_file)
-
-    def editor_validate_txt_file(self, editor_raw_folder, editor_metadata):
-        try:
-            return mp4_splitter.editor_validate_txt_file(editor_raw_folder, editor_metadata)
-        except ValueError as e:
-            raise ValueError(e.args[0]) from e
-        except FileNotFoundError as e:
-            raise FileNotFoundError(e.args[0]) from e
 
     def editor_process_txt_file(self, editor_metadata_file, editor_raw_folder, editor_metadata,
                                 media_output_parent_path):
@@ -97,55 +151,3 @@ class BackEndHandler:
 
     def editor_get_process_metadata(self):
         return self.editor_processor.get_metadata()
-
-    def get_free_disk_space(self, editor_folder):
-        df = subprocess.Popen(["df", f"{editor_folder}"], stdout=subprocess.PIPE)
-        output = df.communicate()[0]
-        print(output)
-        device, size, used, available, percent, mountpoint = output.decode("utf-8").split("\n")[1].split()
-        return available
-
-    def download_image(self, json_request):
-        if (not json_request.get('image_url')
-                or len(json_request.get('image_url')) < 5
-                or not json_request.get('content_type')
-                or not json_request.get('id')
-                or json_request.get('image_url')[-4:] not in ['.jpg', '.png']):
-            raise ValueError({{"message": "Image url must be .jpg or .png"}})
-
-        file_name = f"{json_request.get('content_type')}_{json_request.get('id')}{json_request.get('image_url')[-4:]}"
-
-        with DatabaseHandler() as db_connection:
-            media_folder_path = db_connection.get_media_folder_path(1)
-            if len(common_objects.ContentType) > json_request.get('content_type'):
-                content_type = common_objects.ContentType(json_request.get('content_type'))
-                media_metadata = db_connection.get_media_content(content_type, params_dict=json_request)
-            else:
-                raise ValueError(
-                    {"message": 'Unknown content type provided', 'value': json_request.get('content_type')})
-
-        if json_request.get('image_url') == media_metadata.get("image_url"):
-            json_request['image_url'] = file_name
-            return
-
-        if not media_folder_path:
-            raise ValueError({"message": "Error media directory table missing paths"})
-
-        output_path = f"{pathlib.Path(media_folder_path.get(common_objects.MEDIA_DIRECTORY_PATH_COLUMN)).resolve().parent.absolute()}/images/{file_name}"
-
-        if pathlib.Path(output_path).resolve().exists():
-            json_request['image_url'] = file_name
-            raise ValueError({"message": "Image url already exists, assigning existing image",
-                              "file_name": json_request.get('image_url'), "string": f"{file_name}"})
-
-        res = requests.get(json_request.get('image_url'), stream=True)
-
-        if res.status_code == 200:
-            with open(output_path, 'wb') as f:
-                shutil.copyfileobj(res.raw, f)
-            print('Image successfully Downloaded: ', output_path)
-            json_request['image_url'] = file_name
-        else:
-            raise ValueError(
-                {"message": "requests error encountered while saving image", "file_name": json_request.get('image_url'),
-                 "string": f"{res.status_code}"})

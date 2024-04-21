@@ -75,7 +75,7 @@
                     <div id="metadata_card_body" class="card-body">
                         <div class="row">
                             <div class="col-md-3">
-                                {% if media_metadata.get('image_url')|length %}
+                                {% if media_metadata.get('image_url', '')|length %}
                                 <img src="http://192.168.1.201:8000/images/{{ media_metadata.get('image_url', '1.webp') }}"
                                      class="img-fluid">
                                 {% else %}

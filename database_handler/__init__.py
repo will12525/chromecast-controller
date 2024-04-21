@@ -7,6 +7,25 @@ from database_handler import common_objects
 from database_handler.common_objects import DBType
 
 
+def print_db_traceback(error, message):
+    # return
+    print('-------SQLite error: %s-------' % (' '.join(error.args)))
+    print("Exception class is: ", error.__class__)
+    print('SQLite traceback: ')
+    exc_type, exc_value, exc_tb = sys.exc_info()
+    print(traceback.format_exception(exc_type, exc_value, exc_tb))
+    print(message)
+
+
+def get_last_row_id(cursor) -> int:
+    if cursor.rowcount > 0:
+        return cursor.lastrowid
+
+
+def get_data_list(cursor) -> list[dict]:
+    return [dict(row) for row in cursor.fetchall()]
+
+
 class DBConnection:
     VERSION = 1
     MEDIA_METADATA_DB_NAME = 'media_metadata.db'
@@ -51,22 +70,6 @@ class DBConnection:
         if self.connection:
             self.connection.close()
 
-    def print_db_traceback(self, error, message):
-        # return
-        print('-------SQLite error: %s-------' % (' '.join(error.args)))
-        print("Exception class is: ", error.__class__)
-        print('SQLite traceback: ')
-        exc_type, exc_value, exc_tb = sys.exc_info()
-        print(traceback.format_exception(exc_type, exc_value, exc_tb))
-        print(message)
-
-    def get_last_row_id(self, cursor) -> int:
-        if cursor.rowcount > 0:
-            return cursor.lastrowid
-
-    def get_data_list(self, cursor) -> list[dict]:
-        return [dict(row) for row in cursor.fetchall()]
-
     def execute_db_query(self, query, return_func, params=()):
         if sqlite3.complete_statement(query):
             with closing(self.connection.cursor()) as cursor:
@@ -75,7 +78,7 @@ class DBConnection:
                     self.connection.commit()
                     return return_func(cursor)
                 except sqlite3.Error as error:
-                    self.print_db_traceback(error, f"Error: Query: {query} Params: {params}")
+                    print_db_traceback(error, f"Error: Query: {query} Params: {params}")
                     return []
 
     def create_tables(self, db_table_creation_script):
@@ -84,15 +87,15 @@ class DBConnection:
                 try:
                     cursor.executescript(db_table_creation_script)
                     self.connection.commit()
-                    return self.get_last_row_id(cursor)
+                    return get_last_row_id(cursor)
                 except sqlite3.Error as error:
-                    self.print_db_traceback(error, f"Error creating tables:\n{db_table_creation_script}")
+                    print_db_traceback(error, f"Error creating tables:\n{db_table_creation_script}")
 
     def add_data_to_db(self, query, params):
-        return self.execute_db_query(query, self.get_last_row_id, params)
+        return self.execute_db_query(query, get_last_row_id, params)
 
     def get_data_from_db(self, query, params=()):
-        return self.execute_db_query(query, self.get_data_list, params)
+        return self.execute_db_query(query, get_data_list, params)
 
     def get_data_from_db_first_result(self, query, params=()) -> dict:
         if query_result := self.get_data_from_db(query, params):
@@ -108,6 +111,6 @@ class DBConnection:
     def check_db_version(self):
         if not (version := self.get_row_item(self.__version_info_query, (), 'version')):
             self.create_tables(self.__version_table_creation_script)
-            self.execute_db_query(self.__sql_insert_version_info_table, self.get_last_row_id, (self.VERSION,))
+            self.execute_db_query(self.__sql_insert_version_info_table, get_last_row_id, (self.VERSION,))
             version = self.VERSION
         return version

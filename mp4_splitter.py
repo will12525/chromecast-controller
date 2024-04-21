@@ -1,20 +1,15 @@
-import argparse
-import json
 import queue
-import shutil
-import os
 import pathlib
 import subprocess
 import threading
 from json import JSONDecodeError
 
-import time
 from datetime import datetime
 import re
 from pathvalidate import ValidationError, validate_filename
 
 import config_file_handler
-from database_handler.media_metadata_collector import mp4_file_ext, txt_file_ext
+from database_handler.media_metadata_collector import mp4_file_ext
 
 ASK_QUESTION = True
 """
@@ -101,7 +96,7 @@ def convert_timestamp(timestamp_str):
         h = int(h)
         m = int(m)
         s = int(s)
-    except ValueError as e:
+    except ValueError:
         error_dict = {"message": "Values not int", "string": timestamp_str, "hour": h, "minute": m, "second": s}
         raise InvalidTimestamp(error_dict)
 
@@ -196,7 +191,7 @@ class SubclipMetadata:
                 raise InvalidSeasonIndex(error_dict)
 
         if media_title:
-            if type(media_title) != str:
+            if type(media_title) is not str:
                 error_dict = {"message": "Media title is not str", "string": subclip_metadata,
                               "media_title": self.media_title}
                 raise InvalidMediaTitle(error_dict)
@@ -212,7 +207,7 @@ class SubclipMetadata:
             self.media_title = media_title
 
         if playlist_title:
-            if type(playlist_title) != str:
+            if type(playlist_title) is not str:
                 error_dict = {"message": "Media title is not str", "string": subclip_metadata,
                               "playlist_title": self.playlist_title}
                 raise InvalidPlaylistTitle(error_dict)
@@ -233,9 +228,6 @@ class SubclipMetadata:
 
         if self.playlist_title:
             destination_file_path = destination_file_path / self.playlist_title
-
-        # if self.season_index:
-        #     destination_file_path = destination_file_path / f"Season {self.season_index}"
 
         if self.episode_index:
             destination_file_path = destination_file_path / f'{self.playlist_title} - s{self.season_index}e{self.episode_index}.mp4'
@@ -261,7 +253,7 @@ class SubclipMetadata:
         return []
 
 
-def get_subclips_as_objs(txt_file_content):
+def get_sub_clips_as_objs(txt_file_content):
     sub_clips = []
     error_log = []
     for index, file_text in enumerate(txt_file_content):
@@ -285,7 +277,7 @@ def get_sub_clips_from_txt_file(sub_clip_file):
         error_dict = {"message": "Text file empty", "file_name": sub_clip_file_path.name}
         raise EmptyTextFile(error_dict)
 
-    sub_clips, errors = get_subclips_as_objs(subclip_file_content)
+    sub_clips, errors = get_sub_clips_as_objs(subclip_file_content)
     for error in errors:
         error.update({"file_name": sub_clip_file_path.name})
     return sub_clips, errors
@@ -317,7 +309,7 @@ def update_processed_file(editor_metadata, editor_metadata_file):
     editor_metadata_file_path = pathlib.Path(editor_metadata_file).resolve()
     try:
         editor_metadata_content = config_file_handler.load_json_file_content(editor_metadata_file_path)
-    except (FileNotFoundError, JSONDecodeError) as e:
+    except (FileNotFoundError, JSONDecodeError):
         pass
     editor_metadata_content[editor_metadata.get('txt_file_name')] = {"processed": True}
     config_file_handler.save_json_file_content(editor_metadata_content, editor_metadata_file)
@@ -449,7 +441,7 @@ class SubclipProcessHandler(threading.Thread):
                 extract_subclip(self.current_cmd)
                 self.log_queue.put(
                     {"message": "Finished splitting", "file_name": self.current_cmd.destination_file_path})
-            except subprocess.CalledProcessError as e:
+            except subprocess.CalledProcessError:
                 self.log_queue.put(
                     {"message": "Error encountered while splitting",
                      "file_name": self.current_cmd.destination_file_path})

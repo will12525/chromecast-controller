@@ -28,7 +28,7 @@ class TestDatabaseHandler(TestCase):
         if os.path.exists(self.DB_PATH):
             os.remove(self.DB_PATH)
 
-        self.media_paths = config_file_handler.load_js_file()
+        self.media_paths = config_file_handler.load_js_file().get("media_folders")
         assert self.media_paths
         assert isinstance(self.media_paths, list)
         assert len(self.media_paths) == 3
@@ -63,7 +63,7 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
             assert metadata.get(common_objects.MEDIA_DIRECTORY_ID_COLUMN) == 1
             # assert metadata.get(common_objects.MEDIA_TITLE_COLUMN) == "mysterious"
             assert ".mp4" in metadata.get(common_objects.PATH_COLUMN)
-            assert "\\Vampire\\Season 1\\Vampire - s01e002.mp4" == metadata.get(common_objects.PATH_COLUMN)
+            assert "\\Vampire\\Vampire - s01e002.mp4" == metadata.get(common_objects.PATH_COLUMN)
             assert metadata.get(common_objects.MEDIA_TYPE_COLUMN) == 5
             assert metadata.get(common_objects.MEDIA_DIRECTORY_PATH_COLUMN) == self.media_paths[0].get(
                 common_objects.MEDIA_DIRECTORY_PATH_COLUMN)
@@ -84,7 +84,7 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
             assert metadata.get(common_objects.MEDIA_DIRECTORY_ID_COLUMN) == 1
             # assert metadata.get(common_objects.MEDIA_TITLE_COLUMN) == "sparkle"
             assert ".mp4" in metadata.get(common_objects.PATH_COLUMN)
-            assert "\\Vampire\\Season 1\\Vampire - s01e001.mp4" == metadata.get(common_objects.PATH_COLUMN)
+            assert "\\Vampire\\Vampire - s01e001.mp4" == metadata.get(common_objects.PATH_COLUMN)
             assert metadata.get(common_objects.MEDIA_TYPE_COLUMN) == 5
             assert metadata.get(common_objects.MEDIA_DIRECTORY_PATH_COLUMN) == self.media_paths[0].get(
                 common_objects.MEDIA_DIRECTORY_PATH_COLUMN)
@@ -105,7 +105,7 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
             assert metadata.get(common_objects.MEDIA_DIRECTORY_ID_COLUMN) == 1
             # assert metadata.get(common_objects.MEDIA_TITLE_COLUMN) == "dark"
             assert ".mp4" in metadata.get(common_objects.PATH_COLUMN)
-            assert "\\Vampire\\Season 2\\Vampire - s02e003.mp4" == metadata.get(common_objects.PATH_COLUMN)
+            assert "\\Vampire\\Vampire - s02e003.mp4" == metadata.get(common_objects.PATH_COLUMN)
             assert metadata.get(common_objects.MEDIA_TYPE_COLUMN) == 5
             assert metadata.get(common_objects.MEDIA_DIRECTORY_PATH_COLUMN) == self.media_paths[0].get(
                 common_objects.MEDIA_DIRECTORY_PATH_COLUMN)
@@ -131,7 +131,7 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
             assert metadata.get(common_objects.MEDIA_DIRECTORY_ID_COLUMN) == 1
             # assert metadata.get(common_objects.MEDIA_TITLE_COLUMN) == "dark"
             assert ".mp4" in metadata.get(common_objects.PATH_COLUMN)
-            assert "\\Vampire\\Season 2\\Vampire - s02e003.mp4" == metadata.get(common_objects.PATH_COLUMN)
+            assert "\\Vampire\\Vampire - s02e003.mp4" == metadata.get(common_objects.PATH_COLUMN)
             assert metadata.get(common_objects.MEDIA_TYPE_COLUMN) == 5
             assert metadata.get(common_objects.MEDIA_DIRECTORY_PATH_COLUMN) == self.media_paths[0].get(
                 common_objects.MEDIA_DIRECTORY_PATH_COLUMN)
@@ -152,7 +152,7 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
             assert metadata.get(common_objects.MEDIA_DIRECTORY_ID_COLUMN) == 1
             # assert metadata.get(common_objects.MEDIA_TITLE_COLUMN) == "mysterious"
             assert ".mp4" in metadata.get(common_objects.PATH_COLUMN)
-            assert "\\Vampire\\Season 1\\Vampire - s01e002.mp4" in metadata.get(common_objects.PATH_COLUMN)
+            assert "\\Vampire\\Vampire - s01e002.mp4" in metadata.get(common_objects.PATH_COLUMN)
             assert metadata.get(common_objects.MEDIA_TYPE_COLUMN) == 5
             assert metadata.get(common_objects.MEDIA_DIRECTORY_PATH_COLUMN) == self.media_paths[0].get(
                 common_objects.MEDIA_DIRECTORY_PATH_COLUMN)
@@ -196,15 +196,20 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
             assert metadata == "Vampire"
 
     def test_get_movie_title_list(self):
-        compare = [{common_objects.ID_COLUMN: 13, common_objects.MEDIA_TITLE_COLUMN: '', common_objects.DESCRIPTION: '',
+        compare = [{common_objects.ID_COLUMN: 13, common_objects.MEDIA_TITLE_COLUMN: 'Vampire - s01e001',
+                    common_objects.DESCRIPTION: '',
                     common_objects.IMAGE_URL: ''},
-                   {common_objects.ID_COLUMN: 14, common_objects.MEDIA_TITLE_COLUMN: '', common_objects.DESCRIPTION: '',
+                   {common_objects.ID_COLUMN: 14, common_objects.MEDIA_TITLE_COLUMN: 'Vampire - s01e002',
+                    common_objects.DESCRIPTION: '',
                     common_objects.IMAGE_URL: ''},
-                   {common_objects.ID_COLUMN: 15, common_objects.MEDIA_TITLE_COLUMN: '', common_objects.DESCRIPTION: '',
+                   {common_objects.ID_COLUMN: 15, common_objects.MEDIA_TITLE_COLUMN: 'Vampire - s02e001',
+                    common_objects.DESCRIPTION: '',
                     common_objects.IMAGE_URL: ''},
-                   {common_objects.ID_COLUMN: 16, common_objects.MEDIA_TITLE_COLUMN: '', common_objects.DESCRIPTION: '',
+                   {common_objects.ID_COLUMN: 16, common_objects.MEDIA_TITLE_COLUMN: 'Vampire - s02e002',
+                    common_objects.DESCRIPTION: '',
                     common_objects.IMAGE_URL: ''},
-                   {common_objects.ID_COLUMN: 17, common_objects.MEDIA_TITLE_COLUMN: '', common_objects.DESCRIPTION: '',
+                   {common_objects.ID_COLUMN: 17, common_objects.MEDIA_TITLE_COLUMN: 'Vampire - s02e003',
+                    common_objects.DESCRIPTION: '',
                     common_objects.IMAGE_URL: ''}]
         with DatabaseHandler() as db_connection:
             metadata = db_connection.get_content_list(ContentType.MOVIE)
@@ -223,7 +228,8 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
                 assert movie in compare
 
     def test_get_playlist_title_list(self):
-        compare = [{common_objects.ID_COLUMN: 13, common_objects.MEDIA_TITLE_COLUMN: '', common_objects.DESCRIPTION: '',
+        compare = [{common_objects.ID_COLUMN: 6, common_objects.PLAYLIST_TITLE: 'Dinosaurs',
+                    common_objects.DESCRIPTION: '',
                     common_objects.IMAGE_URL: ''},
                    {common_objects.ID_COLUMN: 14, common_objects.MEDIA_TITLE_COLUMN: '', common_objects.DESCRIPTION: '',
                     common_objects.IMAGE_URL: ''},
@@ -259,7 +265,7 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
                         {'id': 5, 'playlist_title': 'Sparkles', "description": "", "image_url": ""},
                         {'id': 1, 'playlist_title': 'Vampire', "description": "", "image_url": ""},
                         {'id': 2, 'playlist_title': 'Vans', "description": "", "image_url": ""},
-                        {'id': 3, 'playlist_title': 'Warewolf', "description": "", "image_url": ""}]
+                        {'id': 3, 'playlist_title': 'Werewolf', "description": "", "image_url": ""}]
         with DatabaseHandler() as db_connection:
             metadata = db_connection.get_content_list(ContentType.TV)
             print(json.dumps(metadata, indent=4))
@@ -357,11 +363,36 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
             assert metadata.get("media_list_content_type") == ContentType.SEASON.value
 
     def test_get_movie_metadata(self):
-        compare = [{'id': 13, 'media_title': '', "description": "", "image_url": ""},
-                   {'id': 14, 'media_title': '', "description": "", "image_url": ""},
-                   {'id': 15, 'media_title': '', "description": "", "image_url": ""},
-                   {'id': 16, 'media_title': '', "description": "", "image_url": ""},
-                   {'id': 17, 'media_title': '', "description": "", "image_url": ""}]
+        compare = [{
+            "id": 13,
+            "media_title": "Vampire - s01e001",
+            "description": "",
+            "image_url": ""
+        },
+            {
+                "id": 14,
+                "media_title": "Vampire - s01e002",
+                "description": "",
+                "image_url": ""
+            },
+            {
+                "id": 15,
+                "media_title": "Vampire - s02e001",
+                "description": "",
+                "image_url": ""
+            },
+            {
+                "id": 16,
+                "media_title": "Vampire - s02e002",
+                "description": "",
+                "image_url": ""
+            },
+            {
+                "id": 17,
+                "media_title": "Vampire - s02e003",
+                "description": "",
+                "image_url": ""
+            }]
         with DatabaseHandler() as db_connection:
             metadata = db_connection.get_media_content(content_type=ContentType.MOVIE)
             print(json.dumps(metadata, indent=4))
@@ -433,12 +464,37 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
 
     def test_get_movie_media_content(self):
         content_type = ContentType.MOVIE
-        media_id = 14
-        compare = [{'id': 13, 'media_title': '', "description": "", "image_url": ""},
-                   {'id': 14, 'media_title': '', "description": "", "image_url": ""},
-                   {'id': 15, 'media_title': '', "description": "", "image_url": ""},
-                   {'id': 16, 'media_title': '', "description": "", "image_url": ""},
-                   {'id': 17, 'media_title': '', "description": "", "image_url": ""}]
+        compare = [
+            {
+                "id": 13,
+                "media_title": "Vampire - s01e001",
+                "description": "",
+                "image_url": ""
+            },
+            {
+                "id": 14,
+                "media_title": "Vampire - s01e002",
+                "description": "",
+                "image_url": ""
+            },
+            {
+                "id": 15,
+                "media_title": "Vampire - s02e001",
+                "description": "",
+                "image_url": ""
+            },
+            {
+                "id": 16,
+                "media_title": "Vampire - s02e002",
+                "description": "",
+                "image_url": ""
+            },
+            {
+                "id": 17,
+                "media_title": "Vampire - s02e003",
+                "description": "",
+                "image_url": ""
+            }]
         with DatabaseHandler() as db_connection:
             metadata = db_connection.get_media_content(content_type=content_type)
             print(json.dumps(metadata, indent=4))
@@ -458,12 +514,11 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
 
     def test_get_tv_show_media_content(self):
         content_type = ContentType.TV
-        media_id = 1
         compare = [{'id': 4, 'playlist_title': 'Animal Party', "description": "", "image_url": ""},
                    {'id': 5, 'playlist_title': 'Sparkles', "description": "", "image_url": ""},
                    {'id': 1, 'playlist_title': 'Vampire', "description": "", "image_url": ""},
                    {'id': 2, 'playlist_title': 'Vans', "description": "", "image_url": ""},
-                   {'id': 3, 'playlist_title': 'Warewolf', "description": "", "image_url": ""}]
+                   {'id': 3, 'playlist_title': 'Werewolf', "description": "", "image_url": ""}]
         with DatabaseHandler() as db_connection:
             metadata = db_connection.get_media_content(content_type=content_type)
             print(json.dumps(metadata, indent=4))
@@ -659,108 +714,6 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
         # print(metadata)
         assert isinstance(metadata, dict)
         assert metadata == {}
-
-    def test_set_new_media_metadata(self):
-        data = {common_objects.MEDIA_ID_COLUMN: 1, "description": "Hello world!",
-                "image_url": "https://www.serebii.net/pokedex/evo/001.gif"}
-        with DatabaseHandler() as db_connection:
-            metadata = db_connection.set_new_media_metadata(content_type=ContentType.MEDIA, params=data)
-            print(json.dumps(metadata, indent=4))
-
-    def test_set_new_media_metadata_no_file(self):
-        data = {common_objects.MEDIA_ID_COLUMN: 1, "description": "Hello world!",
-                "image_url": "https://www.serebii.net/pokedex/evo/001.gif"}
-        if os.path.exists("new_media_metadata_file.json"):
-            os.remove("new_media_metadata_file.json")
-
-        with DatabaseHandler() as db_connection:
-            metadata = db_connection.set_new_media_metadata(content_type=ContentType.MEDIA, params=data)
-        print(json.dumps(metadata, indent=4))
-
-        assert metadata
-        assert "description" in metadata
-        assert "image_url" in metadata
-        assert data["description"] == metadata["description"]
-        assert data["image_url"] == metadata["image_url"]
-        assert data.items() >= metadata.items()
-
-    def test_set_season_new_media_metadata_no_file(self):
-        data = {common_objects.SEASON_ID_COLUMN: 1, "description": "Hello world!, SEASON",
-                "image_url": "https://www.serebii.net/pokedex/evo/001.gif"}
-
-        if os.path.exists("new_media_metadata_file.json"):
-            os.remove("new_media_metadata_file.json")
-
-        with DatabaseHandler() as db_connection:
-            metadata = db_connection.set_new_media_metadata(content_type=ContentType.SEASON, params=data)
-        # print(json.dumps(metadata, indent=4))
-
-        assert metadata
-        assert "description" in metadata
-        assert "image_url" in metadata
-        assert data["description"] == metadata["description"]
-        assert data["image_url"] == metadata["image_url"]
-        assert data.items() >= metadata.items()
-
-    def test_set_tv_show_new_media_metadata_no_file(self):
-        data = {common_objects.TV_SHOW_ID_COLUMN: 1, "description": "Hello world!, TV_SHOW",
-                "image_url": "https://www.serebii.net/pokedex/evo/001.gif"}
-
-        if os.path.exists("new_media_metadata_file.json"):
-            os.remove("new_media_metadata_file.json")
-
-        with DatabaseHandler() as db_connection:
-            metadata = db_connection.set_new_media_metadata(content_type=ContentType.TV_SHOW, params=data)
-        print(json.dumps(metadata, indent=4))
-
-        assert metadata
-        assert "description" in metadata
-        assert "image_url" in metadata
-        assert data["description"] == metadata["description"]
-        assert data["image_url"] == metadata["image_url"]
-        assert data.items() >= metadata.items()
-
-    def test_set_movie_new_media_metadata_no_file(self):
-        data = {common_objects.MEDIA_ID_COLUMN: 16, "description": "Hello world!, MOVIE",
-                "image_url": "https://www.serebii.net/pokedex/evo/001.gif"}
-
-        if os.path.exists("new_media_metadata_file.json"):
-            os.remove("new_media_metadata_file.json")
-
-        with DatabaseHandler() as db_connection:
-            metadata = db_connection.set_new_media_metadata(content_type=ContentType.MEDIA, params=data)
-        # print(json.dumps(metadata, indent=4))
-
-        assert metadata
-        assert "description" in metadata
-        assert "image_url" in metadata
-        assert data["description"] == metadata["description"]
-        assert data["image_url"] == metadata["image_url"]
-        assert data.items() >= metadata.items()
-
-    def test_get_movie_new_media_metadata_no_file(self):
-        data = {common_objects.MEDIA_ID_COLUMN: 16, "description": "Hello world!, MOVIE",
-                "image_url": "https://www.serebii.net/pokedex/evo/001.gif"}
-
-        if os.path.exists("new_media_metadata_file.json"):
-            os.remove("new_media_metadata_file.json")
-
-        with DatabaseHandler() as db_connection:
-            new_media_metadata = db_connection.set_new_media_metadata(content_type=ContentType.MEDIA, params=data)
-
-        with DatabaseHandler() as db_connection:
-            metadata = db_connection.get_new_media_metadata(content_type=ContentType.MEDIA, params=data)
-
-        print(json.dumps(metadata, indent=4))
-
-        assert metadata
-        assert "description" in metadata
-        assert "image_url" in metadata
-        assert data["description"] == metadata["description"]
-        assert data["image_url"] == metadata["image_url"]
-        assert data.items() >= metadata.items()
-
-        assert new_media_metadata == metadata
 
     def test_update_media_metadata_media(self):
         content_type = ContentType.MEDIA

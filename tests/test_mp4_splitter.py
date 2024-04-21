@@ -36,7 +36,7 @@ class Test(TestCase):
         assert subclip_metadata.media_title == "episode 1"
         assert subclip_metadata.playlist_title == "Hilda"
 
-        subclip_metadata.set_cmd_metadata()
+        # subclip_metadata.set_cmd_metadata()
 
         print(subclip_metadata.media_title)
         print(subclip_metadata.get_cmd())
@@ -49,7 +49,7 @@ class Test(TestCase):
             "Hilda,episode 2,2,2,47:26,1:02:10",
             "Hilda,episode 1,2,1,1:02:43,1:20:13"
         ]
-        subclips, errors = mp4_splitter.get_subclips_as_objs(txt_file_content)
+        subclips, errors = mp4_splitter.get_sub_clips_as_objs(txt_file_content)
         # print(json.dumps(subclips, indent=4))
 
         print(subclips)
@@ -68,7 +68,7 @@ class Test(TestCase):
             "47:26,1:02:10",
             "1:02:43,1:20:13"
         ]
-        subclips, errors = mp4_splitter.get_subclips_as_objs(txt_file_content)
+        subclips, errors = mp4_splitter.get_sub_clips_as_objs(txt_file_content)
         print(len(subclips))
         assert len(subclips) == len(txt_file_content)
         assert len(errors) == 0
@@ -82,7 +82,7 @@ class Test(TestCase):
             "Hilda,episode 1,hello,1,1:02:43,1:20:13"
         ]
         # with self.assertRaises(ValueError) as context:
-        subclips, errors = mp4_splitter.get_subclips_as_objs(txt_file_content)
+        subclips, errors = mp4_splitter.get_sub_clips_as_objs(txt_file_content)
         # print(subclips)
         # print(json.dumps(errors, indent=4))
         assert 1 == len(subclips)
@@ -122,7 +122,7 @@ class Test(TestCase):
         # print(time_lines)
         # print(''.join(time_lines))
         assert time_lines
-        sub_clips, errors = mp4_splitter.get_subclips_as_objs(time_lines)
+        sub_clips, errors = mp4_splitter.get_sub_clips_as_objs(time_lines)
         # cmd_list = mp4_splitter.get_cmd_list(sub_clips, mp4_process_file, pathlib.Path(OUTPUT_PATH).resolve())
         mp4_splitter.get_cmd_list(sub_clips, mp4_process_file, pathlib.Path(OUTPUT_PATH).resolve())
         # assert cmd_list
@@ -155,7 +155,7 @@ class Test(TestCase):
         # print(time_lines)
         # print(''.join(time_lines))
         assert time_lines
-        sub_clips, errors = mp4_splitter.get_subclips_as_objs(time_lines)
+        sub_clips, errors = mp4_splitter.get_sub_clips_as_objs(time_lines)
         # cmd_list = mp4_splitter.get_cmd_list(sub_clips, mp4_process_file, pathlib.Path(OUTPUT_PATH).resolve())
         mp4_splitter.get_cmd_list(sub_clips, mp4_process_file, pathlib.Path(OUTPUT_PATH).resolve())
         # assert cmd_list
@@ -697,7 +697,7 @@ class TestProcessSubclipFile(TestCase):
         assert cmd[
                    1] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/2024-01-31_16-32-36.mp4"
         assert cmd[
-                   2] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/Hilda/Season 2/Hilda - s2e1.mp4"
+                   2] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/Hilda/Hilda - s2e1.mp4"
         assert cmd[3] == "7"
         assert cmd[4] == "823"
         assert cmd[5] == "episode name"
@@ -705,7 +705,7 @@ class TestProcessSubclipFile(TestCase):
         assert cmd[
                    1] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/2024-01-31_16-32-36.mp4"
         assert cmd[
-                   2] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/Hilda/Season 2/Hilda - s2e2.mp4"
+                   2] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/Hilda/Hilda - s2e2.mp4"
         assert cmd[3] == "829"
         assert cmd[4] == "1773"
         assert cmd[5] == "episode another name"
@@ -713,7 +713,7 @@ class TestProcessSubclipFile(TestCase):
         assert cmd[
                    1] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/2024-01-31_16-32-36.mp4"
         assert cmd[
-                   2] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/Hilda/Season 2/Hilda - s2e3.mp4"
+                   2] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/Hilda/Hilda - s2e3.mp4"
         assert cmd[3] == "1803"
         assert cmd[4] == "2792"
         assert cmd[5] == "episode name"
@@ -721,7 +721,7 @@ class TestProcessSubclipFile(TestCase):
         assert cmd[
                    1] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/2024-01-31_16-32-36.mp4"
         assert cmd[
-                   2] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/Hilda/Season 3/Hilda - s3e8.mp4"
+                   2] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/Hilda/Hilda - s3e8.mp4"
         assert cmd[3] == "2846"
         assert cmd[4] == "3730"
         assert cmd[5] == "episode 2"
@@ -729,7 +729,7 @@ class TestProcessSubclipFile(TestCase):
         assert cmd[
                    1] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/2024-01-31_16-32-36.mp4"
         assert cmd[
-                   2] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/Hilda/Season 1/Hilda - s1e9.mp4"
+                   2] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/Hilda/Hilda - s1e9.mp4"
         assert cmd[3] == "3763"
         assert cmd[4] == "4813"
         assert cmd[5] == "episode 1"
@@ -802,8 +802,11 @@ class TestProcessSubclipFile(TestCase):
         sub_clips, errors = mp4_splitter.get_sub_clips_from_txt_file(txt_file_str_path)
         assert len(errors) == 0
         mp4_splitter.get_cmd_list(sub_clips, txt_file_str_path, error_log=errors)
+        for sub_clip in sub_clips:
+            print(sub_clip.destination_file_path)
         # assert type(cmd_list) is list
         # assert len(cmd_list) == 5
+        print(errors)
         assert len(errors) == 1
         # print(len(sub_clips))
         # assert len(sub_clips) == 4
@@ -829,7 +832,7 @@ class TestProcessSubclipFile(TestCase):
         assert cmd[
                    1] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/2024-01-31_16-32-36_already_exists.mp4"
         assert cmd[
-                   2] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/Hilda/Season 2/Hilda - s2e1.mp4"
+                   2] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/Hilda/Hilda - s2e1.mp4"
         assert cmd[3] == "7"
         assert cmd[4] == "823"
         assert cmd[5] == "episode name"
@@ -837,7 +840,7 @@ class TestProcessSubclipFile(TestCase):
         assert cmd[
                    1] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/2024-01-31_16-32-36_already_exists.mp4"
         assert cmd[
-                   2] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/Hilda/Season 3/Hilda - s3e1.mp4"
+                   2] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/Hilda/Hilda - s3e1.mp4"
         assert cmd[3] == "829"
         assert cmd[4] == "1773"
         assert cmd[5] == "episode another name"
@@ -845,7 +848,7 @@ class TestProcessSubclipFile(TestCase):
         assert cmd[
                    1] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/2024-01-31_16-32-36_already_exists.mp4"
         assert cmd[
-                   2] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/Hilda/Season 4/Hilda - s4e7.mp4"
+                   2] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/Hilda/Hilda - s4e7.mp4"
         assert cmd[3] == "1803"
         assert cmd[4] == "2792"
         assert cmd[5] == "episode name"
@@ -855,7 +858,7 @@ class TestProcessSubclipFile(TestCase):
         assert cmd[
                    1] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/2024-01-31_16-32-36_already_exists.mp4"
         assert cmd[
-                   2] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/Hilda/Season 2/Hilda - s2e3.mp4"
+                   2] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/Hilda/Hilda - s2e3.mp4"
         assert cmd[3] == "3763"
         assert cmd[4] == "4813"
         assert cmd[5] == "episode 1"

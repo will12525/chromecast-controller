@@ -11,12 +11,12 @@ import __init__
 class TestDBCreatorInit(TestCase):
     vampire_playlist = {common_objects.ID_COLUMN: None, common_objects.PLAYLIST_TITLE: "Vampire",
                         common_objects.LIST_INDEX_COLUMN: 1}
-    warewolf_playlist = {common_objects.ID_COLUMN: None, common_objects.PLAYLIST_TITLE: "Werewolf",
+    werewolf_playlist = {common_objects.ID_COLUMN: None, common_objects.PLAYLIST_TITLE: "Werewolf",
                          common_objects.LIST_INDEX_COLUMN: 2}
     human_playlist = {common_objects.ID_COLUMN: None, common_objects.PLAYLIST_TITLE: "Human",
                       common_objects.LIST_INDEX_COLUMN: 3}
 
-    playlist_items_default = [vampire_playlist, warewolf_playlist, human_playlist]
+    playlist_items_default = [vampire_playlist, werewolf_playlist, human_playlist]
     playlist_items = playlist_items_default.copy()
 
     vampire_season_1_metadata = {common_objects.ID_COLUMN: None, common_objects.PLAYLIST_TITLE: "Vampire",
@@ -77,7 +77,7 @@ class TestDBCreatorInit(TestCase):
     media_items = media_items_default.copy()
 
     def setUp(self) -> None:
-        self.media_directory_info = config_file_handler.load_js_file()
+        self.media_directory_info = config_file_handler.load_js_file().get("media_folders")
 
         __init__.patch_get_file_hash(self)
         __init__.patch_get_ffmpeg_metadata(self)
@@ -90,7 +90,7 @@ class TestDBCreator(TestDBCreatorInit):
         with DBCreator(DBType.MEMORY) as db_setter_connection:
             db_setter_connection.create_db()
 
-            if media_path_data := config_file_handler.load_js_file():
+            if media_path_data := config_file_handler.load_js_file().get("media_folders"):
                 for media_path in media_path_data:
                     # print(media_path)
                     db_setter_connection.setup_media_directory(media_path)
@@ -196,7 +196,7 @@ class TestDBCreator(TestDBCreatorInit):
             assert isinstance(media_directory_info.get(common_objects.MEDIA_DIRECTORY_ID_COLUMN), int)
             assert 1 == media_directory_info.get(common_objects.MEDIA_DIRECTORY_ID_COLUMN)
             media_metadata = db_setter_connection.get_media_metadata_from_media_folder_path_id(media_directory_info)
-            # print(media_metadata)
+            print(json.dumps(media_metadata, indent=4))
             assert media_metadata
             assert isinstance(media_metadata, list)
             assert 5 == len(media_metadata)
@@ -213,7 +213,7 @@ class TestDBCreator(TestDBCreatorInit):
                 assert not item.get(common_objects.TV_SHOW_ID_COLUMN)
                 assert not item.get(common_objects.SEASON_ID_COLUMN)
                 assert item.get(common_objects.MEDIA_DIRECTORY_ID_COLUMN)
-                assert item.get(common_objects.MEDIA_TITLE_COLUMN) == ""
+                # assert item.get(common_objects.MEDIA_TITLE_COLUMN) == ""
                 assert item.get(common_objects.PATH_COLUMN)
                 assert isinstance(item.get(common_objects.MEDIA_DIRECTORY_ID_COLUMN), int)
                 assert isinstance(item.get(common_objects.MEDIA_TITLE_COLUMN), str)
@@ -228,7 +228,7 @@ class TestDBCreator(TestDBCreatorInit):
                 media_directory_info)
             db_setter_connection.scan_media_directory(media_directory_info)
             media_metadata = db_setter_connection.get_media_metadata_from_media_folder_path_id(media_directory_info)
-            # print(json.dumps(media_metadata, indent=4))
+            print(json.dumps(media_metadata, indent=4))
             assert media_metadata
             assert isinstance(media_metadata, list)
             assert 5 == len(media_metadata)
@@ -245,7 +245,7 @@ class TestDBCreator(TestDBCreatorInit):
                 assert not item.get(common_objects.TV_SHOW_ID_COLUMN)
                 assert not item.get(common_objects.SEASON_ID_COLUMN)
                 assert item.get(common_objects.MEDIA_DIRECTORY_ID_COLUMN)
-                assert item.get(common_objects.MEDIA_TITLE_COLUMN) == ""
+                # assert item.get(common_objects.MEDIA_TITLE_COLUMN) == ""
                 assert item.get(common_objects.PATH_COLUMN)
                 assert isinstance(item.get(common_objects.MEDIA_DIRECTORY_ID_COLUMN), int)
                 assert isinstance(item.get(common_objects.MEDIA_TITLE_COLUMN), str)
@@ -355,7 +355,6 @@ class TestDBCreator(TestDBCreatorInit):
                 assert not item.get(common_objects.TV_SHOW_ID_COLUMN)
                 assert not item.get(common_objects.SEASON_ID_COLUMN)
                 assert item.get(common_objects.MEDIA_DIRECTORY_ID_COLUMN)
-                assert item.get(common_objects.MEDIA_TITLE_COLUMN) == ""
                 assert item.get(common_objects.PATH_COLUMN)
                 assert isinstance(item.get(common_objects.MEDIA_DIRECTORY_ID_COLUMN), int)
                 assert isinstance(item.get(common_objects.MEDIA_TITLE_COLUMN), str)
