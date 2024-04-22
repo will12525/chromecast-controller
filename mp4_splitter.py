@@ -292,7 +292,7 @@ def get_cmd_list(sub_clips: list[SubclipMetadata], sub_clip_file, media_output_p
             error_log.append(error_dict)
             print(error_log)
             remove_sub_clips.append(index)
-    for index in remove_sub_clips:
+    for index in reversed(remove_sub_clips):
         sub_clips.pop(index)
 
 
