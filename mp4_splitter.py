@@ -24,7 +24,6 @@ On GAIA:
 scp willow@192.168.1.200:/home/willow/workspace/mp4_splitter/mp4_splitter.exe .\Desktop\
 """
 
-SPLITTER_BASH_CMD = "/media/ssd1/splitter/splitter.sh"
 ALPHANUMERIC_INDEX_A = 97
 
 ERROR_SUCCESS = 0
@@ -114,7 +113,6 @@ class SubclipMetadata:
     destination_file_path = None
     source_file_path = None
     file_name = None
-    cmd_set = False
 
     def __init__(self, subclip_metadata):
         playlist_title = ""
@@ -241,13 +239,6 @@ class SubclipMetadata:
         self.file_name = source_file_path.stem.strip()
         self.source_file_path = str(source_file_path.as_posix()).strip()
         self.destination_file_path = str(destination_file_path.as_posix()).strip()
-        self.cmd_set = True
-
-    def get_cmd(self):
-        if self.cmd_set:
-            return [SPLITTER_BASH_CMD, self.source_file_path, self.destination_file_path, str(self.start_time),
-                    str(self.end_time), self.media_title]
-        return []
 
 
 def get_sub_clips_as_objs(txt_file_content):
@@ -407,14 +398,22 @@ def get_editor_metadata(editor_metadata_file, editor_raw_folder, editor_processo
 
 
 def extract_subclip(sub_clip):
-    cmd = sub_clip.get_cmd()
-    if len(cmd) == 6:
-        output_dir = pathlib.Path(cmd[2]).resolve().parent
-        # time.sleep(1)
-        print(cmd)
-        print(output_dir)
-        output_dir.mkdir(parents=True, exist_ok=True)
-        subprocess.run(cmd, check=True, text=True)
+    full_cmd = ['ffmpeg',
+                '-ss', str(sub_clip.start_time),
+                '-to', str(sub_clip.end_time),
+                '-i', sub_clip.source_file_path,
+                '-filter:a', 'asetpts=PTS-STARTPTS',
+                '-filter:v', 'setpts=PTS-STARTPTS',
+                '-c:a', 'aac',
+                '-metadata', f"title={sub_clip.media_title}",
+                sub_clip.destination_file_path]
+    output_dir = pathlib.Path(sub_clip.destination_file_path).resolve().parent
+    # time.sleep(1)
+    # print(cmd)
+    print(output_dir)
+    print(full_cmd)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    subprocess.run(full_cmd, check=True, text=True)
 
 
 class CmdData:

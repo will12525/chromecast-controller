@@ -38,6 +38,12 @@ def patch_move_media_file(test_class):
     test_class.addCleanup(patcher.stop)
 
 
+def patch_extract_subclip(test_class):
+    patcher = patch('mp4_splitter.extract_subclip')
+    test_class.extract_subclip = patcher.start()
+    test_class.addCleanup(patcher.stop)
+
+
 def patch_collect_tv_shows(test_class):
     collect_tv_shows_metadata = config_file_handler.load_js_file("collect_tv_shows_metadata.json")
 

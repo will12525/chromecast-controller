@@ -4,6 +4,7 @@ import time
 from unittest import TestCase
 import mp4_splitter
 import config_file_handler
+import __init__
 
 EDITOR_RAW_FOLDER = "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/"
 OUTPUT_PATH = "../media_folder_modify/output"
@@ -39,7 +40,6 @@ class Test(TestCase):
         # subclip_metadata.set_cmd_metadata()
 
         print(subclip_metadata.media_title)
-        print(subclip_metadata.get_cmd())
 
     def test_validate_editor_txt_file(self):
         txt_file_content = [
@@ -132,12 +132,10 @@ class Test(TestCase):
 
         current_index = mp4_splitter.ALPHANUMERIC_INDEX_A
         for sub_clip in sub_clips:
-            cmd = sub_clip.get_cmd()
-            print(cmd)
-            assert 6 == len(cmd)
-            assert cmd[0] == mp4_splitter.SPLITTER_BASH_CMD
-            assert cmd[
-                       1] == 'C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/2024-01-31_16-32-36.mp4'
+            assert type(sub_clip.media_title) is str
+            assert type(sub_clip.start_time) is int
+            assert type(sub_clip.end_time) is int
+            assert sub_clip.source_file_path == 'C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/2024-01-31_16-32-36.mp4'
 
             current_index += 1
         # print(cmd_list)
@@ -165,14 +163,11 @@ class Test(TestCase):
 
         current_index = mp4_splitter.ALPHANUMERIC_INDEX_A
         for sub_clip in sub_clips:
-            cmd = sub_clip.get_cmd()
-            print(cmd)
-            assert 6 == len(cmd)
-            assert cmd[0] == mp4_splitter.SPLITTER_BASH_CMD
-            assert cmd[
-                       1] == 'C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/2024-01-31_16-32-36_quotes.mp4'
-            assert type(cmd[5]) is str
-            assert '"' not in cmd[5]
+            assert type(sub_clip.media_title) is str
+            assert type(sub_clip.start_time) is int
+            assert type(sub_clip.end_time) is int
+            assert sub_clip.source_file_path == 'C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/2024-01-31_16-32-36_quotes.mp4'
+            assert '"' not in sub_clip.media_title
             current_index += 1
         # print(cmd_list)
 
@@ -544,6 +539,7 @@ class TestEditor(TestCase):
         print(json.dumps(editor_metadata, indent=4))
 
     def test_editor_process_txt_file(self):
+        __init__.patch_extract_subclip(self)
         editor_metadata = {
             'txt_file_name': "2024-01-31_16-32-36.txt"
         }
@@ -623,49 +619,37 @@ class TestGetCMDList(TestCase):
         mp4_splitter.get_cmd_list(sub_clips, subclip_file, destination_dir)
         assert len(errors) == 0
         for sub_clip in sub_clips:
-            cmd = sub_clip.get_cmd()
-            assert type(cmd) is list
-            assert len(cmd) == 6
-            print(cmd)
-            for argument in cmd:
-                assert type(argument) is str
-            assert cmd[0] == mp4_splitter.SPLITTER_BASH_CMD
-            assert txt_file_name in cmd[1]
-            assert EDITOR_RAW_FOLDER in cmd[1]
-            assert type(int(cmd[3])) is int
-            assert type(int(cmd[4])) is int
-            assert int(cmd[3]) >= 0
-            assert int(cmd[4]) >= 0
-        cmd = sub_clips[0].get_cmd()
-        assert cmd[
-                   1] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/2024-01-31_16-32-36.mp4"
-        assert cmd[3] == "7"
-        assert cmd[4] == "823"
-        assert cmd[5] == "episode name"
-        cmd = sub_clips[1].get_cmd()
-        assert cmd[
-                   1] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/2024-01-31_16-32-36.mp4"
-        assert cmd[3] == "829"
-        assert cmd[4] == "1773"
-        assert cmd[5] == "episode another name"
-        cmd = sub_clips[2].get_cmd()
-        assert cmd[
-                   1] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/2024-01-31_16-32-36.mp4"
-        assert cmd[3] == "1803"
-        assert cmd[4] == "2792"
-        assert cmd[5] == "episode name"
-        cmd = sub_clips[3].get_cmd()
-        assert cmd[
-                   1] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/2024-01-31_16-32-36.mp4"
-        assert cmd[3] == "2846"
-        assert cmd[4] == "3730"
-        assert cmd[5] == "episode 2"
-        cmd = sub_clips[4].get_cmd()
-        assert cmd[
-                   1] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/2024-01-31_16-32-36.mp4"
-        assert cmd[3] == "3763"
-        assert cmd[4] == "4813"
-        assert cmd[5] == "episode 1"
+            assert txt_file_name in sub_clip.source_file_path
+            assert EDITOR_RAW_FOLDER in sub_clip.source_file_path
+            assert type(int(sub_clip.start_time)) is int
+            assert type(int(sub_clip.end_time)) is int
+            assert int(sub_clip.start_time) >= 0
+            assert int(sub_clip.end_time) >= 0
+        assert sub_clips[
+                   0].source_file_path == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/2024-01-31_16-32-36.mp4"
+        assert sub_clips[0].start_time == 7
+        assert sub_clips[0].end_time == 823
+        assert sub_clips[0].media_title == "episode name"
+        assert sub_clips[
+                   1].source_file_path == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/2024-01-31_16-32-36.mp4"
+        assert sub_clips[1].start_time == 829
+        assert sub_clips[1].end_time == 1773
+        assert sub_clips[1].media_title == "episode another name"
+        assert sub_clips[
+                   2].source_file_path == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/2024-01-31_16-32-36.mp4"
+        assert sub_clips[2].start_time == 1803
+        assert sub_clips[2].end_time == 2792
+        assert sub_clips[2].media_title == "episode name"
+        assert sub_clips[
+                   3].source_file_path == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/2024-01-31_16-32-36.mp4"
+        assert sub_clips[3].start_time == 2846
+        assert sub_clips[3].end_time == 3730
+        assert sub_clips[3].media_title == "episode 2"
+        assert sub_clips[
+                   4].source_file_path == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/2024-01-31_16-32-36.mp4"
+        assert sub_clips[4].start_time == 3763
+        assert sub_clips[4].end_time == 4813
+        assert sub_clips[4].media_title == "episode 1"
 
 
 class TestProcessSubclipFile(TestCase):
@@ -679,60 +663,38 @@ class TestProcessSubclipFile(TestCase):
         # assert len(cmd_list) == 5
         assert len(errors) == 0
         for sub_clip in sub_clips:
-            cmd = sub_clip.get_cmd()
-            assert type(cmd) is list
-            assert len(cmd) == 6
-            print(cmd)
-            for argument in cmd:
-                assert type(argument) is str
-            assert cmd[0] == mp4_splitter.SPLITTER_BASH_CMD
-            assert txt_file_name in cmd[1]
-            assert EDITOR_RAW_FOLDER in cmd[1]
-            assert type(int(cmd[3])) is int
-            assert type(int(cmd[4])) is int
-            assert int(cmd[3]) >= 0
-            assert int(cmd[4]) >= 0
+            assert txt_file_name in sub_clip.source_file_path
+            assert EDITOR_RAW_FOLDER in sub_clip.source_file_path
+            assert type(int(sub_clip.start_time)) is int
+            assert type(int(sub_clip.end_time)) is int
+            assert int(sub_clip.start_time) >= 0
+            assert int(sub_clip.end_time) >= 0
 
-        cmd = sub_clips[0].get_cmd()
-        assert cmd[
-                   1] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/2024-01-31_16-32-36.mp4"
-        assert cmd[
-                   2] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/Hilda/Hilda - s2e1.mp4"
-        assert cmd[3] == "7"
-        assert cmd[4] == "823"
-        assert cmd[5] == "episode name"
-        cmd = sub_clips[1].get_cmd()
-        assert cmd[
-                   1] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/2024-01-31_16-32-36.mp4"
-        assert cmd[
-                   2] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/Hilda/Hilda - s2e2.mp4"
-        assert cmd[3] == "829"
-        assert cmd[4] == "1773"
-        assert cmd[5] == "episode another name"
-        cmd = sub_clips[2].get_cmd()
-        assert cmd[
-                   1] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/2024-01-31_16-32-36.mp4"
-        assert cmd[
-                   2] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/Hilda/Hilda - s2e3.mp4"
-        assert cmd[3] == "1803"
-        assert cmd[4] == "2792"
-        assert cmd[5] == "episode name"
-        cmd = sub_clips[3].get_cmd()
-        assert cmd[
-                   1] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/2024-01-31_16-32-36.mp4"
-        assert cmd[
-                   2] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/Hilda/Hilda - s3e8.mp4"
-        assert cmd[3] == "2846"
-        assert cmd[4] == "3730"
-        assert cmd[5] == "episode 2"
-        cmd = sub_clips[4].get_cmd()
-        assert cmd[
-                   1] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/2024-01-31_16-32-36.mp4"
-        assert cmd[
-                   2] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/Hilda/Hilda - s1e9.mp4"
-        assert cmd[3] == "3763"
-        assert cmd[4] == "4813"
-        assert cmd[5] == "episode 1"
+        assert sub_clips[
+                   0].source_file_path == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/2024-01-31_16-32-36.mp4"
+        assert sub_clips[0].start_time == 7
+        assert sub_clips[0].end_time == 823
+        assert sub_clips[0].media_title == "episode name"
+        assert sub_clips[
+                   1].source_file_path == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/2024-01-31_16-32-36.mp4"
+        assert sub_clips[1].start_time == 829
+        assert sub_clips[1].end_time == 1773
+        assert sub_clips[1].media_title == "episode another name"
+        assert sub_clips[
+                   2].source_file_path == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/2024-01-31_16-32-36.mp4"
+        assert sub_clips[2].start_time == 1803
+        assert sub_clips[2].end_time == 2792
+        assert sub_clips[2].media_title == "episode name"
+        assert sub_clips[
+                   3].source_file_path == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/2024-01-31_16-32-36.mp4"
+        assert sub_clips[3].start_time == 2846
+        assert sub_clips[3].end_time == 3730
+        assert sub_clips[3].media_title == "episode 2"
+        assert sub_clips[
+                   4].source_file_path == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/2024-01-31_16-32-36.mp4"
+        assert sub_clips[4].start_time == 3763
+        assert sub_clips[4].end_time == 4813
+        assert sub_clips[4].media_title == "episode 1"
 
     def test_valid_timing_txt_file(self):
         txt_file_name = "2024-01-31_16-32-37"
@@ -741,60 +703,38 @@ class TestProcessSubclipFile(TestCase):
         mp4_splitter.get_cmd_list(sub_clips, txt_file_str_path)
         assert len(errors) == 0
         for index, sub_clip in enumerate(sub_clips):
-            cmd = sub_clip.get_cmd()
-            assert type(cmd) is list
-            assert len(cmd) == 6
-            for argument in cmd:
-                assert type(argument) is str
-            assert cmd[0] == mp4_splitter.SPLITTER_BASH_CMD
-            assert f"{cmd[5]}_{txt_file_name}" in cmd[2]
-            assert txt_file_name in cmd[1]
-            assert EDITOR_RAW_FOLDER in cmd[1]
-            assert cmd[5] == chr(mp4_splitter.ALPHANUMERIC_INDEX_A + index)
-            assert type(int(cmd[3])) is int
-            assert type(int(cmd[4])) is int
-            assert int(cmd[3]) >= 0
-            assert int(cmd[4]) >= 0
-        cmd = sub_clips[0].get_cmd()
-        assert cmd[
-                   1] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/2024-01-31_16-32-37.mp4"
-        assert cmd[
-                   2] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/a_2024-01-31_16-32-37.mp4"
-        assert cmd[3] == "7"
-        assert cmd[4] == "823"
-        assert cmd[5] == "a"
-        cmd = sub_clips[1].get_cmd()
-        assert cmd[
-                   1] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/2024-01-31_16-32-37.mp4"
-        assert cmd[
-                   2] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/b_2024-01-31_16-32-37.mp4"
-        assert cmd[3] == "829"
-        assert cmd[4] == "1773"
-        assert cmd[5] == "b"
-        cmd = sub_clips[2].get_cmd()
-        assert cmd[
-                   1] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/2024-01-31_16-32-37.mp4"
-        assert cmd[
-                   2] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/c_2024-01-31_16-32-37.mp4"
-        assert cmd[3] == "1803"
-        assert cmd[4] == "2792"
-        assert cmd[5] == "c"
-        cmd = sub_clips[3].get_cmd()
-        assert cmd[
-                   1] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/2024-01-31_16-32-37.mp4"
-        assert cmd[
-                   2] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/d_2024-01-31_16-32-37.mp4"
-        assert cmd[3] == "2846"
-        assert cmd[4] == "3730"
-        assert cmd[5] == "d"
-        cmd = sub_clips[4].get_cmd()
-        assert cmd[
-                   1] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/2024-01-31_16-32-37.mp4"
-        assert cmd[
-                   2] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/e_2024-01-31_16-32-37.mp4"
-        assert cmd[3] == "3763"
-        assert cmd[4] == "4813"
-        assert cmd[5] == "e"
+            assert txt_file_name in sub_clip.source_file_path
+            assert EDITOR_RAW_FOLDER in sub_clip.source_file_path
+            assert type(int(sub_clip.start_time)) is int
+            assert type(int(sub_clip.end_time)) is int
+            assert int(sub_clip.start_time) >= 0
+            assert int(sub_clip.end_time) >= 0
+
+        assert sub_clips[
+                   0].source_file_path == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/2024-01-31_16-32-37.mp4"
+        assert sub_clips[0].start_time == 7
+        assert sub_clips[0].end_time == 823
+        assert sub_clips[0].media_title == "a"
+        assert sub_clips[
+                   1].source_file_path == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/2024-01-31_16-32-37.mp4"
+        assert sub_clips[1].start_time == 829
+        assert sub_clips[1].end_time == 1773
+        assert sub_clips[1].media_title == "b"
+        assert sub_clips[
+                   2].source_file_path == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/2024-01-31_16-32-37.mp4"
+        assert sub_clips[2].start_time == 1803
+        assert sub_clips[2].end_time == 2792
+        assert sub_clips[2].media_title == "c"
+        assert sub_clips[
+                   3].source_file_path == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/2024-01-31_16-32-37.mp4"
+        assert sub_clips[3].start_time == 2846
+        assert sub_clips[3].end_time == 3730
+        assert sub_clips[3].media_title == "d"
+        assert sub_clips[
+                   4].source_file_path == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/2024-01-31_16-32-37.mp4"
+        assert sub_clips[4].start_time == 3763
+        assert sub_clips[4].end_time == 4813
+        assert sub_clips[4].media_title == "e"
 
     def test_already_exists_mp4_txt_file(self):
         txt_file_name = "2024-01-31_16-32-36_already_exists"
@@ -811,52 +751,38 @@ class TestProcessSubclipFile(TestCase):
         # print(len(sub_clips))
         # assert len(sub_clips) == 4
         for index, sub_clip in enumerate(sub_clips):
-            cmd = sub_clip.get_cmd()
-            print(cmd)
-            assert type(cmd) is list
-            assert len(cmd) == 6
-            for argument in cmd:
-                assert type(argument) is str
-            assert cmd[0] == mp4_splitter.SPLITTER_BASH_CMD
-            assert txt_file_name in cmd[1]
-            assert EDITOR_RAW_FOLDER in cmd[1]
-            assert type(int(cmd[3])) is int
-            assert type(int(cmd[4])) is int
-            assert int(cmd[3]) >= 0
-            assert int(cmd[4]) >= 0
+            assert txt_file_name in sub_clip.source_file_path
+            assert EDITOR_RAW_FOLDER in sub_clip.source_file_path
+            assert type(int(sub_clip.start_time)) is int
+            assert type(int(sub_clip.end_time)) is int
+            assert int(sub_clip.start_time) >= 0
+            assert int(sub_clip.end_time) >= 0
 
-        cmd = sub_clips[0].get_cmd()
-        assert cmd[
-                   1] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/2024-01-31_16-32-36_already_exists.mp4"
-        assert cmd[
-                   2] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/Hilda/Hilda - s2e1.mp4"
-        assert cmd[3] == "7"
-        assert cmd[4] == "823"
-        assert cmd[5] == "episode name"
-        cmd = sub_clips[1].get_cmd()
-        assert cmd[
-                   1] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/2024-01-31_16-32-36_already_exists.mp4"
-        assert cmd[
-                   2] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/Hilda/Hilda - s3e1.mp4"
-        assert cmd[3] == "829"
-        assert cmd[4] == "1773"
-        assert cmd[5] == "episode another name"
-        cmd = sub_clips[2].get_cmd()
-        assert cmd[
-                   1] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/2024-01-31_16-32-36_already_exists.mp4"
-        assert cmd[
-                   2] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/Hilda/Hilda - s4e7.mp4"
-        assert cmd[3] == "1803"
-        assert cmd[4] == "2792"
-        assert cmd[5] == "episode name"
-        cmd = sub_clips[3].get_cmd()
-        assert cmd[
-                   1] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/2024-01-31_16-32-36_already_exists.mp4"
-        assert cmd[
-                   2] == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/Hilda/Hilda - s2e3.mp4"
-        assert cmd[3] == "3763"
-        assert cmd[4] == "4813"
-        assert cmd[5] == "episode 1"
-
-# "C:\Users\lawrencew\PycharmProjects\mp4_splitter\raw_file\2022-06-12_06-22-06.mp4"
-# "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/2022-06-12_06-22-06.mp4"
+        assert sub_clips[
+                   0].source_file_path == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/2024-01-31_16-32-36_already_exists.mp4"
+        assert sub_clips[
+                   0].destination_file_path == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/Hilda/Hilda - s2e1.mp4"
+        assert sub_clips[0].start_time == 7
+        assert sub_clips[0].end_time == 823
+        assert sub_clips[0].media_title == "episode name"
+        assert sub_clips[
+                   1].source_file_path == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/2024-01-31_16-32-36_already_exists.mp4"
+        assert sub_clips[
+                   1].destination_file_path == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/Hilda/Hilda - s3e1.mp4"
+        assert sub_clips[1].start_time == 829
+        assert sub_clips[1].end_time == 1773
+        assert sub_clips[1].media_title == "episode another name"
+        assert sub_clips[
+                   2].source_file_path == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/2024-01-31_16-32-36_already_exists.mp4"
+        assert sub_clips[
+                   2].destination_file_path == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/Hilda/Hilda - s4e7.mp4"
+        assert sub_clips[2].start_time == 1803
+        assert sub_clips[2].end_time == 2792
+        assert sub_clips[2].media_title == "episode name"
+        assert sub_clips[
+                   3].source_file_path == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/2024-01-31_16-32-36_already_exists.mp4"
+        assert sub_clips[
+                   3].destination_file_path == "C:/Users/lawrencew/PycharmProjects/chromecast-controller/editor_raw_files/Hilda/Hilda - s2e3.mp4"
+        assert sub_clips[3].start_time == 3763
+        assert sub_clips[3].end_time == 4813
+        assert sub_clips[3].media_title == "episode 1"
