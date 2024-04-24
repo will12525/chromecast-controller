@@ -331,14 +331,14 @@ def editor_process_txt_file(editor_raw_folder, editor_metadata, media_output_par
         sub_clips, errors = editor_validate_txt_file(editor_raw_folder, editor_metadata)
         get_cmd_list(sub_clips, sub_clip_file, media_output_parent_path, errors)
         editor_processor.add_cmds_to_queue(sub_clips)
-        # update_processed_file(editor_metadata.get('txt_file_name'), editor_raw_folder)
+        update_processed_file(editor_metadata.get('txt_file_name'), editor_raw_folder)
         return errors
     except ValueError as e:
         raise ValueError(e.args[0]) from e
     except FileNotFoundError as e:
         raise FileNotFoundError(e.args[0]) from e
     except FileExistsError as e:
-        # update_processed_file(editor_metadata.get('txt_file_name'), editor_raw_folder)
+        update_processed_file(editor_metadata.get('txt_file_name'), editor_raw_folder)
         error_dict = e.args[0]
         error_dict["txt_file_name"] = editor_metadata.get('txt_file_name')
         raise FileExistsError(error_dict) from e
@@ -422,8 +422,8 @@ def extract_subclip(sub_clip):
     # print(cmd)
     print(output_dir)
     print(full_cmd)
-    # output_dir.mkdir(parents=True, exist_ok=True)
-    # subprocess.run(full_cmd, check=True, text=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    subprocess.run(full_cmd, check=True, text=True)
 
 
 class SubclipProcessHandler(threading.Thread):
