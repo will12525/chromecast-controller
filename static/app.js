@@ -104,7 +104,7 @@ async function chromecast_command(chromecast_cmd_id) {
     });
 }
 
-async function setMediaRuntime(range) {
+async function set_media_runtime(range) {
     document.activeElement.blur()
 
     var url = "/set_current_media_runtime";
@@ -153,7 +153,6 @@ async function update_editor_log(response_data) {
         if (response_data["expected_path"] !== undefined) {
             prepend_text += ": " + response_data?.expected_path;
         }
-
         editor_txt_file_log.value = prepend_text + "\n" + editor_txt_file_log.value;
 }
 
@@ -169,6 +168,48 @@ async function update_editor_webpage(response_data) {
     }
     if (response_data["process_log"] !== undefined) {
         response_data?.process_log.forEach((element) => update_editor_log(element));
+    }
+
+    if (response_data["process_queue"] !== undefined && response_data["process_name"] !== undefined && response_data["process_time"] !== undefined && response_data["process_queue_size"] !== undefined) {
+        const process_queue_list = []
+
+        const queue_item_li = document.createElement("li");
+        queue_item_li.classList.add("list-group-item")
+
+        const queue_item_text = document.createElement("h5");
+        queue_item_text.classList.add("mb-1");
+        queue_item_text.appendChild(document.createTextNode(response_data["process_name"]));
+        queue_item_li.appendChild(queue_item_text);
+
+        if (response_data["process_name"] != "Split queue empty") {
+            const queue_item_progress = document.createElement("div");
+            queue_item_progress.classList.add("progress")
+            queue_item_progress.setAttribute("role", "progressbar");
+            queue_item_progress.setAttribute("aria-valuemin", "0");
+            queue_item_progress.setAttribute("aria-valuemax", "100");
+            queue_item_progress.setAttribute("aria-valuenow", response_data["percent_complete"]);
+            const queue_item_progress_bar = document.createElement("div");
+            queue_item_progress_bar.classList.add("progress-bar-striped")
+            queue_item_progress_bar.classList.add("bg-info")
+            queue_item_progress_bar.setAttribute("style", 'width: '.concat(response_data["percent_complete"], "%"));
+
+            queue_item_progress.appendChild(queue_item_progress_bar);
+            queue_item_li.appendChild(queue_item_progress);
+        }
+        process_queue_list.push(queue_item_li)
+
+        for (const queue_item of response_data["process_queue"]) {
+            const queue_item_li = document.createElement("li");
+            queue_item_li.classList.add("list-group-item")
+            const queue_item_text = document.createTextNode(queue_item);
+            queue_item_li.appendChild(queue_item_text);
+            process_queue_list.push(queue_item_li)
+
+        }
+        document.getElementById("editor_process_metadata_name").innerText = response_data["process_name"];
+        document.getElementById("editor_process_metadata_time").innerText = response_data["process_time"];
+        document.getElementById("editor_process_metadata_queue_size").innerText = response_data["process_queue_size"];
+        document.getElementById("editor_process_queue").replaceChildren(...process_queue_list)
     }
 }
 
@@ -292,20 +333,12 @@ async function process_txt_file() {
 }
 
 async function updateEditorMetadata() {
-    var editor_process_metadata_name = document.getElementById("editor_process_metadata_name");
-    if (editor_process_metadata_name)
+    if (document.getElementById("editor_process_metadata_name"))
     {
         var url = "/process_metadata";
         let response = await fetch(url);
         if (response.ok) {
-            let response_data = await response.json();
-//            console.log(response_data)
-            editor_process_metadata_name.innerText = response_data?.process_name;
-            document.getElementById("editor_process_metadata_time").innerText = response_data?.process_time;
-            document.getElementById("editor_process_metadata_queue_size").innerText = response_data?.process_queue_size;
-            if (response_data["process_log"] !== undefined) {
-                response_data?.process_log.forEach((element) => update_editor_log(element));
-            }
+            update_editor_webpage(await response.json())
         }
     }
 }

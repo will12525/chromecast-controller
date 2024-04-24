@@ -25,7 +25,6 @@ from database_handler.create_database import DBCreator
 
 EDITOR_FOLDER = "/media/ssd1/splitter/"
 EDITOR_RAW_FOLDER = f"{EDITOR_FOLDER}raw_files/"
-EDITOR_METADATA_FILE = f"{EDITOR_RAW_FOLDER}editor_metadata.json"
 
 
 class APIEndpoints(Enum):
@@ -104,8 +103,7 @@ def editor():
         return render_template("editor.html",
                                homepage_url="/",
                                button_dict=media_controller_button_dict,
-                               editor_metadata=backend_handler.get_editor_metadata(EDITOR_METADATA_FILE,
-                                                                                   EDITOR_RAW_FOLDER))
+                               editor_metadata=backend_handler.get_editor_metadata(EDITOR_RAW_FOLDER))
     except Exception as e:
         error_str = str(traceback.print_exc())
         if len(e.args) > 0:
@@ -158,8 +156,7 @@ def editor_load_txt_file():
     if json_request := request.get_json():
         if editor_txt_file_name := json_request.get("editor_txt_file_name"):
             try:
-                data = backend_handler.get_editor_metadata(EDITOR_METADATA_FILE, EDITOR_RAW_FOLDER,
-                                                           editor_txt_file_name)
+                data = backend_handler.get_editor_metadata(EDITOR_RAW_FOLDER, editor_txt_file_name)
             except Exception as e:
                 if len(e.args) > 0:
                     data = {"error": e.args[0]}
@@ -178,9 +175,9 @@ def editor_process_txt_file():
             with DatabaseHandler() as db_connection:
                 media_metadata = db_connection.get_media_folder_path(1)
             output_path = pathlib.Path(media_metadata.get(MEDIA_DIRECTORY_PATH_COLUMN)).resolve()
-            errors = backend_handler.editor_process_txt_file(EDITOR_METADATA_FILE, EDITOR_RAW_FOLDER, json_request,
-                                                             output_path)
+            errors = backend_handler.editor_process_txt_file(EDITOR_RAW_FOLDER, json_request, output_path)
             data["process_log"] = errors
+            data.update(backend_handler.editor_get_process_metadata())
         except Exception as e:
             if len(e.args) > 0:
                 data = {"error": e.args[0]}

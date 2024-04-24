@@ -18,6 +18,11 @@ def get_ffmpeg_metadata(extra_metadata):
     extra_metadata[common_objects.MEDIA_TITLE_COLUMN] = ""
 
 
+def extract_subclip(sub_clip):
+    # time.sleep(sub_clip.start_time + sub_clip.end_time)
+    time.sleep(5)
+
+
 def patch_get_file_hash(test_class):
     patcher = patch('database_handler.media_metadata_collector.get_file_hash')
     test_class.get_file_hash = patcher.start()
@@ -41,6 +46,7 @@ def patch_move_media_file(test_class):
 def patch_extract_subclip(test_class):
     patcher = patch('mp4_splitter.extract_subclip')
     test_class.extract_subclip = patcher.start()
+    test_class.extract_subclip.side_effect = extract_subclip
     test_class.addCleanup(patcher.stop)
 
 

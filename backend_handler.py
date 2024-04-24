@@ -133,15 +133,13 @@ class BackEndHandler:
     def play_media_on_chromecast(self, media_request_ids):
         self.chromecast_handler.play_from_sql(media_request_ids)
 
-    def get_editor_metadata(self, editor_metadata_file, editor_raw_folder, selected_txt_file=None):
-        return mp4_splitter.get_editor_metadata(editor_metadata_file, editor_raw_folder, self.editor_processor,
-                                                selected_txt_file)
+    def get_editor_metadata(self, editor_raw_folder, selected_txt_file=None):
+        return mp4_splitter.get_editor_metadata(editor_raw_folder, self.editor_processor, selected_txt_file)
 
-    def editor_process_txt_file(self, editor_metadata_file, editor_raw_folder, editor_metadata,
-                                media_output_parent_path):
+    def editor_process_txt_file(self, editor_raw_folder, editor_metadata, media_output_parent_path):
         try:
-            return mp4_splitter.editor_process_txt_file(editor_metadata_file, editor_raw_folder, editor_metadata,
-                                                        media_output_parent_path, self.editor_processor)
+            return mp4_splitter.editor_process_txt_file(editor_raw_folder, editor_metadata, media_output_parent_path,
+                                                        self.editor_processor)
         except ValueError as e:
             raise ValueError(e.args[0]) from e
         except FileNotFoundError as e:

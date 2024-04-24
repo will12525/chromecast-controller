@@ -437,8 +437,8 @@ class TestEditor(TestCase):
             'txt_file_name': "2024hi-01-31_16-32-36.txt"
         }
         with self.assertRaises(ValueError) as context:
-            mp4_splitter.editor_process_txt_file(self.EDITOR_METADATA_FILE, self.EDITOR_RAW_FOLDER, editor_metadata,
-                                                 self.OUTPUT_PATH, self.editor_processor)
+            mp4_splitter.editor_process_txt_file(self.EDITOR_RAW_FOLDER, editor_metadata, self.OUTPUT_PATH,
+                                                 self.editor_processor)
         error_dict = context.exception.args[0]
         assert type(error_dict) is dict
         assert "Text file empty" == error_dict.get("message")
@@ -450,8 +450,8 @@ class TestEditor(TestCase):
             'txt_file_name': "2024-01-31_16-32-36_no_mp4.txt"
         }
         with self.assertRaises(FileNotFoundError) as context:
-            mp4_splitter.editor_process_txt_file(self.EDITOR_METADATA_FILE, self.EDITOR_RAW_FOLDER, editor_metadata,
-                                                 self.OUTPUT_PATH, self.editor_processor)
+            mp4_splitter.editor_process_txt_file(self.EDITOR_RAW_FOLDER, editor_metadata, self.OUTPUT_PATH,
+                                                 self.editor_processor)
         error_dict = context.exception.args[0]
         print(error_dict)
         assert type(error_dict) is dict
@@ -464,7 +464,7 @@ class TestEditor(TestCase):
             'txt_file_name': "2024-01-31_16-32-36_empty.txt"
         }
         with self.assertRaises(ValueError) as context:
-            mp4_splitter.editor_process_txt_file(self.EDITOR_METADATA_FILE, self.EDITOR_RAW_FOLDER, editor_metadata,
+            mp4_splitter.editor_process_txt_file(self.EDITOR_RAW_FOLDER, editor_metadata,
                                                  self.OUTPUT_PATH, self.editor_processor)
         error_dict = context.exception.args[0]
         print(error_dict)
@@ -477,7 +477,7 @@ class TestEditor(TestCase):
             'txt_file_name': "2024-01-31_16-32-36_invalid.txt"
         }
         # with self.assertRaises(ValueError) as context:
-        errors = mp4_splitter.editor_process_txt_file(self.EDITOR_METADATA_FILE, self.EDITOR_RAW_FOLDER,
+        errors = mp4_splitter.editor_process_txt_file(self.EDITOR_RAW_FOLDER,
                                                       editor_metadata, self.OUTPUT_PATH, self.editor_processor)
         # print(json.dumps(errors, indent=4))
         assert len(errors) == 1
@@ -493,13 +493,13 @@ class TestEditor(TestCase):
         assert editor_metadata.get("txt_file_name") in error_dict.get("file_name")
 
     def test_editor_process_txt_file_name(self):
+        __init__.patch_extract_subclip(self)
         editor_metadata = {
             'txt_file_name': "2024-01-31_16-32-36.txt"
         }
-        mp4_splitter.editor_process_txt_file(self.EDITOR_METADATA_FILE, self.EDITOR_RAW_FOLDER, editor_metadata,
+        mp4_splitter.editor_process_txt_file(self.EDITOR_RAW_FOLDER, editor_metadata,
                                              pathlib.Path(self.OUTPUT_PATH).resolve(), self.editor_processor)
-        new_editor_metadata = mp4_splitter.get_editor_metadata(self.EDITOR_METADATA_FILE,
-                                                               self.EDITOR_RAW_FOLDER, self.editor_processor)
+        new_editor_metadata = mp4_splitter.get_editor_metadata(self.EDITOR_RAW_FOLDER, self.editor_processor)
         # print(json.dumps(new_editor_metadata, indent=4))
 
         assert type(new_editor_metadata) is dict
@@ -533,8 +533,7 @@ class TestEditor(TestCase):
 
     def test_get_editor_metadata(self):
 
-        editor_metadata = mp4_splitter.get_editor_metadata(self.EDITOR_METADATA_FILE, self.EDITOR_RAW_FOLDER,
-                                                           self.editor_processor)
+        editor_metadata = mp4_splitter.get_editor_metadata(self.EDITOR_RAW_FOLDER, self.editor_processor)
         print(editor_metadata)
         print(json.dumps(editor_metadata, indent=4))
 
@@ -544,7 +543,7 @@ class TestEditor(TestCase):
             'txt_file_name': "2024-01-31_16-32-36.txt"
         }
 
-        mp4_splitter.editor_process_txt_file(self.EDITOR_METADATA_FILE, self.EDITOR_RAW_FOLDER, editor_metadata,
+        mp4_splitter.editor_process_txt_file(self.EDITOR_RAW_FOLDER, editor_metadata,
                                              pathlib.Path(self.OUTPUT_PATH).resolve(), self.editor_processor)
         # time.sleep(2)
         print(self.editor_processor.get_metadata())
@@ -552,13 +551,13 @@ class TestEditor(TestCase):
         editor_metadata = {
             'txt_file_name': "2024-01-31_16-32-38.txt"
         }
-        mp4_splitter.editor_process_txt_file(self.EDITOR_METADATA_FILE, self.EDITOR_RAW_FOLDER, editor_metadata,
+        mp4_splitter.editor_process_txt_file(self.EDITOR_RAW_FOLDER, editor_metadata,
                                              pathlib.Path(self.OUTPUT_PATH).resolve(), self.editor_processor)
         # time.sleep(10)
         print(self.editor_processor.get_metadata())
         for i in range(20):
-            print(self.editor_processor.get_metadata())
-            time.sleep(.1)
+            print(json.dumps(self.editor_processor.get_metadata(), indent=4))
+            time.sleep(1)
         # error_code = self.backend_handler.editor_process_txt_file(editor_metadata,
         #                                                           pathlib.Path(self.OUTPUT_PATH).resolve())
 

@@ -1,3 +1,4 @@
+import time
 import queue
 import pathlib
 import subprocess
@@ -32,6 +33,8 @@ ERROR_MP4_FILE_DOESNT_EXIST = 2
 ERROR_TXT_FILE_EMPTY = 3
 ERROR_TXT_FILE_INVALID_CONTENT = 4
 ERROR_MP4_FILE_ALREADY_EXISTS = 5
+
+EDITOR_PROCESSED_LOG = "editor_metadata.json"
 
 
 class JobQueueFull(ValueError):
@@ -296,14 +299,15 @@ def get_cmd_list(sub_clips: list[SubclipMetadata], sub_clip_file, media_output_p
         sub_clips.pop(index)
 
 
-def update_processed_file(editor_metadata, editor_metadata_file):
+def update_processed_file(txt_file_name, editor_raw_folder):
     editor_metadata_content = {}
+    editor_metadata_file = f"{editor_raw_folder}{EDITOR_PROCESSED_LOG}"
     editor_metadata_file_path = pathlib.Path(editor_metadata_file).resolve()
     try:
         editor_metadata_content = config_file_handler.load_json_file_content(editor_metadata_file_path)
     except (FileNotFoundError, JSONDecodeError):
         pass
-    editor_metadata_content[editor_metadata.get('txt_file_name')] = {"processed": True}
+    editor_metadata_content[txt_file_name] = {"processed": True}
     config_file_handler.save_json_file_content(editor_metadata_content, editor_metadata_file)
 
 
@@ -317,7 +321,7 @@ def editor_validate_txt_file(editor_raw_folder, editor_metadata):
         raise FileNotFoundError(e.args[0]) from e
 
 
-def editor_process_txt_file(editor_metadata_file, editor_raw_folder, editor_metadata, media_output_parent_path,
+def editor_process_txt_file(editor_raw_folder, editor_metadata, media_output_parent_path,
                             editor_processor):
     sub_clip_file = f"{editor_raw_folder}{editor_metadata.get('txt_file_name')}"
     if editor_metadata.get('txt_file_content'):
@@ -326,15 +330,15 @@ def editor_process_txt_file(editor_metadata_file, editor_raw_folder, editor_meta
     try:
         sub_clips, errors = editor_validate_txt_file(editor_raw_folder, editor_metadata)
         get_cmd_list(sub_clips, sub_clip_file, media_output_parent_path, errors)
-        editor_processor.add_cmds_to_queue(editor_metadata_file, sub_clips)
-        update_processed_file(editor_metadata, editor_metadata_file)
+        editor_processor.add_cmds_to_queue(sub_clips)
+        # update_processed_file(editor_metadata.get('txt_file_name'), editor_raw_folder)
         return errors
     except ValueError as e:
         raise ValueError(e.args[0]) from e
     except FileNotFoundError as e:
         raise FileNotFoundError(e.args[0]) from e
     except FileExistsError as e:
-        update_processed_file(editor_metadata, editor_metadata_file)
+        # update_processed_file(editor_metadata.get('txt_file_name'), editor_raw_folder)
         error_dict = e.args[0]
         error_dict["txt_file_name"] = editor_metadata.get('txt_file_name')
         raise FileExistsError(error_dict) from e
@@ -346,8 +350,12 @@ def get_editor_txt_files(editor_raw_folder):
     for editor_mp4_file in list(sorted(raw_path.rglob(mp4_file_ext))):
         if "old" not in editor_mp4_file.parts:
             editor_txt_file_path = pathlib.Path(str(editor_mp4_file).replace("mp4", "txt")).resolve()
-            editor_txt_file_path.touch()
-            editor_txt_files.append(editor_txt_file_path)
+            try:
+                editor_txt_file_path.touch()
+                editor_txt_files.append(editor_txt_file_path)
+            except PermissionError as e:
+                print(f"ERROR: Failed to create text file: {editor_txt_file_path}")
+
     return editor_txt_files
 
 
@@ -374,7 +382,7 @@ def check_editor_txt_file_processed(editor_metadata_file, editor_txt_file_names)
     return editor_txt_file_processed
 
 
-def get_editor_metadata(editor_metadata_file, editor_raw_folder, editor_processor, selected_txt_file=None):
+def get_editor_metadata(editor_raw_folder, editor_processor, selected_txt_file=None):
     selected_index = 0
     editor_metadata = {}
     editor_txt_files = get_editor_txt_files(editor_raw_folder)
@@ -388,7 +396,8 @@ def get_editor_metadata(editor_metadata_file, editor_raw_folder, editor_processo
         selected_txt_file_path = pathlib.Path(f"{editor_raw_folder}{selected_txt_file}").resolve()
 
         editor_metadata = {
-            "txt_file_list": check_editor_txt_file_processed(editor_metadata_file, editor_txt_file_names),
+            "txt_file_list": check_editor_txt_file_processed(f"{editor_raw_folder}{EDITOR_PROCESSED_LOG}",
+                                                             editor_txt_file_names),
             "selected_txt_file_title": selected_txt_file,
             "selected_txt_file_content": ''.join(config_file_handler.load_txt_file_content(selected_txt_file_path)),
             "editor_process_metadata": editor_processor.get_metadata()
@@ -408,69 +417,70 @@ def extract_subclip(sub_clip):
                 '-metadata', f"title={sub_clip.media_title}",
                 sub_clip.destination_file_path]
     output_dir = pathlib.Path(sub_clip.destination_file_path).resolve().parent
-    # time.sleep(1)
+    # print(f"Sleeping {sub_clip.end_time}")
+    # time.sleep(sub_clip.end_time)
     # print(cmd)
     print(output_dir)
     print(full_cmd)
-    output_dir.mkdir(parents=True, exist_ok=True)
-    subprocess.run(full_cmd, check=True, text=True)
-
-
-class CmdData:
-    metadata_file_path = ""
-    cmd = None
-
-    def __init__(self, metadata_file_path, cmd):
-        self.metadata_file_path = metadata_file_path
-        self.cmd = cmd
+    # output_dir.mkdir(parents=True, exist_ok=True)
+    # subprocess.run(full_cmd, check=True, text=True)
 
 
 class SubclipProcessHandler(threading.Thread):
     subclip_process_queue_size = 30
     subclip_process_queue = queue.Queue()
     log_queue = queue.Queue()
-    current_cmd = None
+    current_sub_clip = None
     process_start = 0
 
     def run(self):
         while not self.subclip_process_queue.empty():
             self.process_start = datetime.now()
-            current_cmd = self.subclip_process_queue.get()
-            self.current_cmd = current_cmd.cmd
+            self.current_sub_clip = self.subclip_process_queue.get()
             try:
-                extract_subclip(self.current_cmd)
+                extract_subclip(self.current_sub_clip)
                 self.log_queue.put(
-                    {"message": "Finished splitting", "file_name": self.current_cmd.destination_file_path})
+                    {"message": "Finished splitting", "file_name": self.current_sub_clip.destination_file_path})
+
             except subprocess.CalledProcessError:
                 self.log_queue.put(
                     {"message": "Error encountered while splitting",
-                     "file_name": self.current_cmd.destination_file_path})
+                     "file_name": self.current_sub_clip.destination_file_path})
 
-        self.current_cmd = None
+        self.current_sub_clip = None
 
-    def add_cmds_to_queue(self, metadata_file_path, sub_clips):
+    def add_cmds_to_queue(self, sub_clips):
         if self.subclip_process_queue.qsize() > self.subclip_process_queue_size:
             raise JobQueueFull({"message": "Job queue full"})
-        for cmd in sub_clips:
-            self.subclip_process_queue.put(CmdData(metadata_file_path, cmd))
+        for sub_clip in sub_clips:
+            self.subclip_process_queue.put(sub_clip)
         if not self.is_alive():
             threading.Thread.__init__(self, daemon=True)
             self.start()
 
     def get_metadata(self):
         process_name = "Split queue empty"
-        process_time = "0"
+        process_time = 0
+        percent_complete = 0
         process_log = []
-        if self.current_cmd:
-            process_name = f"{self.current_cmd.media_title}, {self.current_cmd.file_name}"
-            process_time = str(datetime.now() - self.process_start)
+        process_queue = []
+        if self.current_sub_clip:
+            process_name = f"{self.current_sub_clip.media_title}, {self.current_sub_clip.file_name}"
+            process_time = datetime.now() - self.process_start
+            if self.current_sub_clip.end_time > 0:
+                percent_complete = int((int(process_time.total_seconds()) / self.current_sub_clip.end_time) * 100)
 
         while not self.log_queue.empty():
             process_log.append(self.log_queue.get())
 
+        for sub_clip in list(self.subclip_process_queue.queue):
+            process_queue.append(f"{sub_clip.media_title}, {sub_clip.file_name}")
+
         return {
             "process_name": process_name,
-            "process_time": process_time,
+            "process_time": str(process_time),
+            "percent_complete": percent_complete,
             "process_queue_size": self.subclip_process_queue.qsize(),
-            "process_log": process_log
+            "process_log": process_log,
+            "process_queue": process_queue
         }
