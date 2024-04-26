@@ -163,3 +163,13 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
                         'description': 'World!!'}
 
         self.assertRaises(ValueError, bh.download_image, json_request)
+
+    def test_build_tv_show_output_path(self):
+        expected_str = "\Test file name\Test file name - s1e5.mp4"
+        show_title = "Test file name"
+        file_name_str = f"{show_title} - s1e5.mp4"
+        output_path = bh.build_tv_show_output_path(file_name_str)
+        assert expected_str in str(output_path)
+        assert str(output_path).count(show_title) == 2
+        assert file_name_str in str(output_path)
+        assert str(output_path).count(file_name_str) == 1

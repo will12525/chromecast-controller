@@ -11,6 +11,7 @@ from chromecast_handler import ChromecastHandler
 from database_handler.create_database import DBCreator
 from database_handler.database_handler import DatabaseHandler
 import mp4_splitter
+from database_handler.media_metadata_collector import extract_tv_show_file_name_content
 
 
 def setup_db():
@@ -87,6 +88,23 @@ def download_image(json_request):
         raise ValueError(
             {"message": "requests error encountered while saving image", "file_name": json_request.get('image_url'),
              "string": f"{res.status_code}"})
+
+
+def build_tv_show_output_path(file_name_str):
+    media_metadata = {}
+    file_name = pathlib.Path(file_name_str)
+    with DatabaseHandler() as db_connection:
+        media_folder_path = db_connection.get_media_folder_path(1)
+    if not media_folder_path:
+        raise ValueError({"message": "Error media directory table missing paths"})
+
+    extract_tv_show_file_name_content(media_metadata, file_name.stem)
+    output_path = pathlib.Path(
+        f"{media_folder_path.get(common_objects.MEDIA_DIRECTORY_PATH_COLUMN)}/{media_metadata[common_objects.PLAYLIST_TITLE]}/{file_name}").resolve()
+    if output_path.exists():
+        raise FileExistsError({"message": "File already exists", "file_name": str(file_name_str)})
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    return output_path
 
 
 class BackEndHandler:

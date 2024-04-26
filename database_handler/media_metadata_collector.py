@@ -122,6 +122,19 @@ def get_extra_metadata(media_metadata, title=False):
         get_ffmpeg_metadata_thread.join()
 
 
+def extract_tv_show_file_name_content(media_metadata, mp4_file_name):
+    mp4_index_content_index = mp4_file_name.rindex(mp4_index_content_index_search_string)
+    mp4_index_content = mp4_file_name[mp4_index_content_index + len(mp4_index_content_index_search_string):]
+    mp4_episode_start_index = mp4_index_content.index(tv_show_media_episode_index_identifier)
+
+    media_metadata[common_objects.PLAYLIST_TITLE] = mp4_file_name[:mp4_index_content_index]
+    media_metadata['episode_index'] = int(mp4_index_content[mp4_episode_start_index + 1:])
+    media_metadata[common_objects.SEASON_INDEX_COLUMN] = int(mp4_index_content[:mp4_episode_start_index])
+
+    media_metadata[common_objects.LIST_INDEX_COLUMN] = get_playlist_list_index(
+        media_metadata[common_objects.SEASON_INDEX_COLUMN], media_metadata['episode_index'])
+
+
 def collect_tv_shows(media_directory_info):
     media_folder_path = pathlib.Path(media_directory_info.get(common_objects.MEDIA_DIRECTORY_PATH_COLUMN))
     for media_folder_mp4 in list(media_folder_path.rglob(mp4_file_ext)):
@@ -131,18 +144,8 @@ def collect_tv_shows(media_directory_info):
             common_objects.MEDIA_DIRECTORY_ID_COLUMN)
 
         try:
-            mp4_file_name = media_folder_mp4.stem
-            mp4_index_content_index = mp4_file_name.rindex(mp4_index_content_index_search_string)
-            mp4_index_content = mp4_file_name[mp4_index_content_index + len(mp4_index_content_index_search_string):]
-            mp4_episode_start_index = mp4_index_content.index(tv_show_media_episode_index_identifier)
-
-            media_metadata[common_objects.PLAYLIST_TITLE] = mp4_file_name[:mp4_index_content_index]
-            media_metadata['episode_index'] = int(mp4_index_content[mp4_episode_start_index + 1:])
-            media_metadata[common_objects.SEASON_INDEX_COLUMN] = int(mp4_index_content[:mp4_episode_start_index])
-
             media_metadata[common_objects.PATH_COLUMN] = get_url(media_folder_mp4, media_folder_path)
-            media_metadata[common_objects.LIST_INDEX_COLUMN] = get_playlist_list_index(
-                media_metadata[common_objects.SEASON_INDEX_COLUMN], media_metadata['episode_index'])
+            extract_tv_show_file_name_content(media_metadata, media_folder_mp4.stem)
 
             yield media_metadata
         except ValueError as e:

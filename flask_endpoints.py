@@ -12,6 +12,7 @@ from database_handler import common_objects
 from database_handler.database_handler import DatabaseHandler
 from database_handler.common_objects import ContentType, MEDIA_DIRECTORY_PATH_COLUMN
 from database_handler.create_database import DBCreator
+from werkzeug.utils import secure_filename
 
 # TODO: Update DB: Remove media that no longer exists
 # TODO: Update DB: Use md5sum to track files
@@ -48,7 +49,10 @@ class APIEndpoints(Enum):
     GET_MEDIA_MENU_DATA = "/get_media_menu_data"
     GET_DISK_SPACE = "/get_disk_space"
     UPDATE_MEDIA_METADATA = "/update_media_metadata"
+    MEDIA_UPLOAD = "/media_upload"
 
+
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', "mp4"}
 
 app = Flask(__name__)
 app.jinja_env.lstrip_blocks = True
@@ -325,6 +329,38 @@ def get_disk_space():
         print("Exception class: ", e.__class__)
         print(f"ERROR: {e}")
         print(traceback.print_exc())
+
+
+def allowed_file(filename):
+    return '.' in filename and \
+        filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+@app.route(APIEndpoints.MEDIA_UPLOAD.value, methods=['GET', 'POST'])
+def upload_file():
+    data = {}
+    if request.method == 'POST':
+        print(request.files)
+        # check if the post request has the file part
+        if 'file' not in request.files:
+            data["message"] = "No file provided"
+            return data, 200
+        file = request.files['file']
+        if file.filename == '':
+            data["message"] = "No selected file"
+            data["filename"] = f"{file.filename}"
+            return data, 200
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename).replace('_', ' ')
+            try:
+                output_path = bh.build_tv_show_output_path(filename)
+                print(output_path)
+                file.save(output_path)
+                data["message"] = "File saved"
+            except (ValueError, FileExistsError) as e:
+                data["error"] = e.args[0]
+    print(data)
+    return data, 200
 
 
 if __name__ == "__main__":
