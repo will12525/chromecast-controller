@@ -45,14 +45,14 @@ def get_free_disk_space(editor_folder):
 
 
 def download_image(json_request):
-    if (not json_request.get('image_url')
-            or len(json_request.get('image_url')) < 5
+    if (not json_request.get(common_objects.IMAGE_URL)
+            or len(json_request.get(common_objects.IMAGE_URL)) < 5
             or not json_request.get('content_type')
-            or not json_request.get('id')
-            or json_request.get('image_url')[-4:] not in ['.jpg', '.png']):
+            or not json_request.get(common_objects.ID_COLUMN)
+            or json_request.get(common_objects.IMAGE_URL)[-4:] not in ['.jpg', '.png']):
         raise ValueError({{"message": "Image url must be .jpg or .png"}})
 
-    file_name = f"{json_request.get('content_type')}_{json_request.get('id')}{json_request.get('image_url')[-4:]}"
+    file_name = f"{json_request.get('content_type')}_{json_request.get(common_objects.ID_COLUMN)}{json_request.get(common_objects.IMAGE_URL)[-4:]}"
 
     with DatabaseHandler() as db_connection:
         media_folder_path = db_connection.get_media_folder_path(1)
@@ -63,8 +63,8 @@ def download_image(json_request):
             raise ValueError(
                 {"message": 'Unknown content type provided', 'value': json_request.get('content_type')})
 
-    if json_request.get('image_url') == media_metadata.get("image_url"):
-        json_request['image_url'] = file_name
+    if json_request.get(common_objects.IMAGE_URL) == media_metadata.get(common_objects.IMAGE_URL):
+        json_request[common_objects.IMAGE_URL] = file_name
         return
 
     if not media_folder_path:
@@ -73,20 +73,21 @@ def download_image(json_request):
     output_path = f"{pathlib.Path(media_folder_path.get(common_objects.MEDIA_DIRECTORY_PATH_COLUMN)).resolve().parent.absolute()}/images/{file_name}"
 
     if pathlib.Path(output_path).resolve().exists():
-        json_request['image_url'] = file_name
+        json_request[common_objects.IMAGE_URL] = file_name
         raise ValueError({"message": "Image url already exists, assigning existing image",
-                          "file_name": json_request.get('image_url'), "string": f"{file_name}"})
+                          "file_name": json_request.get(common_objects.IMAGE_URL), "string": f"{file_name}"})
 
-    res = requests.get(json_request.get('image_url'), stream=True)
+    res = requests.get(json_request.get(common_objects.IMAGE_URL), stream=True)
 
     if res.status_code == 200:
         with open(output_path, 'wb') as f:
             shutil.copyfileobj(res.raw, f)
         print('Image successfully Downloaded: ', output_path)
-        json_request['image_url'] = file_name
+        json_request[common_objects.IMAGE_URL] = file_name
     else:
         raise ValueError(
-            {"message": "requests error encountered while saving image", "file_name": json_request.get('image_url'),
+            {"message": "requests error encountered while saving image",
+             "file_name": json_request.get(common_objects.IMAGE_URL),
              "string": f"{res.status_code}"})
 
 

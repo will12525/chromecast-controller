@@ -28,7 +28,7 @@ default_metadata: dict = {
     common_objects.SEASON_INDEX_COLUMN: None,
     common_objects.MEDIA_DIRECTORY_ID_COLUMN: None,
     common_objects.PATH_COLUMN: None,
-    common_objects.MEDIA_TITLE_COLUMN: None,
+    common_objects.MEDIA_TITLE_COLUMN: "",
     common_objects.LIST_INDEX_COLUMN: None,
     common_objects.MD5SUM_COLUMN: None,
     common_objects.DURATION_COLUMN: None,
@@ -97,13 +97,20 @@ def get_file_hash(extra_metadata):
 
 
 def get_ffmpeg_metadata(extra_metadata):
-    if ffmpeg_probe_result := ffmpeg.probe(extra_metadata.get("full_file_path")):
-        if ffmpeg_probe_result_format := ffmpeg_probe_result.get('format'):
-            runtime = ffmpeg_probe_result_format.get('duration')
-            extra_metadata[common_objects.DURATION_COLUMN] = round(float(runtime) / 60)
-            # print(json.dumps(ffmpeg_probe_result_format, indent=4))
-            if tags := ffmpeg_probe_result_format.get('tags'):
-                extra_metadata[common_objects.MEDIA_TITLE_COLUMN] = tags.get('title')
+    try:
+        if ffmpeg_probe_result := ffmpeg.probe(extra_metadata.get("full_file_path")):
+            if ffmpeg_probe_result_format := ffmpeg_probe_result.get('format'):
+                runtime = ffmpeg_probe_result_format.get('duration')
+                extra_metadata[common_objects.DURATION_COLUMN] = round(float(runtime) / 60)
+                # print(json.dumps(ffmpeg_probe_result_format, indent=4))
+                if tags := ffmpeg_probe_result_format.get('tags'):
+                    extra_metadata[common_objects.MEDIA_TITLE_COLUMN] = tags.get('title', '')
+    except ffmpeg.Error as e:
+        print("get_ffmpeg_metadata: output")
+        print(e.stdout)
+        print("get_ffmpeg_metadata: err")
+        print(e.stderr)
+        pass
 
 
 def get_extra_metadata(media_metadata, title=False):

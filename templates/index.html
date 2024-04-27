@@ -58,7 +58,7 @@
                         <ul class="nav nav-tabs card-header-tabs">
                             <li class="nav-item">
                                 <a class="nav-link active" aria-current="true" href="#">{{
-                                    media_metadata.get("playlist_title") }}</a>
+                                    media_metadata.get("playlist_title") or "No title" }}</a>
                             </li>
                             <li class="nav-item">
                                 {% if 'season_title' in media_metadata %}
@@ -84,7 +84,7 @@
                                 {% endif %}
                             </div>
                             <div class="col-md-8">
-                                <h4 class="card-title">{{ media_metadata.get('season_title', '') }}</h4>
+                                <h4 class="card-title">{{ media_metadata.get('season_title') or "No title" }}</h4>
                                 <p class="card-text">{{ media_metadata.get('description', 'Description not provided')
                                     }}</p>
                                 <p class="card-text">
@@ -120,12 +120,12 @@
                     <div class="card-header">
                         {% if 'media_list_content_type' in media_metadata %}
                         {% if media_metadata['media_list_content_type'] == 1 %}
-                        <a href="javascript:play_media({{ media_item.get('id') }})">{{ media_item.get("media_title")
-                            }}</a>
+                        <a href="javascript:play_media({{ media_item.get('id') }})">{{ media_item.get("media_title") or
+                            "No title" }}</a>
                         {% else %}
                         <a href="?content_type={{ media_metadata['media_list_content_type'] }}&media_id={{ media_item.get('id') }}">{{
                             media_item.get("playlist_title",
-                            media_item.get("season_title",media_item.get("media_title"))) }}
+                            media_item.get("season_title",media_item.get("media_title"))) or "No title" }}
                         </a>
                         {% endif %}
                         {% endif %}

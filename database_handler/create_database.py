@@ -1,3 +1,5 @@
+import json
+
 from . import DBConnection
 from .common_objects import ContentType
 from .media_metadata_collector import collect_tv_shows, collect_movies, get_extra_metadata
@@ -156,6 +158,10 @@ class DBCreator(DBConnection):
                 tv_show[common_objects.MEDIA_ID_COLUMN] = self.set_media_metadata(tv_show)
                 if tv_show.get(common_objects.MEDIA_ID_COLUMN):
                     self.add_media_to_playlist(tv_show)
+                else:
+                    print("Skipping playlist")
+            print(json.dumps(tv_show, indent=4))
+        print("Done scan")
 
     def add_movie_data(self, media_directory_info):
         for movie in collect_movies(media_directory_info):
