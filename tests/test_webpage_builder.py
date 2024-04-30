@@ -52,6 +52,7 @@ class TestWebpageBuilder(TestCase):
         __init__.patch_move_media_file(self)
         __init__.patch_collect_tv_shows(self)
         __init__.patch_collect_movies(self)
+        __init__.patch_extract_subclip(self)
 
         self.app = Flask(__name__)
         # Wait for the setup_thread to finish so the database is fully populated for testing

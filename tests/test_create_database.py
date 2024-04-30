@@ -82,6 +82,7 @@ class TestDBCreatorInit(TestCase):
         __init__.patch_get_file_hash(self)
         __init__.patch_get_ffmpeg_metadata(self)
         __init__.patch_move_media_file(self)
+        __init__.patch_extract_subclip(self)
 
 
 class TestDBCreator(TestDBCreatorInit):

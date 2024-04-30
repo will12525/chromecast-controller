@@ -5,11 +5,12 @@ import subprocess
 import threading
 from json import JSONDecodeError
 
-from datetime import datetime
+from datetime import datetime, timedelta
 import re
 from pathvalidate import ValidationError, validate_filename
 
 import config_file_handler
+from database_handler.common_objects import ContentType
 from database_handler.media_metadata_collector import mp4_file_ext
 
 ASK_QUESTION = True
@@ -27,13 +28,6 @@ scp willow@192.168.1.200:/home/willow/workspace/mp4_splitter/mp4_splitter.exe .\
 
 ALPHANUMERIC_INDEX_A = 97
 
-ERROR_SUCCESS = 0
-ERROR_TXT_FILE_DOESNT_EXIST = 1
-ERROR_MP4_FILE_DOESNT_EXIST = 2
-ERROR_TXT_FILE_EMPTY = 3
-ERROR_TXT_FILE_INVALID_CONTENT = 4
-ERROR_MP4_FILE_ALREADY_EXISTS = 5
-
 EDITOR_PROCESSED_LOG = "editor_metadata.json"
 
 
@@ -45,35 +39,8 @@ class EmptyTextFile(ValueError):
     pass
 
 
-class InvalidTimestamp(ValueError):
-    pass
-
-
-class InvalidContentCount(ValueError):
-    pass
-
-
-class InvalidContent(ValueError):
-    pass
-
-
-class InvalidPlaylistTitle(ValueError):
-    pass
-
-
-class InvalidMediaTitle(ValueError):
-    pass
-
-
-class InvalidSeasonIndex(ValueError):
-    pass
-
-
-class InvalidEpisodeIndex(ValueError):
-    pass
-
-
-def convert_timestamp(timestamp_str):
+def convert_timestamp(timestamp_str, error_list):
+    str_failure_modes = ['', None]
     colon_count = timestamp_str.count(":")
     h = m = s = 0
     if colon_count == 0:
@@ -83,142 +50,138 @@ def convert_timestamp(timestamp_str):
     elif colon_count == 2:
         h, m, s = timestamp_str.split(':')
     else:
-        error_dict = {"message": "Too many colons found", "string": timestamp_str, "colon_count": colon_count}
-        raise InvalidTimestamp(error_dict)
+        error_list.append({"message": "Too many colons found", "value": timestamp_str, "colon_count": colon_count})
 
-    if h in ['', None] or m in ['', None] or s in ['', None]:
-        error_dict = {"message": "Missing timestamp value", "string": timestamp_str, "hour": h, "minute": m,
-                      "second": s}
-        raise InvalidTimestamp(error_dict)
+    if h in str_failure_modes or m in str_failure_modes or s in str_failure_modes:
+        error_list.append(
+            {"message": "Missing timestamp value", "value": timestamp_str, "hour": h, "minute": m, "second": s})
+    else:
+        try:
+            h = int(h)
+            m = int(m)
+            s = int(s)
 
-    try:
-        h = int(h)
-        m = int(m)
-        s = int(s)
-    except ValueError:
-        error_dict = {"message": "Values not int", "string": timestamp_str, "hour": h, "minute": m, "second": s}
-        raise InvalidTimestamp(error_dict)
-
-    if h < 0 or m < 0 or s < 0:
-        error_dict = {"message": "Values less than 0", "string": timestamp_str, "hour": h, "minute": m, "second": s}
-        raise InvalidTimestamp(error_dict)
-
-    return h * 3600 + m * 60 + s
+            if h < 0 or m < 0 or s < 0:
+                error_list.append(
+                    {"message": "Values less than 0", "value": timestamp_str, "hour": h, "minute": m, "second": s})
+            else:
+                return h * 3600 + m * 60 + s
+        except ValueError:
+            error_list.append(
+                {"message": "Values not int", "value": timestamp_str, "hour": h, "minute": m, "second": s})
+    return 0
 
 
 class SubclipMetadata:
-    playlist_title = ""
-    media_title = ""
-    season_index = None
-    episode_index = None
-    start_time = ""
-    end_time = ""
+    subclip_metadata_list = None
+    media_title = None
+    start_time = None
+    end_time = None
     destination_file_path = None
     source_file_path = None
     file_name = None
+    error_list = None
 
     def __init__(self, subclip_metadata):
-        playlist_title = ""
-        media_title = ""
-        season_index = None
-        episode_index = None
-        start_time = ""
-        end_time = ""
-        subclip_metadata_list = subclip_metadata.split(',')
+        self.error_list = []
+        self.subclip_metadata_list = subclip_metadata.split(',')
 
-        if len(subclip_metadata_list) == 2:
-            start_time = subclip_metadata_list[0]
-            end_time = subclip_metadata_list[1]
-        elif len(subclip_metadata_list) == 6:
-            playlist_title = subclip_metadata_list[0]
-            media_title = subclip_metadata_list[1]
-            season_index = subclip_metadata_list[2]
-            episode_index = subclip_metadata_list[3]
-            start_time = subclip_metadata_list[4]
-            end_time = subclip_metadata_list[5]
-            if not playlist_title:
-                error_dict = {"message": "Missing playlist title", "string": subclip_metadata}
-                raise InvalidPlaylistTitle(error_dict)
-            if not media_title:
-                error_dict = {"message": "Missing media title", "string": subclip_metadata}
-                raise InvalidMediaTitle(error_dict)
-            if not season_index:
-                error_dict = {"message": "Missing season index", "string": subclip_metadata}
-                raise InvalidSeasonIndex(error_dict)
-            if not episode_index:
-                error_dict = {"message": "Missing episode index", "string": subclip_metadata}
-                raise InvalidEpisodeIndex(error_dict)
-            if not start_time or not end_time:
-                error_dict = {"message": "Missing start or end time", "string": subclip_metadata}
-                raise InvalidTimestamp(error_dict)
+    def extract_int(self, extraction_int, extraction_err_msg):
+        extracted_int = None
+        try:
+            extracted_int = int(extraction_int)
+            if extracted_int < 0:
+                self.error_list.append({"message": "Values less than 0", extraction_err_msg: extraction_int})
+        except ValueError:
+            self.error_list.append({"message": "Values not int", extraction_err_msg: extraction_int})
+        return extracted_int
+
+    def extract_str(self, extraction_str, extraction_err_msg):
+        extracted_str = None
+        if type(extraction_str) is not str:
+            self.error_list.append({"message": f"{extraction_err_msg} is not str", extraction_err_msg: extraction_str})
         else:
-            error_dict = {"message": "Missing content", "string": subclip_metadata}
-            raise InvalidContentCount(error_dict)
+            try:
+                extracted_str = extraction_str.strip().replace('"', "").replace(':', "")
+                validate_filename(extracted_str, platform="Linux")
+            except ValidationError as e:
+                error_dict = {
+                    "message": f"{extraction_err_msg} {e.reason.description}", extraction_err_msg: extraction_str}
+                if len(e.args) > 0 and "invalids" in e.args[0]:
+                    error_dict["invalids"] = re.search(
+                        r'invalids=(.*?), value=', e.args[0]).group(1).replace("'", "")
+                self.error_list.append(error_dict)
+        return extracted_str
 
+    def extract_start_end_times(self, start_time, end_time):
         if start_time and end_time:
-            start_time = convert_timestamp(start_time)
-            end_time = convert_timestamp(end_time)
+            start_time = convert_timestamp(start_time, self.error_list)
+            end_time = convert_timestamp(end_time, self.error_list)
             if end_time <= start_time:
-                error_dict = {"message": "End time >= start time", "string": subclip_metadata, "start_time": start_time,
-                              "end_time": end_time}
-                raise InvalidTimestamp(error_dict)
+                self.error_list.append({"message": "End time >= start time"})
             self.start_time = start_time
             self.end_time = end_time
-        if episode_index:
-            try:
-                self.episode_index = int(episode_index)
-            except ValueError:
-                error_dict = {"message": "Values not int", "string": subclip_metadata, "episode_index": episode_index}
-                raise InvalidEpisodeIndex(error_dict)
+        else:
+            self.error_list.append({"message": "Missing start or end time"})
 
-            if self.episode_index < 0:
-                error_dict = {"message": "Values less than 0", "string": subclip_metadata,
-                              "episode_index": self.episode_index}
-                raise InvalidEpisodeIndex(error_dict)
-
-        if season_index:
-            try:
-                self.season_index = int(season_index)
-            except ValueError:
-                error_dict = {"message": "Values not int", "string": subclip_metadata, "season_index": season_index}
-                raise InvalidSeasonIndex(error_dict)
-
-            if self.season_index < 0:
-                error_dict = {"message": "Values less than 0", "string": subclip_metadata,
-                              "season_index": self.season_index}
-                raise InvalidSeasonIndex(error_dict)
-
-        if media_title:
-            if type(media_title) is not str:
-                error_dict = {"message": "Media title is not str", "string": subclip_metadata,
-                              "media_title": self.media_title}
-                raise InvalidMediaTitle(error_dict)
-            media_title = media_title.strip().replace('"', "")
-            try:
-                validate_filename(media_title, platform="Linux")
-            except ValidationError as e:
-                error_dict = {"message": f"Media title {e.reason.description}", "string": subclip_metadata,
-                              "media_title": self.media_title}
-                if len(e.args) > 0 and "invalids" in e.args[0]:
-                    error_dict["invalids"] = re.search(r'invalids=(.*?), value=', e.args[0]).group(1).replace("'", "")
-                raise InvalidMediaTitle(error_dict)
+    def extract_media_title(self, media_title):
+        if media_title := self.extract_str(media_title, "media_title"):
             self.media_title = media_title
+        else:
+            self.error_list.append({"message": "Missing media title"})
 
-        if playlist_title:
-            if type(playlist_title) is not str:
-                error_dict = {"message": "Media title is not str", "string": subclip_metadata,
-                              "playlist_title": self.playlist_title}
-                raise InvalidPlaylistTitle(error_dict)
 
-            try:
-                validate_filename(playlist_title, platform="Linux")
-                self.playlist_title = playlist_title
-            except ValidationError as e:
-                error_dict = {"message": f"Media title {e.reason.description}", "string": subclip_metadata,
-                              "playlist_title": self.playlist_title}
-                if len(e.args) > 0 and "invalids" in e.args[0]:
-                    error_dict["invalids"] = re.search(r'invalids=(.*?), value=', e.args[0]).group(1).replace("'", "")
-                raise InvalidPlaylistTitle(error_dict)
+class MovieSubclipMetadata(SubclipMetadata):
+
+    def __init__(self, subclip_metadata):
+        super().__init__(subclip_metadata)
+        if len(self.subclip_metadata_list) == 3:
+            self.extract_media_title(self.subclip_metadata_list[0])
+            self.extract_start_end_times(self.subclip_metadata_list[1], self.subclip_metadata_list[2])
+        else:
+            self.error_list.append({"message": "Missing content", "value": subclip_metadata})
+
+        if self.error_list:
+            self.error_list.append({"message": f"Errors occurred while parsing line", "value": subclip_metadata})
+
+    def set_cmd_metadata(self, source_file_path, destination_file_path, media_title):
+        if not destination_file_path or not self.media_title:
+            destination_file_path = source_file_path.parent
+
+        if self.media_title:
+            destination_file_path = destination_file_path / f"{self.media_title}.mp4"
+
+        if destination_file_path.exists():
+            self.error_list.append({"message": "File already exists", "value": destination_file_path.name})
+        else:
+            if not self.media_title:
+                self.media_title = media_title
+            self.file_name = source_file_path.stem.strip()
+            self.source_file_path = str(source_file_path.as_posix()).strip()
+            self.destination_file_path = str(destination_file_path.as_posix()).strip()
+
+
+class TvShowSubclipMetadata(SubclipMetadata):
+    playlist_title = ""
+    season_index = None
+    episode_index = None
+
+    def __init__(self, subclip_metadata):
+        super().__init__(subclip_metadata)
+
+        if len(self.subclip_metadata_list) == 2:
+            self.extract_start_end_times(self.subclip_metadata_list[0], self.subclip_metadata_list[1])
+        elif len(self.subclip_metadata_list) == 6:
+            self.extract_playlist_title(self.subclip_metadata_list[0])
+            self.extract_media_title(self.subclip_metadata_list[1])
+            self.extract_season_index(self.subclip_metadata_list[2])
+            self.extract_episode_index(self.subclip_metadata_list[3])
+            self.extract_start_end_times(self.subclip_metadata_list[4], self.subclip_metadata_list[5])
+        else:
+            self.error_list.append({"message": "Missing content", "value": subclip_metadata})
+
+        if self.error_list:
+            self.error_list.append({"message": f"Errors occurred while parsing line", "value": subclip_metadata})
 
     def set_cmd_metadata(self, source_file_path, destination_file_path, media_title):
         if not destination_file_path or not self.playlist_title:
@@ -233,48 +196,80 @@ class SubclipMetadata:
             destination_file_path = destination_file_path / f'{media_title}_{source_file_path.stem}.mp4'
 
         if destination_file_path.exists():
-            raise FileExistsError({"message": "File already exists", "file_name": destination_file_path.name})
+            self.error_list.append({"message": "File already exists", "value": destination_file_path.name})
+        else:
+            if not self.media_title:
+                self.media_title = media_title
 
-        if not self.media_title:
-            self.media_title = media_title
+            self.file_name = source_file_path.stem.strip()
+            self.source_file_path = str(source_file_path.as_posix()).strip()
+            self.destination_file_path = str(destination_file_path.as_posix()).strip()
 
-        # self.media_title = self.media_title.strip().replace('"', "")
-        self.file_name = source_file_path.stem.strip()
-        self.source_file_path = str(source_file_path.as_posix()).strip()
-        self.destination_file_path = str(destination_file_path.as_posix()).strip()
+    def extract_playlist_title(self, playlist_title):
+        if playlist_title := self.extract_str(playlist_title, "playlist_title"):
+            self.playlist_title = playlist_title
+        else:
+            self.error_list.append({"message": "Missing playlist title"})
+
+    def extract_season_index(self, season_index):
+        if season_index := self.extract_int(season_index, "season_index"):
+            self.season_index = season_index
+        else:
+            self.error_list.append({"message": "Missing season index"})
+
+    def extract_episode_index(self, episode_index):
+        if episode_index := self.extract_int(episode_index, "episode_index"):
+            self.episode_index = episode_index
+        else:
+            self.error_list.append({"message": "Missing episode index"})
 
 
-def get_sub_clips_as_objs(txt_file_content):
+def get_tv_sub_clips_as_objs(txt_file_content, error_log):
     sub_clips = []
-    error_log = []
     for index, file_text in enumerate(txt_file_content):
-        try:
-            sub_clips.append(SubclipMetadata(file_text))
-        except Exception as e:
-            error_dict = e.args[0]
-            error_dict["line_index"] = index
-            error_log.append(error_dict)
-    return sub_clips, error_log
+        sub_clip = TvShowSubclipMetadata(file_text)
+        if sub_clip.error_list:
+            error_log.append({"message": "Failing line index", "value": index})
+            error_log.extend(sub_clip.error_list)
+        else:
+            sub_clips.append(sub_clip)
+    return sub_clips
 
 
-def get_sub_clips_from_txt_file(sub_clip_file):
+def get_movie_sub_clips_as_objs(txt_file_content, error_log):
+    sub_clips = []
+    for index, file_text in enumerate(txt_file_content):
+        sub_clip = MovieSubclipMetadata(file_text)
+        if sub_clip.error_list:
+            error_log.append({"message": "Failing line index", "value": index})
+            error_log.extend(sub_clip.error_list)
+        else:
+            sub_clips.append(sub_clip)
+    return sub_clips
+
+
+def get_sub_clips_from_txt_file(sub_clip_file, error_log, content_type):
+    sub_clips = []
     sub_clip_file_path = pathlib.Path(sub_clip_file).resolve()
     if not sub_clip_file_path.exists() or not sub_clip_file_path.is_file() or not sub_clip_file_path.suffix == ".txt":
-        error_dict = {"message": "Missing file", "file_name": sub_clip_file}
-        raise FileNotFoundError(error_dict)
+        error_log.append({"message": "Missing file", "value": sub_clip_file})
+    else:
+        subclip_file_content = config_file_handler.load_txt_file_content(sub_clip_file_path)
+        if not subclip_file_content:
+            error_log.append({"message": "Text file empty", "value": sub_clip_file_path.name})
+        else:
+            if content_type == ContentType.TV.value:
+                sub_clips = get_tv_sub_clips_as_objs(subclip_file_content, error_log)
+            elif content_type == ContentType.MOVIE.value:
+                sub_clips = get_movie_sub_clips_as_objs(subclip_file_content, error_log)
+            else:
+                error_log.append({"message": "Unsupported content type", "value": content_type})
+            if error_log:
+                error_log.append({"message": "Broken text file", "value": sub_clip_file_path.name})
+    return sub_clips
 
-    subclip_file_content = config_file_handler.load_txt_file_content(sub_clip_file_path)
-    if not subclip_file_content:
-        error_dict = {"message": "Text file empty", "file_name": sub_clip_file_path.name}
-        raise EmptyTextFile(error_dict)
 
-    sub_clips, errors = get_sub_clips_as_objs(subclip_file_content)
-    for error in errors:
-        error.update({"file_name": sub_clip_file_path.name})
-    return sub_clips, errors
-
-
-def get_cmd_list(sub_clips: list[SubclipMetadata], sub_clip_file, media_output_parent_path=None, error_log=None):
+def get_cmd_list(sub_clips: list[TvShowSubclipMetadata], sub_clip_file, media_output_parent_path=None, error_log=None):
     if error_log is None:
         error_log = []
 
@@ -282,18 +277,14 @@ def get_cmd_list(sub_clips: list[SubclipMetadata], sub_clip_file, media_output_p
     source_file_path = pathlib.Path(mp4_file).resolve()
 
     if not source_file_path.exists() or not source_file_path.is_file() or not source_file_path.suffix == ".mp4":
-        error_dict = {"message": "Missing file", "file_name": mp4_file}
-        raise FileNotFoundError(error_dict)
+        error_log.append({"message": "Missing file", "value": source_file_path.stem})
 
     remove_sub_clips = []
     for index, sub_clip in enumerate(sub_clips):
-        try:
-            sub_clip.set_cmd_metadata(source_file_path, media_output_parent_path, chr(ALPHANUMERIC_INDEX_A + index))
-        except FileExistsError as e:
-            error_dict = e.args[0]
-            error_dict["line_index"] = index
-            error_log.append(error_dict)
-            print(error_log)
+        sub_clip.set_cmd_metadata(source_file_path, media_output_parent_path, chr(ALPHANUMERIC_INDEX_A + index))
+        if sub_clip.error_list:
+            error_log.append({"message": "Failing line index", "value": index})
+            error_log.extend(sub_clip.error_list)
             remove_sub_clips.append(index)
     for index in reversed(remove_sub_clips):
         sub_clips.pop(index)
@@ -305,43 +296,39 @@ def update_processed_file(txt_file_name, editor_raw_folder):
     editor_metadata_file_path = pathlib.Path(editor_metadata_file).resolve()
     try:
         editor_metadata_content = config_file_handler.load_json_file_content(editor_metadata_file_path)
-    except (FileNotFoundError, JSONDecodeError):
-        pass
+    except (FileNotFoundError, JSONDecodeError) as e:
+        print("update_processed_file: output")
+        print(e.stdout)
+        print("update_processed_file: err")
+        print(e.stderr)
     editor_metadata_content[txt_file_name] = {"processed": True}
     config_file_handler.save_json_file_content(editor_metadata_content, editor_metadata_file)
 
 
-def editor_validate_txt_file(editor_raw_folder, editor_metadata):
-    txt_file_name = f"{editor_raw_folder}{editor_metadata.get('txt_file_name')}"
-    try:
-        return get_sub_clips_from_txt_file(txt_file_name)
-    except ValueError as e:
-        raise ValueError(e.args[0]) from e
-    except FileNotFoundError as e:
-        raise FileNotFoundError(e.args[0]) from e
+def editor_validate_txt_file(editor_raw_folder, editor_metadata, error_log):
+    txt_file = f"{editor_raw_folder}{editor_metadata.get('txt_file_name')}"
+    return get_sub_clips_from_txt_file(txt_file, error_log, editor_metadata.get("media_type"))
 
 
-def editor_process_txt_file(editor_raw_folder, editor_metadata, media_output_parent_path,
-                            editor_processor):
+def editor_process_txt_file(editor_raw_folder, editor_metadata, media_output_parent_path, editor_processor):
+    error_log = []
     sub_clip_file = f"{editor_raw_folder}{editor_metadata.get('txt_file_name')}"
     if editor_metadata.get('txt_file_content'):
         config_file_handler.save_txt_file_content(sub_clip_file, editor_metadata.get('txt_file_content'))
 
-    try:
-        sub_clips, errors = editor_validate_txt_file(editor_raw_folder, editor_metadata)
-        get_cmd_list(sub_clips, sub_clip_file, media_output_parent_path, errors)
+    sub_clips = editor_validate_txt_file(editor_raw_folder, editor_metadata, error_log)
+    if not error_log:
+        get_cmd_list(sub_clips, sub_clip_file, media_output_parent_path, error_log)
+    if not error_log:
         editor_processor.add_cmds_to_queue(sub_clips)
-        update_processed_file(editor_metadata.get('txt_file_name'), editor_raw_folder)
-        return errors
-    except ValueError as e:
-        raise ValueError(e.args[0]) from e
-    except FileNotFoundError as e:
-        raise FileNotFoundError(e.args[0]) from e
-    except FileExistsError as e:
-        update_processed_file(editor_metadata.get('txt_file_name'), editor_raw_folder)
-        error_dict = e.args[0]
-        error_dict["txt_file_name"] = editor_metadata.get('txt_file_name')
-        raise FileExistsError(error_dict) from e
+    # if not error_log:
+    #     update_processed_file(editor_metadata.get('txt_file_name'), editor_raw_folder)
+
+    if error_log:
+        error_log.append(
+            {"message": "Errors occurred while processing file", "value": editor_metadata.get('txt_file_name')})
+        print(error_log)
+    return error_log
 
 
 def get_editor_txt_files(editor_raw_folder):
@@ -418,7 +405,7 @@ def extract_subclip(sub_clip):
                 sub_clip.destination_file_path]
     output_dir = pathlib.Path(sub_clip.destination_file_path).resolve().parent
     # print(f"Sleeping {sub_clip.end_time}")
-    # time.sleep(sub_clip.end_time)
+    # time.sleep(5)
     # print(cmd)
     print(output_dir)
     print(full_cmd)
@@ -440,12 +427,11 @@ class SubclipProcessHandler(threading.Thread):
             try:
                 extract_subclip(self.current_sub_clip)
                 self.log_queue.put(
-                    {"message": "Finished splitting", "file_name": self.current_sub_clip.destination_file_path})
+                    {"message": "Finished splitting", "value": self.current_sub_clip.destination_file_path})
 
             except subprocess.CalledProcessError:
-                self.log_queue.put(
-                    {"message": "Error encountered while splitting",
-                     "file_name": self.current_sub_clip.destination_file_path})
+                self.log_queue.put({"message": "Error encountered while splitting",
+                                    "value": self.current_sub_clip.destination_file_path})
 
         self.current_sub_clip = None
 
@@ -460,7 +446,7 @@ class SubclipProcessHandler(threading.Thread):
 
     def get_metadata(self):
         process_name = "Split queue empty"
-        process_time = 0
+        process_end_time = 0
         percent_complete = 0
         process_log = []
         process_queue = []
@@ -475,10 +461,13 @@ class SubclipProcessHandler(threading.Thread):
 
         for sub_clip in list(self.subclip_process_queue.queue):
             process_queue.append(f"{sub_clip.media_title}, {sub_clip.file_name}")
+            process_end_time += sub_clip.end_time
+
+        process_end_time = datetime.now() + timedelta(seconds=process_end_time)
 
         return {
             "process_name": process_name,
-            "process_time": str(process_time),
+            "process_end_time": process_end_time.strftime("%d %H:%M:%S"),
             "percent_complete": percent_complete,
             "process_queue_size": self.subclip_process_queue.qsize(),
             "process_log": process_log,

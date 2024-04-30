@@ -24,6 +24,7 @@ class TestDatabaseHandler(TestCase):
         __init__.patch_move_media_file(self)
         __init__.patch_collect_tv_shows(self)
         __init__.patch_collect_movies(self)
+        __init__.patch_extract_subclip(self)
 
         if os.path.exists(self.DB_PATH):
             os.remove(self.DB_PATH)

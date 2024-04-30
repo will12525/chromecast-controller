@@ -1,6 +1,7 @@
 import hashlib
 import time
 import random
+import pathlib
 from unittest.mock import patch
 
 import config_file_handler
@@ -19,8 +20,20 @@ def get_ffmpeg_metadata(extra_metadata):
 
 
 def extract_subclip(sub_clip):
+    full_cmd = ['ffmpeg',
+                '-ss', str(sub_clip.start_time),
+                '-to', str(sub_clip.end_time),
+                '-i', sub_clip.source_file_path,
+                '-filter:a', 'asetpts=PTS-STARTPTS',
+                '-filter:v', 'setpts=PTS-STARTPTS',
+                '-c:a', 'aac',
+                '-metadata', f"title={sub_clip.media_title}",
+                sub_clip.destination_file_path]
+    output_dir = pathlib.Path(sub_clip.destination_file_path).resolve().parent
+    print(output_dir)
+    print(full_cmd)
     # time.sleep(sub_clip.start_time + sub_clip.end_time)
-    time.sleep(5)
+    time.sleep(2)
 
 
 def patch_get_file_hash(test_class):

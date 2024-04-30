@@ -138,20 +138,18 @@ async function update_editor_log(response_data) {
         editor_txt_file_log = document.getElementById("editor_txt_file_log");
         prepend_text = "";
         console.log(response_data)
-        if (response_data["string"] !== undefined) {
-            prepend_text += response_data?.string + "\n";
-        }
-        if (response_data["line_index"] !== undefined) {
-            prepend_text += "Line Number: " + response_data?.line_index + "\n";
-        }
+
         if (response_data["message"] !== undefined) {
-            prepend_text += response_data?.message;
+            prepend_text += response_data["message"];
         }
         if (response_data["file_name"] !== undefined) {
-            prepend_text += ": " + response_data?.file_name;
+            prepend_text += ": " + response_data["file_name"];
         }
         if (response_data["expected_path"] !== undefined) {
-            prepend_text += ": " + response_data?.expected_path;
+            prepend_text += ": " + response_data["expected_path"];
+        }
+        if (response_data["value"] !== undefined) {
+            prepend_text += ": " + response_data["value"];
         }
         editor_txt_file_log.value = prepend_text + "\n" + editor_txt_file_log.value;
 }
@@ -170,7 +168,7 @@ async function update_editor_webpage(response_data) {
         response_data?.process_log.forEach((element) => update_editor_log(element));
     }
 
-    if (response_data["process_queue"] !== undefined && response_data["process_name"] !== undefined && response_data["process_time"] !== undefined && response_data["process_queue_size"] !== undefined) {
+    if (response_data["process_queue"] !== undefined && response_data["process_name"] !== undefined && response_data["process_end_time"] !== undefined && response_data["process_queue_size"] !== undefined) {
         const process_queue_list = []
 
         const queue_item_li = document.createElement("li");
@@ -206,8 +204,8 @@ async function update_editor_webpage(response_data) {
             process_queue_list.push(queue_item_li)
 
         }
-        document.getElementById("editor_process_metadata_name").innerText = response_data["process_name"];
-        document.getElementById("editor_process_metadata_time").innerText = response_data["process_time"];
+//        document.getElementById("editor_process_metadata_name").innerText = response_data["process_name"];
+        document.getElementById("editor_process_metadata_end_time").innerText = response_data["process_end_time"];
         document.getElementById("editor_process_metadata_queue_size").innerText = response_data["process_queue_size"];
         document.getElementById("editor_process_queue").replaceChildren(...process_queue_list)
     }
@@ -295,9 +293,11 @@ async function validate_txt_file() {
     var url = "/validate_txt_file";
     const editor_txt_file_name = document.getElementById("editor_txt_file_name");
     const editor_txt_file_content = document.getElementById("editor_txt_file_content");
+    const media_type_dropdown = document.getElementById("media_type_dropdown");
     let data = {
         "txt_file_name": editor_txt_file_name.textContent,
-        "txt_file_content": editor_txt_file_content.value
+        "txt_file_content": editor_txt_file_content.value,
+        "txt_file_media_type": media_type_dropdown.innerText.trim()
     };
     // Send POST request
     let response = await fetch(url, {
@@ -316,9 +316,12 @@ async function process_txt_file() {
     var url = "/process_txt_file";
     const editor_txt_file_name = document.getElementById("editor_txt_file_name");
     const editor_txt_file_content = document.getElementById("editor_txt_file_content");
+    const media_type_dropdown = document.getElementById("media_type_dropdown");
     let data = {
         "txt_file_name": editor_txt_file_name.textContent,
-        "txt_file_content": editor_txt_file_content.value
+        "txt_file_content": editor_txt_file_content.value,
+        "txt_file_media_type": media_type_dropdown.innerText.trim()
+
     };
     let response = await fetch(url, {
         "method": "POST",
@@ -333,7 +336,7 @@ async function process_txt_file() {
 }
 
 async function updateEditorMetadata() {
-    if (document.getElementById("editor_process_metadata_name"))
+    if (document.getElementById("editor_process_queue"))
     {
         var url = "/process_metadata";
         let response = await fetch(url);
@@ -358,6 +361,10 @@ async function scan_media_directories() {
         "body": JSON.stringify(data),
     });
     button_element.classList.remove(disable_class);
+}
+
+async function update_selected_media_type(selected_li) {
+    document.getElementById("media_type_dropdown").innerHTML = selected_li.innerText;
 }
 
 async function updateSeekSelector() {

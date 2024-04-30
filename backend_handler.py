@@ -28,12 +28,9 @@ def editor_save_txt_file(output_path, editor_metadata):
 
 
 def editor_validate_txt_file(editor_raw_folder, editor_metadata):
-    try:
-        return mp4_splitter.editor_validate_txt_file(editor_raw_folder, editor_metadata)
-    except ValueError as e:
-        raise ValueError(e.args[0]) from e
-    except FileNotFoundError as e:
-        raise FileNotFoundError(e.args[0]) from e
+    error_log = []
+    mp4_splitter.editor_validate_txt_file(editor_raw_folder, editor_metadata, error_log)
+    return error_log
 
 
 def get_free_disk_space(editor_folder):
@@ -156,15 +153,8 @@ class BackEndHandler:
         return mp4_splitter.get_editor_metadata(editor_raw_folder, self.editor_processor, selected_txt_file)
 
     def editor_process_txt_file(self, editor_raw_folder, editor_metadata, media_output_parent_path):
-        try:
-            return mp4_splitter.editor_process_txt_file(editor_raw_folder, editor_metadata, media_output_parent_path,
-                                                        self.editor_processor)
-        except ValueError as e:
-            raise ValueError(e.args[0]) from e
-        except FileNotFoundError as e:
-            raise FileNotFoundError(e.args[0]) from e
-        except FileExistsError as e:
-            raise FileExistsError(e.args[0]) from e
+        return mp4_splitter.editor_process_txt_file(editor_raw_folder, editor_metadata, media_output_parent_path,
+                                                    self.editor_processor)
 
     def editor_get_process_metadata(self):
         return self.editor_processor.get_metadata()

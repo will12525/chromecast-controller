@@ -19,6 +19,7 @@ class TestChromecastHandler(TestCase):
         __init__.patch_get_file_hash(self)
         __init__.patch_get_ffmpeg_metadata(self)
         __init__.patch_move_media_file(self)
+        __init__.patch_extract_subclip(self)
 
         self.media_paths = config_file_handler.load_js_file().get("media_folders")
         assert self.media_paths
@@ -126,6 +127,7 @@ class TestMyMediaDevice(TestCase):
         __init__.patch_move_media_file(self)
         __init__.patch_collect_tv_shows(self)
         __init__.patch_collect_movies(self)
+        __init__.patch_extract_subclip(self)
 
         if os.path.exists(self.DB_PATH):
             os.remove(self.DB_PATH)

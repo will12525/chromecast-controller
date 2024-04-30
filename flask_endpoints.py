@@ -1,3 +1,4 @@
+import json
 import pathlib
 import queue
 
@@ -7,12 +8,14 @@ from flask import Flask, request, render_template
 
 # jsonify, redirect, current_app, render_template
 import backend_handler as bh
+import config_file_handler
 from chromecast_handler import CommandList
 from database_handler import common_objects
 from database_handler.database_handler import DatabaseHandler
 from database_handler.common_objects import ContentType, MEDIA_DIRECTORY_PATH_COLUMN
 from database_handler.create_database import DBCreator
 from werkzeug.utils import secure_filename
+
 
 # TODO: Update DB: Remove media that no longer exists
 # TODO: Update DB: Use md5sum to track files
@@ -23,9 +26,6 @@ from werkzeug.utils import secure_filename
 # TODO: Update chromecast menu auto populate to remove missing chromecasts
 # TODO: Convert chromecast name strings to id values and use ID values to refer to chromecasts
 # TODO: Make local media player: https://www.tutorialspoint.com/opencv_python/opencv_python_play_video_file.htm
-
-EDITOR_FOLDER = "/media/ssd1/splitter/"
-EDITOR_RAW_FOLDER = f"{EDITOR_FOLDER}raw_files/"
 
 
 class APIEndpoints(Enum):
@@ -67,11 +67,17 @@ media_controller_button_dict = {
     "skip": {"icon": "fa-forward", "id": f"{CommandList.CMD_SKIP.name}_media_button"},
     "stop": {"icon": "fa-stop", "id": f"{CommandList.CMD_STOP.name}_media_button"}
 }
+media_types = {
+    ContentType.TV.name: ContentType.TV.value,
+    ContentType.MOVIE.name: ContentType.MOVIE.value
+}
 
 backend_handler = bh.BackEndHandler()
 setup_thread = backend_handler.start()
 
 error_log = queue.Queue()
+
+raw_folder = config_file_handler.load_js_file().get('editor_raw_folder')
 
 
 def build_main_content(request_args):
@@ -107,7 +113,8 @@ def editor():
         return render_template("editor.html",
                                homepage_url="/",
                                button_dict=media_controller_button_dict,
-                               editor_metadata=backend_handler.get_editor_metadata(EDITOR_RAW_FOLDER))
+                               editor_metadata=backend_handler.get_editor_metadata(raw_folder),
+                               media_types=media_types)
     except Exception as e:
         error_str = str(traceback.print_exc())
         if len(e.args) > 0:
@@ -124,17 +131,17 @@ def editor():
 def editor_validate_txt_file():
     data = {"error": {"message": "File valid"}}
     if json_request := request.get_json():
+        if json_request.get("txt_file_media_type"):
+            json_request["media_type"] = media_types.get(json_request.get("txt_file_media_type"))
         try:
-            sub_clips, errors = bh.editor_validate_txt_file(EDITOR_RAW_FOLDER, json_request)
+            errors = bh.editor_validate_txt_file(raw_folder, json_request)
             if errors:
                 data = {"process_log": errors}
-        except (FileNotFoundError, ValueError) as e:
-            if len(e.args) > 0:
-                data = {"error": e.args[0]}
-                print(data)
+        except Exception as e:
             print("Exception class: ", e.__class__)
             print(f"ERROR: {e}")
             print(traceback.print_exc())
+            print(json.dumps(json_request, indent=4))
     return data, 200
 
 
@@ -143,14 +150,12 @@ def editor_save_txt_file():
     data = {"error": {"message": "File saved"}}
     if json_request := request.get_json():
         try:
-            bh.editor_save_txt_file(EDITOR_RAW_FOLDER, json_request)
+            bh.editor_save_txt_file(raw_folder, json_request)
         except Exception as e:
-            if len(e.args) > 0:
-                data = {"error": e.args[0]}
-                print(data)
             print("Exception class: ", e.__class__)
             print(f"ERROR: {e}")
             print(traceback.print_exc())
+            print(json.dumps(json_request, indent=4))
     return data, 200
 
 
@@ -160,35 +165,35 @@ def editor_load_txt_file():
     if json_request := request.get_json():
         if editor_txt_file_name := json_request.get("editor_txt_file_name"):
             try:
-                data = backend_handler.get_editor_metadata(EDITOR_RAW_FOLDER, editor_txt_file_name)
+                data = backend_handler.get_editor_metadata(raw_folder, editor_txt_file_name)
             except Exception as e:
-                if len(e.args) > 0:
-                    data = {"error": e.args[0]}
-                    print(data)
                 print("Exception class: ", e.__class__)
                 print(f"ERROR: {e}")
                 print(traceback.print_exc())
+                print(json.dumps(json_request, indent=4))
     return data, 200
 
 
 @app.route(APIEndpoints.EDITOR_PROCESS_TXT_FILE.value, methods=['POST'])
 def editor_process_txt_file():
-    data = {"error": {"message": "Success!"}}
+    data = {}
     if json_request := request.get_json():
-        try:
-            with DatabaseHandler() as db_connection:
-                media_metadata = db_connection.get_media_folder_path(1)
-            output_path = pathlib.Path(media_metadata.get(MEDIA_DIRECTORY_PATH_COLUMN)).resolve()
-            errors = backend_handler.editor_process_txt_file(EDITOR_RAW_FOLDER, json_request, output_path)
-            data["process_log"] = errors
-            data.update(backend_handler.editor_get_process_metadata())
-        except Exception as e:
-            if len(e.args) > 0:
-                data = {"error": e.args[0]}
-                print(data)
-            print("Exception class: ", e.__class__)
-            print(f"ERROR: {e}")
-            print(traceback.print_exc())
+        if json_request.get("txt_file_media_type"):
+            json_request["media_type"] = media_types.get(json_request.get("txt_file_media_type"))
+            try:
+                with DatabaseHandler() as db_connection:
+                    media_metadata = db_connection.get_media_folder_path_from_type(json_request["media_type"])
+                output_path = pathlib.Path(media_metadata.get(MEDIA_DIRECTORY_PATH_COLUMN)).resolve()
+                errors = backend_handler.editor_process_txt_file(raw_folder, json_request, output_path)
+                data = backend_handler.editor_get_process_metadata()
+                data["process_log"].extend(errors)
+                if not errors:
+                    data["process_log"].append({"message": "Success!"})
+            except Exception as e:
+                print("Exception class: ", e.__class__)
+                print(f"ERROR: {e}")
+                print(traceback.print_exc())
+                print(json.dumps(json_request, indent=4))
     return data, 200
 
 
@@ -198,9 +203,6 @@ def editor_processor_get_metadata():
     try:
         data = backend_handler.editor_get_process_metadata()
     except Exception as e:
-        if len(e.args) > 0:
-            data = {"error": e.args[0]}
-            print(data)
         print("Exception class: ", e.__class__)
         print(f"ERROR: {e}")
         print(traceback.print_exc())
@@ -323,7 +325,7 @@ def get_media_menu_data():
 @app.route(APIEndpoints.GET_DISK_SPACE.value, methods=['GET'])
 def get_disk_space():
     try:
-        data = {"free_space": bh.get_free_disk_space(EDITOR_FOLDER)}
+        data = {"free_space": bh.get_free_disk_space(raw_folder)}
         return data, 200
     except Exception as e:
         print("Exception class: ", e.__class__)

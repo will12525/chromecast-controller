@@ -60,10 +60,21 @@
                 <button type="button" class="btn btn-primary" onclick="javascript:process_txt_file()">Run</button>
             </div>
             <div class="col-sm-4">
-                <p>Processing: <span id="editor_process_metadata_name">{{ editor_metadata['process_name'] }}</span></p>
+                <div class="btn-group">
+                    <button type="button" class="btn btn-danger dropdown-toggle" id="media_type_dropdown"
+                            data-bs-toggle="dropdown" aria-expanded="false">TV
+                    </button>
+                    <ul class="dropdown-menu">
+                        {% for media_type in media_types: %}
+                        <li><a class="dropdown-item" onclick="javascript:update_selected_media_type(this)">{{ media_type
+                            }}</a></li>
+                        {% endfor %}
+                    </ul>
+                </div>
             </div>
             <div class="col-sm-3">
-                <p>Time: <span id="editor_process_metadata_time">{{ editor_metadata['process_time'] }}</span></p>
+                <p>End Time: <span id="editor_process_metadata_end_time">{{ editor_metadata['editor_process_metadata_end_time'] }}</span>
+                </p>
             </div>
             <div class="col-sm-2">
                 <p>Remaining: <span
