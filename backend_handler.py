@@ -33,12 +33,19 @@ def editor_validate_txt_file(editor_raw_folder, editor_metadata):
     return error_log
 
 
-def get_free_disk_space(editor_folder):
-    df = subprocess.Popen(["df", f"{editor_folder}"], stdout=subprocess.PIPE)
+def get_free_disk_space(editor_folder, size=None, ret=3):
+    cmd = ["df", f"{editor_folder}"]
+    if size:
+        cmd = ["df", "-B", size, f"{editor_folder}"]
+    df = subprocess.Popen(cmd, stdout=subprocess.PIPE)
     output = df.communicate()[0]
-    print(output)
-    device, size, used, available, percent, mount_point = output.decode("utf-8").split("\n")[1].split()
-    return available
+    # device, size, used, available, percent, mount_point
+    cmd_output_list = output.decode("utf-8").split("\n")[1].split()
+    return cmd_output_list[ret]
+
+
+def get_free_disk_space_percent(editor_folder):
+    return get_free_disk_space(editor_folder, ret=4)
 
 
 def download_image(json_request):
@@ -109,6 +116,7 @@ class BackEndHandler:
     startup_sha = None
     chromecast_handler = None
     editor_processor = mp4_splitter.SubclipProcessHandler()
+    media_scan_in_progress = False
 
     def __init__(self):
         repo = git.Repo(search_parent_directories=True)
@@ -149,6 +157,13 @@ class BackEndHandler:
     def play_media_on_chromecast(self, media_request_ids):
         self.chromecast_handler.play_from_sql(media_request_ids)
 
+    def scan_media_directories(self):
+        if not self.media_scan_in_progress:
+            self.media_scan_in_progress = True
+            with DBCreator() as db_connection:
+                db_connection.scan_all_media_directories()
+        self.media_scan_in_progress = False
+
     def get_editor_metadata(self, editor_raw_folder, selected_txt_file=None):
         return mp4_splitter.get_editor_metadata(editor_raw_folder, self.editor_processor, selected_txt_file)
 
@@ -158,3 +173,20 @@ class BackEndHandler:
 
     def editor_get_process_metadata(self):
         return self.editor_processor.get_metadata()
+
+    def get_system_data(self):
+        with DBCreator() as db_connection:
+            media_directory_info = db_connection.get_all_media_directory_info()
+
+        media_directory_disk_space = []
+        for media_directory in media_directory_info:
+            media_directory_path_str = media_directory.get(common_objects.MEDIA_DIRECTORY_PATH_COLUMN)
+            media_directory_disk_space.append({"free_disk_space": get_free_disk_space(media_directory_path_str, "G"),
+                                               "free_disk_percent": get_free_disk_space_percent(
+                                                   media_directory_path_str),
+                                               "directory_path": pathlib.Path(media_directory_path_str).parent.stem})
+
+        return {
+            "disk_space": media_directory_disk_space
+
+        }

@@ -17,12 +17,12 @@ from database_handler.create_database import DBCreator
 from werkzeug.utils import secure_filename
 
 
-# TODO: Update DB: Remove media that no longer exists
-# TODO: Update DB: Use md5sum to track files
 # TODO: Update media grid to dynamically update rather than page reload
-# TODO: Extract default values to json config file <- in progress
 # TODO: Update all js function references to event listeners on js side
+# TODO: Add monitoring of storage space
+# TODO: Prevent media additions if space is low
 # TODO: Add notification when media scan completes
+# TODO: Prevent additional scans from occurring while scan in progress
 # TODO: Update chromecast menu auto populate to remove missing chromecasts
 # TODO: Convert chromecast name strings to id values and use ID values to refer to chromecasts
 # TODO: Make local media player: https://www.tutorialspoint.com/opencv_python/opencv_python_play_video_file.htm
@@ -95,11 +95,14 @@ def build_main_content(request_args):
     else:
         pass
 
+    system_data = backend_handler.get_system_data()
+
     try:
         with DatabaseHandler() as db_connection:
             media_metadata = db_connection.get_media_content(content_type, params_dict=data)
         return render_template("index.html", homepage_url=APIEndpoints.MAIN.value,
-                               button_dict=media_controller_button_dict, media_metadata=media_metadata)
+                               button_dict=media_controller_button_dict, media_metadata=media_metadata,
+                               system_data=system_data)
     except Exception as e:
         print("Exception class: ", e.__class__)
         print(f"ERROR: {e}")
@@ -292,8 +295,7 @@ def play_media():
 @app.route(APIEndpoints.SCAN_MEDIA_DIRECTORIES.value, methods=['POST'])
 def scan_media_directories():
     data = {}
-    with DBCreator() as db_connection:
-        db_connection.scan_all_media_directories()
+    backend_handler.scan_media_directories()
     return data, 200
 
 

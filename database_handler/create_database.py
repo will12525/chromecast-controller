@@ -160,8 +160,7 @@ class DBCreator(DBConnection):
                     self.add_media_to_playlist(tv_show)
                 else:
                     print("Skipping playlist")
-            print(json.dumps(tv_show, indent=4))
-        print("Done scan")
+        print("Finished tv scan")
 
     def add_movie_data(self, media_directory_info):
         for movie in collect_movies(media_directory_info):
@@ -170,6 +169,7 @@ class DBCreator(DBConnection):
             if movie.get("full_file_path"):
                 get_extra_metadata(movie)
             self.set_media_metadata(movie)
+        print("Finished movie scan")
 
     def set_media_directory_info(self, media_directory_info) -> int:
         return self.add_data_to_db(sql_insert_media_folder_path_table, media_directory_info)

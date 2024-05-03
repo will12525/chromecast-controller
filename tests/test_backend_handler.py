@@ -1,6 +1,7 @@
 import json
 import shutil
 import os
+import time
 from unittest import TestCase
 import pathlib
 
@@ -9,6 +10,7 @@ import config_file_handler
 from database_handler import common_objects
 from database_handler.common_objects import ContentType
 from database_handler.database_handler import DatabaseHandler
+from database_handler.create_database import DBCreator
 import __init__
 
 
@@ -18,11 +20,51 @@ class TestBackEndHandler(TestCase):
 
     def setUp(self):
         __init__.patch_extract_subclip(self)
+        __init__.patch_get_file_hash(self)
+        __init__.patch_get_ffmpeg_metadata(self)
         self.backend_handler = bh.BackEndHandler()
-        self.backend_handler.start()
+        setup_thread = self.backend_handler.start()
+        while setup_thread.is_alive():
+            time.sleep(.01)
         if os.path.exists(self.image_folder_path):
             shutil.rmtree(self.image_folder_path)
             os.mkdir(self.image_folder_path)
+
+
+class TestSetupDB(TestCase):
+    DB_PATH = "media_metadata.db"
+
+    def setUp(self):
+        __init__.patch_get_file_hash(self)
+        __init__.patch_get_ffmpeg_metadata(self)
+        if os.path.exists(self.DB_PATH):
+            os.remove(self.DB_PATH)
+
+    def test_setup_db(self):
+        assert not os.path.exists(self.DB_PATH)
+        bh.setup_db()
+        assert os.path.exists(self.DB_PATH)
+
+    def test_setup_db_contents(self):
+        media_folders = config_file_handler.load_js_file().get("media_folders")
+        assert not os.path.exists(self.DB_PATH)
+        bh.setup_db()
+        with DBCreator() as db_connection:
+            media_metadata = db_connection.get_all_media_directory_info()
+
+        assert len(media_folders) == len(media_metadata)
+        assert type(media_folders) is list
+        assert type(media_metadata) is list
+
+        for i in range(len(media_folders)):
+            assert type(media_folders[i]) is dict
+            assert type(media_metadata[i]) is dict
+            assert media_folders[i].get(common_objects.MEDIA_TYPE_COLUMN) == media_metadata[i].get(
+                common_objects.MEDIA_TYPE_COLUMN)
+            assert media_folders[i].get(common_objects.MEDIA_DIRECTORY_PATH_COLUMN) == media_metadata[i].get(
+                common_objects.MEDIA_DIRECTORY_PATH_COLUMN)
+            assert media_folders[i].get(common_objects.MEDIA_DIRECTORY_URL_COLUMN) == media_metadata[i].get(
+                common_objects.MEDIA_DIRECTORY_URL_COLUMN)
 
 
 class TestBackEndFunctionCalls(TestBackEndHandler):
@@ -181,10 +223,6 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
         assert str(output_path).count(file_name_str) == 1
 
     def test_editor_validate_txt_file(self):
-        json_request = {
-            'txt_file_name': "movie.txt",
-            "media_type": ContentType.MOVIE.value
-        }
         editor_metadata = {
             'txt_file_name': "2024-01-31_16-32-36.txt",
             'media_type': ContentType.TV.value
@@ -192,6 +230,28 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
         raw_folder = config_file_handler.load_js_file().get('editor_raw_folder')
         error_log = bh.editor_validate_txt_file(raw_folder, editor_metadata)
         print(json.dumps(error_log, indent=4))
+        assert not error_log
+
+    def test_editor_validate_broken_txt_file(self):
+        editor_metadata = {
+            'txt_file_name': "2024-01-31_16-32-36_invalid.txt",
+            'media_type': ContentType.TV.value
+        }
+        raw_folder = config_file_handler.load_js_file().get('editor_raw_folder')
+        error_log = bh.editor_validate_txt_file(raw_folder, editor_metadata)
+        print(json.dumps(error_log, indent=4))
+        assert error_log
+        assert len(error_log) == 5
+
+    def test_editor_validate_movie_txt_file(self):
+        editor_metadata = {
+            'txt_file_name': "movie.txt",
+            "media_type": ContentType.MOVIE.value
+        }
+        raw_folder = config_file_handler.load_js_file().get('editor_raw_folder')
+        error_log = bh.editor_validate_txt_file(raw_folder, editor_metadata)
+        print(json.dumps(error_log, indent=4))
+        assert not error_log
 
     def test_editor_process_movie_txt_file(self):
         __init__.patch_extract_subclip(self)
@@ -205,6 +265,7 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
         output_path = pathlib.Path(media_metadata.get(common_objects.MEDIA_DIRECTORY_PATH_COLUMN)).resolve()
         errors = self.backend_handler.editor_process_txt_file(raw_folder, json_request, output_path)
         print(json.dumps(errors, indent=4))
+        assert not errors
 
     def test_editor_process_tv_txt_file(self):
         __init__.patch_extract_subclip(self)
@@ -219,3 +280,8 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
         output_path = pathlib.Path(media_metadata.get(common_objects.MEDIA_DIRECTORY_PATH_COLUMN)).resolve()
         errors = self.backend_handler.editor_process_txt_file(raw_folder, json_request, output_path)
         print(json.dumps(errors, indent=4))
+        assert not errors
+
+    def test_get_system_data(self):
+        system_data = self.backend_handler.get_system_data()
+        print(json.dumps(system_data, indent=4))

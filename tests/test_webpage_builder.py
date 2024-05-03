@@ -139,3 +139,11 @@ class Test(TestWebpageBuilder):
             if SAVE_FILES:
                 save_to_file(main_content)
             assert main_content == html_as_string
+
+    def test_get_media_menu_data(self):
+        # request_args = ImmutableMultiDict([('content_type', common_objects.ContentType.MOVIE.value)])
+        with self.app.app_context(), self.app.test_request_context():
+            self.app.jinja_env.lstrip_blocks = True
+            self.app.jinja_env.trim_blocks = True
+            print(flask_endpoints.get_media_menu_data())
+            # assert isinstance(flask_endpoints.build_main_content(request_args), str)
