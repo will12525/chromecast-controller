@@ -279,15 +279,11 @@ def get_cmd_list(sub_clips: list[TvShowSubclipMetadata], sub_clip_file, media_ou
     if not source_file_path.exists() or not source_file_path.is_file() or not source_file_path.suffix == ".mp4":
         error_log.append({"message": "Missing file", "value": source_file_path.stem})
 
-    remove_sub_clips = []
     for index, sub_clip in enumerate(sub_clips):
         sub_clip.set_cmd_metadata(source_file_path, media_output_parent_path, chr(ALPHANUMERIC_INDEX_A + index))
         if sub_clip.error_list:
             error_log.append({"message": "Failing line index", "value": index})
             error_log.extend(sub_clip.error_list)
-            remove_sub_clips.append(index)
-    for index in reversed(remove_sub_clips):
-        sub_clips.pop(index)
 
 
 def update_processed_file(txt_file_name, editor_raw_folder):
@@ -317,17 +313,14 @@ def editor_process_txt_file(editor_raw_folder, editor_metadata, media_output_par
         config_file_handler.save_txt_file_content(sub_clip_file, editor_metadata.get('txt_file_content'))
 
     sub_clips = editor_validate_txt_file(editor_raw_folder, editor_metadata, error_log)
-    if not error_log:
-        get_cmd_list(sub_clips, sub_clip_file, media_output_parent_path, error_log)
-    if not error_log:
-        editor_processor.add_cmds_to_queue(sub_clips)
+    get_cmd_list(sub_clips, sub_clip_file, media_output_parent_path, error_log)
+    editor_processor.add_cmds_to_queue(sub_clips)
     if not error_log:
         update_processed_file(editor_metadata.get('txt_file_name'), editor_raw_folder)
 
     if error_log:
         error_log.append(
             {"message": "Errors occurred while processing file", "value": editor_metadata.get('txt_file_name')})
-        print(error_log)
     return error_log
 
 
@@ -439,7 +432,8 @@ class SubclipProcessHandler(threading.Thread):
         if self.subclip_process_queue.qsize() > self.subclip_process_queue_size:
             raise JobQueueFull({"message": "Job queue full"})
         for sub_clip in sub_clips:
-            self.subclip_process_queue.put(sub_clip)
+            if not sub_clip.error_list:
+                self.subclip_process_queue.put(sub_clip)
         if not self.is_alive():
             threading.Thread.__init__(self, daemon=True)
             self.start()

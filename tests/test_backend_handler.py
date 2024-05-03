@@ -42,6 +42,8 @@ class TestSetupDB(TestCase):
     def setUp(self):
         __init__.patch_get_file_hash(self)
         __init__.patch_get_ffmpeg_metadata(self)
+        __init__.patch_extract_subclip(self)
+        __init__.patch_update_processed_file(self)
         if os.path.exists(self.DB_PATH):
             os.remove(self.DB_PATH)
 

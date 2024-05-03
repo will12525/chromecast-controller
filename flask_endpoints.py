@@ -197,6 +197,7 @@ def editor_process_txt_file():
                 print(f"ERROR: {e}")
                 print(traceback.print_exc())
                 print(json.dumps(json_request, indent=4))
+    print(json.dumps(data, indent=4))
     return data, 200
 
 

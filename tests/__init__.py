@@ -33,7 +33,7 @@ def extract_subclip(sub_clip):
     print(output_dir)
     print(full_cmd)
     # time.sleep(sub_clip.start_time + sub_clip.end_time)
-    time.sleep(2)
+    time.sleep(.5)
 
 
 def patch_get_file_hash(test_class):
