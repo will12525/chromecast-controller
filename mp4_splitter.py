@@ -321,8 +321,8 @@ def editor_process_txt_file(editor_raw_folder, editor_metadata, media_output_par
         get_cmd_list(sub_clips, sub_clip_file, media_output_parent_path, error_log)
     if not error_log:
         editor_processor.add_cmds_to_queue(sub_clips)
-    # if not error_log:
-    #     update_processed_file(editor_metadata.get('txt_file_name'), editor_raw_folder)
+    if not error_log:
+        update_processed_file(editor_metadata.get('txt_file_name'), editor_raw_folder)
 
     if error_log:
         error_log.append(
