@@ -83,6 +83,7 @@ class TestDBCreatorInit(TestCase):
         __init__.patch_get_ffmpeg_metadata(self)
         __init__.patch_move_media_file(self)
         __init__.patch_extract_subclip(self)
+        __init__.patch_update_processed_file(self)
 
 
 class TestDBCreator(TestDBCreatorInit):
@@ -378,7 +379,6 @@ class TestDBCreator(TestDBCreatorInit):
             common_objects.MEDIA_DIRECTORY_PATH_COLUMN)
         assert set_media_directory_info.get(common_objects.MEDIA_DIRECTORY_URL_COLUMN) == media_directory_info.get(
             common_objects.MEDIA_DIRECTORY_URL_COLUMN)
-        assert set_media_directory_info == media_directory_info
 
     def test_set_playlist_metadata(self):
         with DBCreator(DBType.MEMORY) as db_setter_connection:

@@ -1,5 +1,6 @@
 import inspect
 import os
+import time
 from unittest import TestCase
 
 from werkzeug.datastructures.structures import ImmutableMultiDict
@@ -53,9 +54,15 @@ class TestWebpageBuilder(TestCase):
         __init__.patch_collect_tv_shows(self)
         __init__.patch_collect_movies(self)
         __init__.patch_extract_subclip(self)
+        __init__.patch_update_processed_file(self)
+        __init__.patch_get_free_disk_space(self)
 
         self.app = Flask(__name__)
         # Wait for the setup_thread to finish so the database is fully populated for testing
+        flask_endpoints.setup_thread.join()
+
+        while flask_endpoints.setup_thread.is_alive():
+            time.sleep(.01)
         flask_endpoints.setup_thread.join()
 
 

@@ -79,3 +79,16 @@ def patch_collect_movies(test_class):
     test_class.collect_movies = patcher.start()
     test_class.collect_movies.return_value = collect_movies_metadata
     test_class.addCleanup(patcher.stop)
+
+
+def patch_get_free_disk_space(test_class):
+    patcher = patch('backend_handler.get_free_disk_space')
+    test_class.get_free_disk_space = patcher.start()
+    test_class.get_free_disk_space.return_value = 100
+    test_class.addCleanup(patcher.stop)
+
+
+def patch_update_processed_file(test_class):
+    patcher = patch('mp4_splitter.update_processed_file')
+    test_class.patch_update_processed_file = patcher.start()
+    test_class.addCleanup(patcher.stop)

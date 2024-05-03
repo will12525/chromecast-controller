@@ -172,7 +172,9 @@ class DBCreator(DBConnection):
         print("Finished movie scan")
 
     def set_media_directory_info(self, media_directory_info) -> int:
-        return self.add_data_to_db(sql_insert_media_folder_path_table, media_directory_info)
+        defaulted_media_directory_info = common_objects.default_media_directory_info.copy()
+        defaulted_media_directory_info.update(media_directory_info)
+        return self.add_data_to_db(sql_insert_media_folder_path_table, defaulted_media_directory_info)
 
     def get_media_directory_info(self, item_id) -> dict:
         return self.get_data_from_db_first_result(GET_MEDIA_DIRECTORY_INFO, {common_objects.ID_COLUMN: item_id})

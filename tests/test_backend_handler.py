@@ -19,13 +19,18 @@ class TestBackEndHandler(TestCase):
     image_folder_path = "../images"
 
     def setUp(self):
+        __init__.patch_update_processed_file(self)
         __init__.patch_extract_subclip(self)
         __init__.patch_get_file_hash(self)
         __init__.patch_get_ffmpeg_metadata(self)
+        __init__.patch_get_free_disk_space(self)
+
         self.backend_handler = bh.BackEndHandler()
         setup_thread = self.backend_handler.start()
+        # setup_thread.join()
         while setup_thread.is_alive():
             time.sleep(.01)
+        setup_thread.join()
         if os.path.exists(self.image_folder_path):
             shutil.rmtree(self.image_folder_path)
             os.mkdir(self.image_folder_path)
@@ -255,6 +260,8 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
 
     def test_editor_process_movie_txt_file(self):
         __init__.patch_extract_subclip(self)
+        __init__.patch_update_processed_file(self)
+
         json_request = {
             'txt_file_name': "movie.txt",
             "media_type": ContentType.MOVIE.value
@@ -269,6 +276,7 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
 
     def test_editor_process_tv_txt_file(self):
         __init__.patch_extract_subclip(self)
+        __init__.patch_update_processed_file(self)
 
         json_request = {
             'txt_file_name': "2024-01-31_16-32-36.txt",

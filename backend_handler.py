@@ -18,9 +18,7 @@ def setup_db():
     with DBCreator() as db_connection:
         db_connection.create_db()
         for media_folder_info in config_file_handler.load_js_file().get("media_folders"):
-            media_directory_info = common_objects.default_media_directory_info.copy()
-            media_directory_info.update(media_folder_info)
-            db_connection.setup_media_directory(media_directory_info)
+            db_connection.setup_media_directory(media_folder_info)
 
 
 def editor_save_txt_file(output_path, editor_metadata):

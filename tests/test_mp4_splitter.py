@@ -590,6 +590,7 @@ class TestEditor(TestMp4Splitter):
 
     def test_editor_process_txt_file_name(self):
         __init__.patch_extract_subclip(self)
+        __init__.patch_update_processed_file(self)
         editor_metadata = {
             'txt_file_name': "2024-01-31_16-32-36.txt"
         }
@@ -636,6 +637,7 @@ class TestEditor(TestMp4Splitter):
 
     def test_editor_process_txt_file(self):
         __init__.patch_extract_subclip(self)
+        __init__.patch_update_processed_file(self)
         editor_metadata = {
             'txt_file_name': "2024-01-31_16-32-36.txt"
         }

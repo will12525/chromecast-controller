@@ -18,6 +18,7 @@ class TestMediaMetadataCollectorSetup(TestCase):
         __init__.patch_get_ffmpeg_metadata(self)
         __init__.patch_move_media_file(self)
         __init__.patch_extract_subclip(self)
+        __init__.patch_update_processed_file(self)
 
 
 class TestDBCreator(TestMediaMetadataCollectorSetup):
