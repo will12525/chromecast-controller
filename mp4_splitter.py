@@ -438,11 +438,16 @@ class SubclipProcessHandler(threading.Thread):
         self.current_sub_clip = None
 
     def check_valid_sub_clip(self, sub_clip):
-        if pathlib.Path(sub_clip.destination_file_path).resolve().is_file():
-            print({"message": "Error is file", "value": self.current_sub_clip.destination_file_path})
-            return False
         if sub_clip.error_list:
             print({"message": "Has error list", "value": sub_clip.error_list})
+            return False
+
+        if not sub_clip.destination_file_path:
+            print({"message": "Missing destination path:", "value": f"{sub_clip.media_title}"})
+            return False
+
+        if pathlib.Path(sub_clip.destination_file_path).resolve().is_file():
+            print({"message": "Error is file", "value": self.current_sub_clip.destination_file_path})
             return False
 
         for process_queue_sub_clip in list(self.subclip_process_queue.queue):
