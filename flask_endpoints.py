@@ -26,7 +26,11 @@ from werkzeug.utils import secure_filename
 # TODO: Update chromecast menu auto populate to remove missing chromecasts
 # TODO: Convert chromecast name strings to id values and use ID values to refer to chromecasts
 # TODO: Make local media player: https://www.tutorialspoint.com/opencv_python/opencv_python_play_video_file.htm
-
+# Tori
+# TODO: Add ability to rename episode titles
+# TODO: Add way to update indexing order of playlist content
+# TODO: Add ability to play in browser
+# TODO: Add ability to play on host if display is present
 
 class APIEndpoints(Enum):
     MAIN = "/"
@@ -77,7 +81,9 @@ setup_thread = backend_handler.start()
 
 error_log = queue.Queue()
 
-raw_folder = config_file_handler.load_js_file().get('editor_raw_folder')
+config_file_data = config_file_handler.load_js_file()
+raw_folder = config_file_data.get('editor_raw_folder')
+live_stream_urls = config_file_data.get('live_stream_urls')
 
 
 def build_main_content(request_args):
@@ -114,7 +120,7 @@ def build_main_content(request_args):
 def editor():
     try:
         return render_template("editor.html",
-                               homepage_url="/",
+                               homepage_url=APIEndpoints.MAIN.value,
                                button_dict=media_controller_button_dict,
                                editor_metadata=backend_handler.get_editor_metadata(raw_folder),
                                media_types=media_types)
@@ -366,6 +372,25 @@ def upload_file():
                 data["error"] = e.args[0]
     print(data)
     return data, 200
+
+
+@app.route("/live_stream")
+def live_stream():
+    try:
+        return render_template("live_stream.html",
+                               homepage_url=APIEndpoints.MAIN.value,
+                               button_dict=media_controller_button_dict,
+                               live_stream_urls=live_stream_urls)
+    except Exception as e:
+        error_str = str(traceback.print_exc())
+        if len(e.args) > 0:
+            data = {"error": e.args[0]}
+            error_str = f"{error_str}\n{data}"
+            print(data)
+        print("Exception class: ", e.__class__)
+        print(f"ERROR: {e}")
+        print(traceback.print_exc())
+        return str(error_str)
 
 
 if __name__ == "__main__":

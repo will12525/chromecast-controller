@@ -399,6 +399,7 @@ async function setNavbarLinks() {
     var movie_select_button = document.getElementById("movie_select_button");
     var scan_media_button = document.getElementById("scan_media_button");
     var editor_button = document.getElementById("editor_button");
+    var live_stream_button = document.getElementById("live_stream");
 
     var url = "/get_media_content_types";
     let response = await fetch(url);
@@ -418,6 +419,10 @@ async function setNavbarLinks() {
         if (editor_button !== null)
         {
             editor_button.setAttribute('href', "/editor");
+        }
+        if (live_stream_button !== null)
+        {
+            live_stream_button.setAttribute('href', "/live_stream");
         }
         if (scan_media_button !== null)
         {
