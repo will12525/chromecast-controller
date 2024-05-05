@@ -1,7 +1,9 @@
 Flask~=2.3.2
 PyChromecast~=13.0.7
-gitpython
-cryptography
+gitpython~=3.1.32
 js2py~=0.74
-
 MarkupSafe~=2.1.3
+ffmpeg-python~=0.2.0
+Werkzeug~=2.3.6
+pathvalidate~=3.2.0
+requests~=2.31.0

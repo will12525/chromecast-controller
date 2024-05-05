@@ -1,19 +1,35 @@
+import json
+import os
 from unittest import TestCase
 
-from chromecast_handler import ChromecastHandler, CommandList
-from media_folder_metadata_handler import MediaFolderMetadataHandler
+from pychromecast.controllers.media import MediaStatus
+
+import config_file_handler
+from chromecast_handler import ChromecastHandler
+from database_handler import common_objects
+from database_handler.create_database import DBCreator
+import __init__
 
 
 class TestChromecastHandler(TestCase):
-    SERVER_URL_TV_SHOWS = "http://192.168.1.200:8000/tv_shows/"
-    MEDIA_FOLDER_PATH = "/media/hdd1/plex_media/tv_shows/"
-    MEDIA_METADATA_FILE = "tv_show_metadata.json"
-    # CHROMECAST_ID = "Family Room TV"
-
-    CHROMECAST_ID = "Master Bedroom TV"
+    CHROMECAST_ID = "Test Cast"
 
     def setUp(self):
         self.chromecast_handler = ChromecastHandler()
+        __init__.patch_get_file_hash(self)
+        __init__.patch_get_ffmpeg_metadata(self)
+        __init__.patch_move_media_file(self)
+        __init__.patch_extract_subclip(self)
+        __init__.patch_update_processed_file(self)
+
+        self.media_paths = config_file_handler.load_js_file().get("media_folders")
+        assert self.media_paths
+        assert isinstance(self.media_paths, list)
+        assert len(self.media_paths) == 3
+        with DBCreator() as db_connection:
+            db_connection.create_db()
+            for media_path in self.media_paths:
+                db_connection.setup_media_directory(media_path)
 
 
 class TestChromecastScanning(TestChromecastHandler):
@@ -26,7 +42,7 @@ class TestChromecastScanning(TestChromecastHandler):
         self.chromecast_handler.scan_for_chromecasts()
         scan_list = self.chromecast_handler.get_scan_list()
         self.assertTrue(scan_list)
-        print(scan_list)
+        # print(scan_list)
 
 
 class TestChromecastConnection(TestChromecastHandler):
@@ -56,93 +72,214 @@ class TestChromecastConnection(TestChromecastHandler):
         self.assertEqual(self.chromecast_handler.get_chromecast_id(), self.CHROMECAST_ID)
 
 
-class TestChromecastCommands(TestChromecastHandler):
-    # Requires Visual acknowledgement
-    def test_play_from_media_drive(self):
-        self.chromecast_handler.connect_chromecast(self.CHROMECAST_ID)
-        chromecast_id = self.chromecast_handler.get_chromecast_id()
-        self.assertTrue(self.CHROMECAST_ID == chromecast_id)
+# class TestChromecastCommands(TestChromecastHandler):
+# Requires Visual acknowledgement
+# def test_play_from_media_drive(self):
+#     self.chromecast_handler.connect_chromecast(self.CHROMECAST_ID)
+#     chromecast_id = self.chromecast_handler.get_chromecast_id()
+#     self.assertTrue(self.CHROMECAST_ID == chromecast_id)
+#
+#     self.chromecast_handler.play_from_media_drive(MediaFolderMetadataHandler(
+#         self.MEDIA_METADATA_FILE, self.MEDIA_FOLDER_PATH), self.SERVER_URL_TV_SHOWS)
+#     print(self.chromecast_handler.get_media_controller().media_folder_metadata_handler.get_url(
+#         self.SERVER_URL_TV_SHOWS))
 
-        self.chromecast_handler.play_from_media_drive(MediaFolderMetadataHandler(
-            self.MEDIA_METADATA_FILE, self.MEDIA_FOLDER_PATH), self.SERVER_URL_TV_SHOWS)
-        print(self.chromecast_handler.get_media_controller().media_folder_metadata_handler.get_url(
-            self.SERVER_URL_TV_SHOWS))
+# def test_get_current_playing_episode_info(self):
+#     self.test_play_from_media_drive()
+#     episode_info = self.chromecast_handler.get_current_playing_episode_info()
+#
+#     self.assertTrue(episode_info)
+#     self.assertEqual(type(episode_info), dict)
+#
+#     self.assertTrue(episode_info.get("name"))
+#
+#     pass
 
-    def test_get_current_playing_episode_info(self):
-        self.test_play_from_media_drive()
-        episode_info = self.chromecast_handler.get_current_playing_episode_info()
-
-        self.assertTrue(episode_info)
-        self.assertEqual(type(episode_info), dict)
-
-        self.assertTrue(episode_info.get("name"))
-
-        pass
-
-    def test_get_current_timestamp(self):
-        self.test_get_current_playing_episode_info()
-        while not (current_media_runtime := self.chromecast_handler.get_media_current_time()):
-            pass
-        print(current_media_runtime)
-
-    def test_get_current_status(self):
-        self.test_get_current_playing_episode_info()
-
-    def test_send_command(self):
-        self.test_play_from_media_drive()
-        self.chromecast_handler.send_command(CommandList.CMD_PAUSE)
-        # Need to get way to check current state
-        pass
-
-    def test_run(self):
-        # Test thread startup?
-        pass
+# def test_get_current_timestamp(self):
+#     self.test_get_current_playing_episode_info()
+#     while not (current_media_runtime := self.chromecast_handler.get_media_current_time()):
+#         pass
+#     print(current_media_runtime)
+#
+# def test_get_current_status(self):
+#     self.test_get_current_playing_episode_info()
+#
+# def test_send_command(self):
+#     self.test_play_from_media_drive()
+#     self.chromecast_handler.send_command(CommandList.CMD_PAUSE)
+#     # Need to get way to check current state
+#     pass
+#
+# def test_run(self):
+#     # Test thread startup?
+#     pass
 
 
 class TestMyMediaDevice(TestCase):
-    CHROMECAST_ID = "Master Bedroom TV"
-    SERVER_URL_TV_SHOWS = "http://192.168.1.200:8000/tv_shows/"
-    MEDIA_FOLDER_PATH = "/media/hdd1/plex_media/tv_shows/"
-    MEDIA_METADATA_FILE = "tv_show_metadata.json"
+    DB_PATH = "media_metadata.db"
+    CHROMECAST_ID = "Test Cast"
 
     chromecast_handler = None
     media_controller = None
 
     def setUp(self):
+        __init__.patch_get_file_hash(self)
+        __init__.patch_get_ffmpeg_metadata(self)
+        __init__.patch_move_media_file(self)
+        __init__.patch_collect_tv_shows(self)
+        __init__.patch_collect_movies(self)
+        __init__.patch_extract_subclip(self)
+        __init__.patch_update_processed_file(self)
+
+        if os.path.exists(self.DB_PATH):
+            os.remove(self.DB_PATH)
+
+        self.media_paths = config_file_handler.load_js_file().get("media_folders")
+        assert self.media_paths
+        assert isinstance(self.media_paths, list)
+        assert len(self.media_paths) == 3
+        with DBCreator() as db_connection:
+            db_connection.create_db()
+            for media_path in self.media_paths:
+                db_connection.setup_media_directory(media_path)
+
         self.chromecast_handler = ChromecastHandler()
         self.chromecast_handler.connect_chromecast(self.CHROMECAST_ID)
         self.media_controller = self.chromecast_handler.get_media_controller()
 
 
-# Integration tests
+# Integration test with Chromecast networked device
 class TestMediaPlayer(TestMyMediaDevice):
 
-    def test_play_episode(self):
-        self.media_controller.play_episode(MediaFolderMetadataHandler(
-            self.MEDIA_METADATA_FILE, self.MEDIA_FOLDER_PATH), self.SERVER_URL_TV_SHOWS)
-        while not self.media_controller.get_current_media_status():
-            pass
-        self.assertTrue(self.media_controller.get_current_media_status())
+    # def test_play_episode(self):
+    #     # self.media_controller.play_episode(MediaFolderMetadataHandler(
+    #     #     self.MEDIA_METADATA_FILE, self.MEDIA_FOLDER_PATH), self.SERVER_URL_TV_SHOWS)
+    #     while not self.media_controller.get_current_media_status():
+    #         pass
+    #     self.assertTrue(self.media_controller.get_current_media_status())
+
+    def test_play_episode_from_sql(self):
+        compare_value = {
+            "id": 1,
+            "tv_show_id": 1,
+            "season_id": 1,
+            "media_directory_id": 1,
+            "media_title": "",
+            "path": "\\Vampire\\Vampire - s01e001.mp4",
+            "duration": 22,
+            "media_type": 5,
+            "media_directory_path": "../media_folder_sample",
+            "new_media_directory_path": None,
+            "media_directory_url": "http://192.168.1.201:8000/tv_shows/",
+            "playlist_id": 1,
+            "playlist_title": "Vampire",
+            "media_id": 1,
+            "list_index": 1,
+            "season_index": 1,
+            "season_title": "Season 1",
+            "tv_show_title": "Vampire",
+            "title": "Vampire Season 1 ",
+            "metadataType": 0
+        }
+
+        media_metadata = self.media_controller.play_episode_from_sql({common_objects.MEDIA_ID_COLUMN: 1})
+        print(json.dumps(media_metadata, indent=4))
+        for key in compare_value:
+            print(key)
+            assert key in media_metadata
+            assert media_metadata[key] == compare_value[key]
 
     def test_play_next_episode(self):
-        pass
+        compare_value = {
+            "id": 2,
+            "tv_show_id": 1,
+            "season_id": 1,
+            "media_directory_id": 1,
+            "media_title": "",
+            "path": "\\Vampire\\Vampire - s01e002.mp4",
+            "duration": 22,
+            "media_type": 5,
+            "media_directory_path": "../media_folder_sample",
+            "new_media_directory_path": None,
+            "media_directory_url": "http://192.168.1.201:8000/tv_shows/",
+            "playlist_id": 1,
+            "playlist_title": "Vampire",
+            "media_id": 2,
+            "list_index": 2,
+            "season_index": 1,
+            "season_title": "Season 1",
+            "tv_show_title": "Vampire",
+            "title": "Vampire Season 1 ",
+            "metadataType": 0
+        }
+
+        media_status = MediaStatus()
+        media_status.media_metadata = {common_objects.PLAYLIST_ID_COLUMN: 1, common_objects.ID_COLUMN: 1}
+        self.media_controller.status = media_status
+        next_media_metadata = self.media_controller.play_next_episode()
+        print(json.dumps(next_media_metadata, indent=4))
+        for key in compare_value:
+            print(key)
+            assert key in next_media_metadata
+            assert next_media_metadata[key] == compare_value[key]
+
+    def test_play_next_episode_no_playlist(self):
+        media_status = MediaStatus()
+        media_status.media_metadata = {common_objects.ID_COLUMN: 1}
+        self.media_controller.status = media_status
+        next_media_metadata = self.media_controller.play_next_episode()
+        print(json.dumps(next_media_metadata, indent=4))
+        assert not next_media_metadata
+
+    def test_play_previous_episode(self):
+        compare_value = {
+            "id": 1,
+            "tv_show_id": 1,
+            "season_id": 1,
+            "media_directory_id": 1,
+            "media_title": "",
+            "path": "\\Vampire\\Vampire - s01e001.mp4",
+            "duration": 22,
+            "media_type": 5,
+            "media_directory_path": "../media_folder_sample",
+            "new_media_directory_path": None,
+            "media_directory_url": "http://192.168.1.201:8000/tv_shows/",
+            "playlist_id": 1,
+            "playlist_title": "Vampire",
+            "media_id": 1,
+            "list_index": 1,
+            "season_index": 1,
+            "season_title": "Season 1",
+            "tv_show_title": "Vampire",
+            "title": "Vampire Season 1 ",
+            "metadataType": 0
+        }
+
+        media_status = MediaStatus()
+        media_status.media_metadata = {common_objects.PLAYLIST_ID_COLUMN: 1, common_objects.ID_COLUMN: 2}
+        self.media_controller.status = media_status
+        next_media_metadata = self.media_controller.play_previous_episode()
+        print(json.dumps(next_media_metadata, indent=4))
+        for key in compare_value:
+            assert key in next_media_metadata
+            assert next_media_metadata[key] == compare_value[key]
 
     def test_play_url(self):
         pass
 
-    def test_get_media_current_time(self):
-        self.test_play_episode()
-        while not self.media_controller.get_media_current_time():
-            pass
-
-        self.assertTrue(self.media_controller.get_media_current_time())
-
-    def test_get_media_current_duration(self):
-        self.test_play_episode()
-        while not self.media_controller.get_media_current_duration():
-            pass
-
-        self.assertTrue(self.media_controller.get_media_current_duration())
+    # def test_get_media_current_time(self):
+    #     self.test_play_episode()
+    #     while not self.media_controller.get_media_current_time():
+    #         pass
+    #
+    #     self.assertTrue(self.media_controller.get_media_current_time())
+    #
+    # def test_get_media_current_duration(self):
+    #     self.test_play_episode()
+    #     while not self.media_controller.get_media_current_duration():
+    #         pass
+    #
+    #     self.assertTrue(self.media_controller.get_media_current_duration())
 
     def test_append_queue_url(self):
         pass

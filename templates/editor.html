@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><title>Media Stream</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="{{ url_for('static',filename='style.css') | safe }}">
+    <script src="https://kit.fontawesome.com/fc24dd5615.js" crossorigin="anonymous"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <script type="text/javascript" language="javascript" src="{{ url_for('static', filename='app.js') }}"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"
+            integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r"
+            crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.min.js"
+            integrity="sha384-BBtl+eGJRgqQAUMxJ7pMwbEyER4l1g+O15P+16Ep7Q9Q+zqX6gSbd85u4mG4QzX+"
+            crossorigin="anonymous"></script>
+</head>
+<body style="background-color:aquamarine;">
+<nav class="navbar fixed-top navbar-expand-lg bg-dark" data-bs-theme="dark">
+    <div class="container-fluid"><a class="navbar-brand" href="{{ homepage_url }}">&#x1F422;&#x1F995;</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent"
+                aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span></button>
+        <div class="collapse navbar-collapse" id="navbarSupportedContent">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                <li class="nav-item"><a id=tv_show_select_button class="nav-link" aria-current="page">TV Shows</a></li>
+                <li class="nav-item"><a id=movie_select_button class="nav-link" aria-current="page">Movies</a></li>
+                <li class="nav-item"><a id=scan_media_button class="nav-link" aria-current="page">Scan Media</a></li>
+                <li class="nav-item"><a id=editor_button class="nav-link" aria-current="page">Editor</a></li>
+            </ul>
+            <ul class="navbar-nav ml-auto mb-2 mb-lg-0">
+                <li class="nav-item">
+                    <a id=connected_chromecast_id class="nav-link" aria-disabled="true"></a></li>
+                <li class="nav-item dropstart">
+                    <a id="chromecast_menu" class="nav-link" href="#" role="button" data-bs-toggle="dropdown"
+                       aria-expanded="false">
+                        <span class="fa-brands fa-chromecast"></span></a>
+                    <ul id="dropdown_scanned_chromecasts" class="dropdown-menu">
+                        <li>
+                            <hr class="dropdown-divider">
+                        </li>
+                        <li><a id="chromecast_disconnect_button" class="dropdown-item">Disconnect</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+<div id="mediaContentSelectDiv" class="main-content-container">
+    <div class="container text-left">
+        <div class="row row-cols-auto">
+            <div class="col-sm-1">
+                <button type="button" class="btn btn-success" onclick="javascript:validate_txt_file()">Validate</button>
+            </div>
+            <div class="col-sm-1">
+                <button type="button" class="btn btn-success" onclick="javascript:save_txt_file()">Save</button>
+            </div>
+            <div class="col-sm-1">
+                <button type="button" class="btn btn-primary" onclick="javascript:process_txt_file()">Run</button>
+            </div>
+            <div class="col-sm-4">
+                <div class="btn-group">
+                    <button type="button" class="btn btn-danger dropdown-toggle" id="media_type_dropdown"
+                            data-bs-toggle="dropdown" aria-expanded="false">TV
+                    </button>
+                    <ul class="dropdown-menu">
+                        {% for media_type in media_types: %}
+                        <li><a class="dropdown-item" onclick="javascript:update_selected_media_type(this)">{{ media_type
+                            }}</a></li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            <div class="col-sm-3">
+                <p>End Time: <span id="editor_process_metadata_end_time">{{ editor_metadata['editor_process_metadata_end_time'] }}</span>
+                </p>
+            </div>
+            <div class="col-sm-2">
+                <p>Remaining: <span
+                        id="editor_process_metadata_queue_size">{{ editor_metadata['process_queue_size'] }}</span></p>
+            </div>
+        </div>
+        <div class="row row-cols-12">
+            <div class="col-lg-4">
+                {% if 'txt_file_list' in editor_metadata %}
+                <div class="list-group overflow-auto" style="min-height: 100%; height: 200px;">
+                    {% for editor_txt_file in editor_metadata['txt_file_list']: %}
+                    {% if editor_txt_file['processed'] %}
+                    <a style="background-color:MediumSeaGreen;" onclick="javascript:load_txt_file(this)"
+                       class="list-group-item list-group-item-action">{{ editor_txt_file['file_name'] }}</a>
+                    {% else %}
+                    <a style="background-color:Tomato;" onclick="javascript:load_txt_file(this)"
+                       class="list-group-item list-group-item-action">{{ editor_txt_file['file_name'] }}</a>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            <div class="col-lg-8">
+                <label for="editor_txt_file_content" class="form-label">File name: <span
+                        id="editor_txt_file_name">{{ editor_metadata['selected_txt_file_title'] }}</span></label>
+                <textarea class="form-control" id="editor_txt_file_content" rows="15"
+                          style="white-space: nowrap;overflow: auto;">{{ editor_metadata['selected_txt_file_content'] }}</textarea>
+                <p>Examples:<br/>show name, episode name, season index, episode index, start time, end time<br/>Hilda,
+                    Hildas a Troll!, 2, 1, 7:02, 13:43
+                </p>
+            </div>
+        </div>
+        <div class="row row-cols-12">
+            <div class="col-lg-4">
+                <!--                <label for="editor_process_queue" class="form-label">Process queue</label>-->
+                <div class="list-group overflow-auto" id="editor_process_queue"
+                     style="min-height: 100%; height: 200px;">
+                </div>
+            </div>
+            <div class="col-lg-8">
+                <button type="button" class="btn btn-danger" onclick="javascript:clear_editor_log()">Clear</button>
+                <label for="editor_txt_file_log" id="editor_txt_file_log_label" class="form-label">Editor logs</label>
+                <textarea class="form-control" id="editor_txt_file_log" rows="10" disabled></textarea>
+            </div>
+        </div>
+    </div>
+</div>
+<nav class="navbar fixed-bottom navbar-expand-xl bg-dark bg-body-tertiary" data-bs-theme="light">
+    <div class="container-fluid text-center">
+        <div class="col bottom-nav-col">
+            <div class="row justify-content-center">
+                <div class="col">
+                    <input type="range" id="mediaTimeInputId" onMouseUp="set_media_runtime(this);" min=0 value=0
+                           class="slider">
+                </div>
+            </div>
+            <div class="row justify-content-center">
+                <div class="col">
+                    <output id="mediaTimeOutputId"></output>
+                </div>
+            </div>
+            <div class="row justify-content-center">
+                {% for key, value in button_dict.items() %}
+                <div class="col-1">
+                    <button id="{{ value['id'] }}" class="btn"><i class="fa-solid {{ value['icon'] }} fa-2xl"></i>
+                    </button>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</nav>
+</body>
+</html>
+

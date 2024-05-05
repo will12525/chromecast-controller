@@ -1,1 +1,4 @@
-tv_show_metadata.json
+templates/
+*_metadata.json
+*_metadata_file.json
+config.json

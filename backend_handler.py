@@ -1,44 +1,141 @@
+import subprocess
+import threading
+import requests  # request img from web
+import shutil  # save img locally
 import git
+import pathlib
 
-import media_folder_metadata_handler
+import config_file_handler
+import database_handler.common_objects as common_objects
 from chromecast_handler import ChromecastHandler
+from database_handler.create_database import DBCreator
+from database_handler.database_handler import DatabaseHandler
+import mp4_splitter
+from database_handler.media_metadata_collector import extract_tv_show_file_name_content
+
+
+def setup_db():
+    with DBCreator() as db_connection:
+        db_connection.create_db()
+        for media_folder_info in config_file_handler.load_js_file().get("media_folders"):
+            db_connection.setup_media_directory(media_folder_info)
+
+
+def editor_save_txt_file(output_path, editor_metadata):
+    mp4_splitter.editor_save_txt_file(output_path, editor_metadata)
+
+
+def editor_validate_txt_file(editor_raw_folder, editor_metadata):
+    error_log = []
+    mp4_splitter.editor_validate_txt_file(editor_raw_folder, editor_metadata, error_log)
+    return error_log
+
+
+def get_free_disk_space(editor_folder, size=None, ret=3):
+    cmd = ["df", f"{editor_folder}"]
+    if size:
+        cmd = ["df", "-B", size, f"{editor_folder}"]
+    df = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+    output = df.communicate()[0]
+    # device, size, used, available, percent, mount_point
+    cmd_output_list = output.decode("utf-8").split("\n")[1].split()
+    return cmd_output_list[ret]
+
+
+def get_free_disk_space_percent(editor_folder):
+    return get_free_disk_space(editor_folder, ret=4)
+
+
+def download_image(json_request):
+    if (not json_request.get(common_objects.IMAGE_URL)
+            or len(json_request.get(common_objects.IMAGE_URL)) < 5
+            or not json_request.get('content_type')
+            or not json_request.get(common_objects.ID_COLUMN)
+            or json_request.get(common_objects.IMAGE_URL)[-4:] not in ['.jpg', '.png']):
+        raise ValueError({{"message": "Image url must be .jpg or .png"}})
+
+    file_name = f"{json_request.get('content_type')}_{json_request.get(common_objects.ID_COLUMN)}{json_request.get(common_objects.IMAGE_URL)[-4:]}"
+
+    with DatabaseHandler() as db_connection:
+        media_folder_path = db_connection.get_media_folder_path(1)
+        if len(common_objects.ContentType) > json_request.get('content_type'):
+            content_type = common_objects.ContentType(json_request.get('content_type'))
+            media_metadata = db_connection.get_media_content(content_type, params_dict=json_request)
+        else:
+            raise ValueError(
+                {"message": 'Unknown content type provided', 'value': json_request.get('content_type')})
+
+    if json_request.get(common_objects.IMAGE_URL) == media_metadata.get(common_objects.IMAGE_URL):
+        json_request[common_objects.IMAGE_URL] = file_name
+        return
+
+    if not media_folder_path:
+        raise ValueError({"message": "Error media directory table missing paths"})
+
+    output_path = f"{pathlib.Path(media_folder_path.get(common_objects.MEDIA_DIRECTORY_PATH_COLUMN)).resolve().parent.absolute()}/images/{file_name}"
+
+    if pathlib.Path(output_path).resolve().exists():
+        json_request[common_objects.IMAGE_URL] = file_name
+        raise ValueError({"message": "Image url already exists, assigning existing image",
+                          "file_name": json_request.get(common_objects.IMAGE_URL), "string": f"{file_name}"})
+
+    res = requests.get(json_request.get(common_objects.IMAGE_URL), stream=True)
+
+    if res.status_code == 200:
+        with open(output_path, 'wb') as f:
+            shutil.copyfileobj(res.raw, f)
+        print('Image successfully Downloaded: ', output_path)
+        json_request[common_objects.IMAGE_URL] = file_name
+    else:
+        raise ValueError(
+            {"message": "requests error encountered while saving image",
+             "file_name": json_request.get(common_objects.IMAGE_URL),
+             "string": f"{res.status_code}"})
+
+
+def build_tv_show_output_path(file_name_str):
+    media_metadata = {}
+    file_name = pathlib.Path(file_name_str)
+    with DatabaseHandler() as db_connection:
+        media_folder_path = db_connection.get_media_folder_path(1)
+    if not media_folder_path:
+        raise ValueError({"message": "Error media directory table missing paths"})
+
+    extract_tv_show_file_name_content(media_metadata, file_name.stem)
+    output_path = pathlib.Path(
+        f"{media_folder_path.get(common_objects.MEDIA_DIRECTORY_PATH_COLUMN)}/{media_metadata[common_objects.PLAYLIST_TITLE]}/{file_name}").resolve()
+    if output_path.exists():
+        raise FileExistsError({"message": "File already exists", "file_name": str(file_name_str)})
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    return output_path
 
 
 class BackEndHandler:
-    SERVER_URL = "http://192.168.1.200:8000/"
-    SERVER_URL_TV_SHOWS = SERVER_URL + "tv_shows/"
-    MEDIA_FOLDER_PATH = "/media/hdd1/plex_media/tv_shows/"
-    MEDIA_METADATA_FILE = "tv_show_metadata.json"
-
     startup_sha = None
     chromecast_handler = None
-    media_folder_metadata_handler = None
+    editor_processor = mp4_splitter.SubclipProcessHandler()
+    media_scan_in_progress = False
 
     def __init__(self):
         repo = git.Repo(search_parent_directories=True)
         self.startup_sha = repo.head.object.hexsha
         print(self.startup_sha)
         self.chromecast_handler = ChromecastHandler()
-        self.media_folder_metadata_handler = media_folder_metadata_handler.MediaFolderMetadataHandler(
-            self.MEDIA_METADATA_FILE, self.MEDIA_FOLDER_PATH)
 
     def get_startup_sha(self):
         return self.startup_sha
 
     def start(self):
+        setup_db_thread = threading.Thread(target=setup_db, args=(), daemon=True)
+        setup_db_thread.start()
         self.chromecast_handler.start()
+        return setup_db_thread
 
     def get_chromecast_scan_list(self):
         return self.chromecast_handler.get_scan_list()
 
     def get_chromecast_device_id(self):
         return self.chromecast_handler.get_chromecast_id()
-
-    def get_media_current_time(self):
-        return self.chromecast_handler.get_media_current_time()
-
-    def get_media_current_duration(self):
-        return self.chromecast_handler.get_media_current_duration()
 
     def seek_media_time(self, media_time):
         self.chromecast_handler.seek_media_time(media_time)
@@ -52,44 +149,42 @@ class BackEndHandler:
     def disconnect_chromecast(self):
         self.chromecast_handler.disconnect_chromecast()
 
-    def set_media_id(self, media_id):
-        if self.media_folder_metadata_handler:
-            return self.media_folder_metadata_handler.set_media_id(media_id)
-
-    def get_media_id(self):
-        return self.media_folder_metadata_handler.get_media_id()
-
-    def get_episode_url(self):
-        return self.media_folder_metadata_handler.get_url(self.SERVER_URL_TV_SHOWS)
-
     def get_chromecast_media_controller_metadata(self):
         return self.chromecast_handler.get_media_controller_metadata()
 
-    def get_current_playing_episode_info(self):
-        return self.chromecast_handler.get_current_playing_episode_info()
+    def play_media_on_chromecast(self, media_request_ids):
+        self.chromecast_handler.play_from_sql(media_request_ids)
 
-    def play_episode(self):
-        self.chromecast_handler.play_from_media_drive(self.media_folder_metadata_handler, self.SERVER_URL_TV_SHOWS)
+    def scan_media_directories(self):
+        if not self.media_scan_in_progress:
+            self.media_scan_in_progress = True
+            with DBCreator() as db_connection:
+                db_connection.scan_all_media_directories()
+        self.media_scan_in_progress = False
 
-    def get_tv_show_name_list(self):
-        return self.media_folder_metadata_handler.get_tv_show_name_list()
+    def get_editor_metadata(self, editor_raw_folder, selected_txt_file=None):
+        return mp4_splitter.get_editor_metadata(editor_raw_folder, self.editor_processor, selected_txt_file)
 
-    def get_tv_show_season_name_list(self):
-        return self.media_folder_metadata_handler.get_tv_show_season_name_list()
+    def editor_process_txt_file(self, editor_raw_folder, editor_metadata, media_output_parent_path):
+        return mp4_splitter.editor_process_txt_file(editor_raw_folder, editor_metadata, media_output_parent_path,
+                                                    self.editor_processor)
 
-    def get_tv_show_season_episode_name_list(self):
-        return self.media_folder_metadata_handler.get_tv_show_season_episode_name_list()
+    def editor_get_process_metadata(self):
+        return self.editor_processor.get_metadata()
 
-    def update_media_id_selection(self, new_media_id):
-        return self.media_folder_metadata_handler.update_media_id_selection(new_media_id)
+    def get_system_data(self):
+        with DBCreator() as db_connection:
+            media_directory_info = db_connection.get_all_media_directory_info()
 
-    def get_media_controller_metadata(self):
-        return self.media_folder_metadata_handler.get_media_metadata()
+        media_directory_disk_space = []
+        for media_directory in media_directory_info:
+            media_directory_path_str = media_directory.get(common_objects.MEDIA_DIRECTORY_PATH_COLUMN)
+            media_directory_disk_space.append({"free_disk_space": get_free_disk_space(media_directory_path_str, "G"),
+                                               "free_disk_percent": get_free_disk_space_percent(
+                                                   media_directory_path_str),
+                                               "directory_path": pathlib.Path(media_directory_path_str).parent.stem})
 
-    def get_tv_show_metadata(self, media_id):
-        if self.media_folder_metadata_handler:
-            return self.media_folder_metadata_handler.get_tv_show_metadata(media_id)
+        return {
+            "disk_space": media_directory_disk_space
 
-    def get_tv_show_season_metadata(self, media_id):
-        if self.media_folder_metadata_handler:
-            return self.media_folder_metadata_handler.get_tv_show_season_metadata(media_id)
+        }
