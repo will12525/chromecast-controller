@@ -396,14 +396,23 @@ def extract_subclip(sub_clip):
                 '-c:a', 'aac',
                 '-metadata', f"title={sub_clip.media_title}",
                 sub_clip.destination_file_path]
-    output_dir = pathlib.Path(sub_clip.destination_file_path).resolve().parent
+    destination_file = pathlib.Path(sub_clip.destination_file_path).resolve()
+
+    if destination_file.is_file():
+        return {"message": "Media already exists:", "value": f"{sub_clip.media_title}, {sub_clip.file_name}"}
+
+    output_dir = destination_file.parent
     # print(f"Sleeping {sub_clip.end_time}")
     # time.sleep(5)
     # print(cmd)
     print(output_dir)
     print(full_cmd)
     output_dir.mkdir(parents=True, exist_ok=True)
-    subprocess.run(full_cmd, check=True, text=True)
+    result = subprocess.run(full_cmd, check=True, text=True, capture_output=True)
+    print("INFO: Splitter extract_subclip")
+    print(result.stdout)
+    print(result.stderr)
+    return {"message": "Finished splitting", "value": sub_clip.destination_file_path}
 
 
 class SubclipProcessHandler(threading.Thread):
@@ -418,21 +427,27 @@ class SubclipProcessHandler(threading.Thread):
             self.process_start = datetime.now()
             self.current_sub_clip = self.subclip_process_queue.get()
             try:
-                extract_subclip(self.current_sub_clip)
-                self.log_queue.put(
-                    {"message": "Finished splitting", "value": self.current_sub_clip.destination_file_path})
-
+                self.log_queue.put(extract_subclip(self.current_sub_clip))
             except subprocess.CalledProcessError:
                 self.log_queue.put({"message": "Error encountered while splitting",
                                     "value": self.current_sub_clip.destination_file_path})
 
         self.current_sub_clip = None
 
+    def check_valid_sub_clip(self, sub_clip):
+        if pathlib.Path(sub_clip.destination_file_path).resolve().is_file() or not sub_clip.error_list:
+            return False
+
+        for process_queue_sub_clip in list(self.subclip_process_queue.queue):
+            if sub_clip.destination_file_path == process_queue_sub_clip.destination_file_path:
+                return False
+        return True
+
     def add_cmds_to_queue(self, sub_clips):
         if self.subclip_process_queue.qsize() > self.subclip_process_queue_size:
             raise JobQueueFull({"message": "Job queue full"})
         for sub_clip in sub_clips:
-            if not sub_clip.error_list:
+            if self.check_valid_sub_clip:
                 self.subclip_process_queue.put(sub_clip)
         if not self.is_alive():
             threading.Thread.__init__(self, daemon=True)
@@ -448,6 +463,7 @@ class SubclipProcessHandler(threading.Thread):
             process_name = f"{self.current_sub_clip.media_title}, {self.current_sub_clip.file_name}"
             process_time = datetime.now() - self.process_start
             if self.current_sub_clip.end_time > 0:
+                process_end_time += int(process_time.total_seconds()) - self.current_sub_clip.end_time
                 percent_complete = int((int(process_time.total_seconds()) / self.current_sub_clip.end_time) * 100)
 
         while not self.log_queue.empty():

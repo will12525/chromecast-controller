@@ -34,6 +34,7 @@ def extract_subclip(sub_clip):
     print(full_cmd)
     # time.sleep(sub_clip.start_time + sub_clip.end_time)
     time.sleep(.5)
+    return {"message": "Finished splitting", "value": sub_clip.destination_file_path}
 
 
 def patch_get_file_hash(test_class):

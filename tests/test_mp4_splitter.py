@@ -681,7 +681,26 @@ class TestEditor(TestMp4Splitter):
         assert error_log[5] == {'message': 'Errors occurred while processing file', 'value': '2024-01-31_16-32-38.txt'}
 
         while not self.editor_processor.subclip_process_queue.empty():
-            time.sleep(.1)
+            editor_metadata = self.editor_processor.get_metadata()
+            print(editor_metadata)
+            assert type(editor_metadata) is dict
+            assert 'process_name' in editor_metadata
+            assert type(editor_metadata.get('process_name')) is str
+
+            assert 'process_end_time' in editor_metadata
+            assert type(editor_metadata.get('process_end_time')) is str
+
+            assert 'percent_complete' in editor_metadata
+            assert type(editor_metadata.get('percent_complete')) is int
+
+            assert 'process_queue_size' in editor_metadata
+            assert type(editor_metadata.get('process_queue_size')) is int
+
+            assert 'process_log' in editor_metadata
+            assert type(editor_metadata.get('process_log')) is list
+
+            assert 'process_queue' in editor_metadata
+            assert type(editor_metadata.get('process_queue')) is list
 
         editor_metadata = self.editor_processor.get_metadata()
         print(editor_metadata)
