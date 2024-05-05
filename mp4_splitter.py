@@ -396,6 +396,9 @@ def extract_subclip(sub_clip):
                 '-c:a', 'aac',
                 '-metadata', f"title={sub_clip.media_title}",
                 sub_clip.destination_file_path]
+    if not sub_clip.destination_file_path:
+        return {"message": "Missing destination path:", "value": f"{sub_clip.media_title}"}
+
     destination_file = pathlib.Path(sub_clip.destination_file_path).resolve()
 
     if destination_file.is_file():
@@ -435,11 +438,16 @@ class SubclipProcessHandler(threading.Thread):
         self.current_sub_clip = None
 
     def check_valid_sub_clip(self, sub_clip):
-        if pathlib.Path(sub_clip.destination_file_path).resolve().is_file() or not sub_clip.error_list:
+        if pathlib.Path(sub_clip.destination_file_path).resolve().is_file():
+            print({"message": "Error is file", "value": self.current_sub_clip.destination_file_path})
+            return False
+        if sub_clip.error_list:
+            print({"message": "Has error list", "value": sub_clip.error_list})
             return False
 
         for process_queue_sub_clip in list(self.subclip_process_queue.queue):
             if sub_clip.destination_file_path == process_queue_sub_clip.destination_file_path:
+                print({"message": "Destination path in queue", "value": sub_clip.destination_file_path})
                 return False
         return True
 
@@ -447,7 +455,7 @@ class SubclipProcessHandler(threading.Thread):
         if self.subclip_process_queue.qsize() > self.subclip_process_queue_size:
             raise JobQueueFull({"message": "Job queue full"})
         for sub_clip in sub_clips:
-            if self.check_valid_sub_clip:
+            if self.check_valid_sub_clip(sub_clip):
                 self.subclip_process_queue.put(sub_clip)
         if not self.is_alive():
             threading.Thread.__init__(self, daemon=True)

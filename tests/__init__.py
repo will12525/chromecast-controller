@@ -29,11 +29,13 @@ def extract_subclip(sub_clip):
                 '-c:a', 'aac',
                 '-metadata', f"title={sub_clip.media_title}",
                 sub_clip.destination_file_path]
-    output_dir = pathlib.Path(sub_clip.destination_file_path).resolve().parent
-    print(output_dir)
+    destination_file = pathlib.Path(sub_clip.destination_file_path).resolve()
+    # output_dir = pathlib.Path(sub_clip.destination_file_path).resolve().parent
     print(full_cmd)
+    print(sub_clip.subclip_metadata_list)
+    print(destination_file.stem)
     # time.sleep(sub_clip.start_time + sub_clip.end_time)
-    time.sleep(.5)
+    time.sleep(1)
     return {"message": "Finished splitting", "value": sub_clip.destination_file_path}
 
 
