@@ -139,9 +139,18 @@ async function set_media_runtime(range) {
         "headers": {"Content-Type": "application/json"},
         "body": JSON.stringify(data),
     });
-
 };
 
+async function update_local_media_player(url) {
+    console.log(url)
+    document.getElementById("local_video_player").pause();
+    document.getElementById("local_video_player").hidden = false;
+    document.getElementById("local_video_player").style.visibility = "visible";
+    document.getElementById("local_video_player_src").setAttribute("src", url)
+    document.getElementById("local_video_player").load();
+    document.getElementById("local_video_player").scrollIntoView();
+    document.getElementById("local_video_player").play();
+}
 async function play_media(media_id, playlist_id=null) {
     var url = "/play_media";
     let data = {
@@ -160,14 +169,7 @@ async function play_media(media_id, playlist_id=null) {
     } else {
         let response_data = await response.json();
         if (response_data["local_play_url"] !== undefined) {
-            console.log(response_data["local_play_url"])
-            document.getElementById("local_video_player").pause();
-            document.getElementById("local_video_player").hidden = false;
-            document.getElementById("local_video_player").style.visibility = "visible";
-            document.getElementById("local_video_player_src").setAttribute("src", response_data["local_play_url"])
-            document.getElementById("local_video_player").load();
-            document.getElementById("local_video_player").scrollIntoView();
-            document.getElementById("local_video_player").play();
+            update_local_media_player(response_data["local_play_url"])
         }
     }
 }
@@ -302,7 +304,11 @@ async function load_txt_file(element) {
     if (!response.ok) {
         throw new Error("HTTP ERROR FAILED: " + response.status);
     } else {
-        update_editor_webpage(await response.json());
+        response_data = await response.json()
+        update_editor_webpage(response_data);
+        if (response_data["local_play_url"] !== undefined) {
+            update_local_media_player(response_data["local_play_url"])
+        }
     }
 }
 

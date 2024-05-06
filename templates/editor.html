@@ -48,7 +48,16 @@
     </div>
 </nav>
 <div id="mediaContentSelectDiv" class="main-content-container container-fluid text-left">
-    <div class="row row-cols-auto">
+    <div class="row gx-2 gy-2">
+        {% if 'local_play_url' %}
+        <div class="col-lg-12">
+            <video controls preload autoplay class="object-fit-contain img-fluid" id="local_video_player" hidden>
+                <source src="{{ local_play_url }}" type="video/mp4" id="local_video_player_src">
+            </video>
+        </div>
+        {% endif %}
+    </div>
+    <div class="row row-cols-auto gx-2 gy-2">
         <div class="col-sm-1">
             <button type="button" class="btn btn-success" onclick="javascript:validate_txt_file()">Validate</button>
         </div>
@@ -80,7 +89,7 @@
                     id="editor_process_metadata_queue_size">{{ editor_metadata['process_queue_size'] }}</span></p>
         </div>
     </div>
-    <div class="row row-cols-12">
+    <div class="row row-cols-12 gx-2 gy-2">
         <div class="col-lg-4">
             {% if 'txt_file_list' in editor_metadata %}
             <div class="list-group overflow-auto" style="min-height: 100%; height: 200px;">
@@ -105,8 +114,6 @@
                 Hildas a Troll!, 2, 1, 7:02, 13:43
             </p>
         </div>
-    </div>
-    <div class="row row-cols-12">
         <div class="col-lg-4">
             <!--                <label for="editor_process_queue" class="form-label">Process queue</label>-->
             <div class="list-group overflow-auto" id="editor_process_queue"

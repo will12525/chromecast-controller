@@ -11,6 +11,7 @@ from database_handler.common_objects import ContentType
 class TestMp4Splitter(TestCase):
     default_config = config_file_handler.load_js_file()
     raw_folder = default_config.get('editor_raw_folder')
+    raw_url = default_config.get('editor_raw_url')
     modify_output_path = default_config.get("media_folders")[2].get("media_directory_path")
     editor_metadata_file = f"{raw_folder}editor_metadata.json"
 

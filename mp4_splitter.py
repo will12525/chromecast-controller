@@ -362,9 +362,10 @@ def check_editor_txt_file_processed(editor_metadata_file, editor_txt_file_names)
     return editor_txt_file_processed
 
 
-def get_editor_metadata(editor_raw_folder, editor_processor, selected_txt_file=None):
+def get_editor_metadata(editor_raw_folder, editor_processor, selected_txt_file=None, raw_url=None):
     selected_index = 0
     editor_metadata = {}
+    local_play_url = ""
     editor_txt_files = get_editor_txt_files(editor_raw_folder)
     editor_txt_file_names = [editor_txt_file.as_posix().replace(editor_raw_folder, "") for editor_txt_file in
                              editor_txt_files]
@@ -375,12 +376,16 @@ def get_editor_metadata(editor_raw_folder, editor_processor, selected_txt_file=N
 
         selected_txt_file_path = pathlib.Path(f"{editor_raw_folder}{selected_txt_file}").resolve()
 
+        if raw_url:
+            local_play_url = f"{raw_url}{selected_txt_file.replace('.txt', '.mp4')}"
+
         editor_metadata = {
             "txt_file_list": check_editor_txt_file_processed(f"{editor_raw_folder}{EDITOR_PROCESSED_LOG}",
                                                              editor_txt_file_names),
             "selected_txt_file_title": selected_txt_file,
             "selected_txt_file_content": ''.join(config_file_handler.load_txt_file_content(selected_txt_file_path)),
-            "editor_process_metadata": editor_processor.get_metadata()
+            "editor_process_metadata": editor_processor.get_metadata(),
+            "local_play_url": local_play_url
         }
 
     return editor_metadata

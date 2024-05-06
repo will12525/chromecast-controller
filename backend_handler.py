@@ -162,8 +162,9 @@ class BackEndHandler:
                 db_connection.scan_all_media_directories()
         self.media_scan_in_progress = False
 
-    def get_editor_metadata(self, editor_raw_folder, selected_txt_file=None):
-        return mp4_splitter.get_editor_metadata(editor_raw_folder, self.editor_processor, selected_txt_file)
+    def get_editor_metadata(self, editor_raw_folder, selected_txt_file=None, raw_url=None):
+        return mp4_splitter.get_editor_metadata(editor_raw_folder, self.editor_processor,
+                                                selected_txt_file=selected_txt_file, raw_url=raw_url)
 
     def editor_process_txt_file(self, editor_raw_folder, editor_metadata, media_output_parent_path):
         return mp4_splitter.editor_process_txt_file(editor_raw_folder, editor_metadata, media_output_parent_path,

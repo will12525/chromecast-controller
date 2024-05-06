@@ -78,6 +78,7 @@ setup_thread = backend_handler.start()
 error_log = queue.Queue()
 
 raw_folder = config_file_handler.load_js_file().get('editor_raw_folder')
+raw_folder_url = config_file_handler.load_js_file().get('editor_raw_url')
 
 
 def build_main_content(request_args):
@@ -168,7 +169,8 @@ def editor_load_txt_file():
     if json_request := request.get_json():
         if editor_txt_file_name := json_request.get("editor_txt_file_name"):
             try:
-                data = backend_handler.get_editor_metadata(raw_folder, editor_txt_file_name)
+                data = backend_handler.get_editor_metadata(raw_folder, selected_txt_file=editor_txt_file_name,
+                                                           raw_url=raw_folder_url)
             except Exception as e:
                 print("Exception class: ", e.__class__)
                 print(f"ERROR: {e}")
