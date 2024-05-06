@@ -206,6 +206,8 @@ class ChromecastHandler(threading.Thread):
     def play_from_sql(self, media_request_ids):
         if self.media_controller:
             self.media_controller.play_episode_from_sql(media_request_ids)
+            return True
+        return False
 
     def send_command(self, media_device_command):
         if self.media_controller:

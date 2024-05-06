@@ -22,6 +22,10 @@ async function connectChromecast(chromecast_id) {
         "body": JSON.stringify(data),
     });
 
+    document.getElementById("local_video_player").hidden = true;
+    document.getElementById("local_video_player").pause();
+    document.getElementById("local_video_player_src").setAttribute("src", '')
+
     if (!response.ok) {
         throw new Error("HTTP status connectChromecast: " + response.status);
     } else {
@@ -74,6 +78,24 @@ async function getChromecastList() {
     }
 };
 
+async function connect_local_player() {
+    disconnectChromecast();
+    var url = "/connect_local_player";
+    let data = {};
+    let response = await fetch(url, {
+        "method": "POST",
+        "headers": {"Content-Type": "application/json"},
+        "body": JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+        throw new Error("HTTP status connect_local_player: " + response.status);
+    } else {
+        let response_data = await response.json();
+        document.getElementById("connected_chromecast_id").innerHTML = "Local"
+    }
+};
+
 async function disconnectChromecast() {
     var url = "/disconnect_chromecast";
     let data = {};
@@ -87,7 +109,7 @@ async function disconnectChromecast() {
         throw new Error("HTTP status disconnectChromecast: " + response.status);
     } else {
         let response_data = await response.json();
-        document.getElementById("connected_chromecast_id").innerHTML = ""
+        document.getElementById("connected_chromecast_id").innerHTML = "Local"
     }
 };
 
@@ -132,6 +154,22 @@ async function play_media(media_id, playlist_id=null) {
         "headers": {"Content-Type": "application/json"},
         "body": JSON.stringify(data),
     });
+
+    if (!response.ok) {
+        throw new Error("HTTP status connect_local_player: " + response.status);
+    } else {
+        let response_data = await response.json();
+        if (response_data["local_play_url"] !== undefined) {
+            console.log(response_data["local_play_url"])
+            document.getElementById("local_video_player").pause();
+            document.getElementById("local_video_player").hidden = false;
+            document.getElementById("local_video_player").style.visibility = "visible";
+            document.getElementById("local_video_player_src").setAttribute("src", response_data["local_play_url"])
+            document.getElementById("local_video_player").load();
+            document.getElementById("local_video_player").scrollIntoView();
+            document.getElementById("local_video_player").play();
+        }
+    }
 }
 
 async function update_editor_log(response_data) {
@@ -453,6 +491,11 @@ document.addEventListener("DOMContentLoaded", function(event){
     if (chromecast_disconnect_button !== null)
     {
         chromecast_disconnect_button.addEventListener("click", disconnectChromecast.bind(null));
+    }
+    var local_play_button = document.getElementById("local_play_button");
+    if (local_play_button !== null)
+    {
+        local_play_button.addEventListener("click", connect_local_player.bind(null));
     }
 
     setInterval(updateSeekSelector, 1000);

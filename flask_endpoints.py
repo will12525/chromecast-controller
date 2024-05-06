@@ -287,7 +287,12 @@ def play_media():
     data = {}
     if json_request := request.get_json():
         if json_request.get(common_objects.MEDIA_ID_COLUMN, None):
-            backend_handler.play_media_on_chromecast(json_request)
+            if not backend_handler.play_media_on_chromecast(json_request):
+                with DatabaseHandler() as db_connection:
+                    media_info = db_connection.get_media_content(content_type=ContentType.MEDIA,
+                                                                 params_dict=json_request)
+                data[
+                    "local_play_url"] = f"{media_info.get(common_objects.MEDIA_DIRECTORY_URL_COLUMN)}{media_info.get(common_objects.PATH_COLUMN)}"
         else:
             print(f"Media ID not provided: {json_request}")
     return data, 200
