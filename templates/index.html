@@ -129,7 +129,7 @@
                 <div class="card-header">
                     {% if 'media_list_content_type' in media_metadata %}
                     {% if media_metadata['media_list_content_type'] == 1 %}
-                    <a href="javascript:play_media({{ media_item.get('id') }}, {{ media_metadata.get('playlist_id') }})">{{
+                    <a href="javascript:play_media({{ media_item.get('id') }}, {{ media_metadata.get('playlist_id', '') }})">{{
                         media_item.get("media_title") or
                         "No title" }}</a>
                     {% else %}
