@@ -218,7 +218,8 @@ class TvShowSubclipMetadata(SubclipMetadata):
             self.error_list.append({"message": "Missing season index"})
 
     def extract_episode_index(self, episode_index):
-        if episode_index := self.extract_int(episode_index, "episode_index"):
+        episode_index = self.extract_int(episode_index, "episode_index")
+        if episode_index is not None:
             self.episode_index = episode_index
         else:
             self.error_list.append({"message": "Missing episode index"})

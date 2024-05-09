@@ -58,29 +58,33 @@
         {% endif %}
     </div>
     <div class="row row-cols-auto gx-2 gy-2">
-        <div class="col-sm-1">
-            <button type="button" class="btn btn-success" onclick="javascript:validate_txt_file()">Validate</button>
-        </div>
-        <div class="col-sm-1">
-            <button type="button" class="btn btn-success" onclick="javascript:save_txt_file()">Save</button>
-        </div>
-        <div class="col-sm-1">
-            <button type="button" class="btn btn-primary" onclick="javascript:process_txt_file()">Run</button>
-        </div>
-        <div class="col-sm-4">
-            <div class="btn-group">
-                <button type="button" class="btn btn-danger dropdown-toggle" id="media_type_dropdown"
-                        data-bs-toggle="dropdown" aria-expanded="false">TV
-                </button>
-                <ul class="dropdown-menu">
-                    {% for media_type in media_types: %}
-                    <li><a class="dropdown-item" onclick="javascript:update_selected_media_type(this)">{{ media_type
-                        }}</a></li>
-                    {% endfor %}
-                </ul>
+        <div class="col-sm-auto">
+            <div class="d-grid gap-2 d-md-block">
+                <button type="button" class="btn btn-success" onclick="javascript:validate_txt_file()">Validate</button>
+                <button type="button" class="btn btn-success" onclick="javascript:save_txt_file()">Save</button>
+                <button type="button" class="btn btn-primary" onclick="javascript:process_txt_file()">Run</button>
+                <div class="btn-group">
+                    <button type="button" class="btn btn-danger dropdown-toggle" id="media_type_dropdown"
+                            data-bs-toggle="dropdown" aria-expanded="false">TV
+                    </button>
+                    <ul class="dropdown-menu">
+                        {% for media_type in media_types: %}
+                        <li><a class="dropdown-item" onclick="javascript:update_selected_media_type(this)">{{ media_type
+                            }}</a></li>
+                        {% endfor %}
+                    </ul>
+                </div>
             </div>
         </div>
-        <div class="col-sm-3">
+
+
+        <div class="col-sm-1">
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" role="switch" id="load_media_for_local_play">
+                <label class="form-check-label" for="load_media_for_local_play">Play Media</label>
+            </div>
+        </div>
+        <div class="col-sm-2">
             <p>End Time: <span id="editor_process_metadata_end_time">{{ editor_metadata['editor_process_metadata_end_time'] }}</span>
             </p>
         </div>
