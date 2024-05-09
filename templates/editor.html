@@ -76,20 +76,21 @@
                 </div>
             </div>
         </div>
-
-
         <div class="col-sm-1">
             <div class="form-check form-switch">
                 <input class="form-check-input" type="checkbox" role="switch" id="load_media_for_local_play">
-                <label class="form-check-label" for="load_media_for_local_play">Play Media</label>
+                <label class="form-check-label" for="load_media_for_local_play"><span class="fw-semibold fs-4">Play
+                    Media</span></label>
             </div>
         </div>
-        <div class="col-sm-2">
-            <p>End Time: <span id="editor_process_metadata_end_time">{{ editor_metadata['editor_process_metadata_end_time'] }}</span>
+        <div class="col-sm-3">
+            <p class="fw-semibold fs-4">End Time:
+                <span style="float:right" id="editor_process_metadata_end_time">{{ editor_metadata['editor_process_metadata_end_time'] }}</span>
+                <span class="fw-normal fs-5" style="float:right">D HH:MM:SS AP</span>
             </p>
         </div>
         <div class="col-sm-2">
-            <p>Remaining: <span
+            <p class="fw-semibold fs-3">Remaining: <span
                     id="editor_process_metadata_queue_size">{{ editor_metadata['process_queue_size'] }}</span></p>
         </div>
     </div>

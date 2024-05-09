@@ -496,7 +496,7 @@ class SubclipProcessHandler(threading.Thread):
 
         return {
             "process_name": process_name,
-            "process_end_time": process_end_time.strftime("%d %H:%M:%S"),
+            "process_end_time": process_end_time.strftime("%d %I:%M:%S %p"),
             "percent_complete": percent_complete,
             "process_queue_size": self.subclip_process_queue.qsize(),
             "process_log": process_log,
