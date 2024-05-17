@@ -1,5 +1,6 @@
 import subprocess
 import threading
+
 import requests  # request img from web
 import shutil  # save img locally
 import git
@@ -13,28 +14,21 @@ from database_handler.database_handler import DatabaseHandler
 import mp4_splitter
 from database_handler.media_metadata_collector import extract_tv_show_file_name_content
 
+EDITOR_PROCESSED_LOG = "editor_metadata.json"
+
 
 def setup_db():
     with DBCreator() as db_connection:
         db_connection.create_db()
-        for media_folder_info in config_file_handler.load_js_file().get("media_folders"):
+        for media_folder_info in config_file_handler.load_json_file_content().get("media_folders"):
             db_connection.setup_media_directory(media_folder_info)
 
 
-def editor_save_txt_file(output_path, editor_metadata):
-    mp4_splitter.editor_save_txt_file(output_path, editor_metadata)
-
-
-def editor_validate_txt_file(editor_raw_folder, editor_metadata):
-    error_log = []
-    mp4_splitter.editor_validate_txt_file(editor_raw_folder, editor_metadata, error_log)
-    return error_log
-
-
-def get_free_disk_space(editor_folder, size=None, ret=3):
-    cmd = ["df", f"{editor_folder}"]
+def get_free_disk_space(size=None, ret=3):
+    raw_folder = config_file_handler.load_json_file_content().get('editor_raw_folder')
+    cmd = ["df", f"{raw_folder}"]
     if size:
-        cmd = ["df", "-B", size, f"{editor_folder}"]
+        cmd = ["df", "-B", size, f"{raw_folder}"]
     df = subprocess.Popen(cmd, stdout=subprocess.PIPE)
     output = df.communicate()[0]
     # device, size, used, available, percent, mount_point
@@ -42,8 +36,19 @@ def get_free_disk_space(editor_folder, size=None, ret=3):
     return cmd_output_list[ret]
 
 
+def editor_validate_txt_file(txt_file_name, media_type):
+    with DatabaseHandler() as db_connection:
+        media_folder_path = db_connection.get_media_folder_path_from_type(media_type)
+    mp4_output_parent_path = pathlib.Path(media_folder_path).resolve()
+    return mp4_splitter.editor_validate_txt_file(txt_file_name, media_type, mp4_output_parent_path)
+
+
+def editor_save_txt_file(txt_file, txt_file_content):
+    mp4_splitter.editor_save_txt_file(txt_file, txt_file_content)
+
+
 def get_free_disk_space_percent(editor_folder):
-    return get_free_disk_space(editor_folder, ret=4)
+    return get_free_disk_space(ret=4)
 
 
 def download_image(json_request):
@@ -162,13 +167,24 @@ class BackEndHandler:
                 db_connection.scan_all_media_directories()
         self.media_scan_in_progress = False
 
-    def get_editor_metadata(self, editor_raw_folder, selected_txt_file=None, raw_url=None):
-        return mp4_splitter.get_editor_metadata(editor_raw_folder, self.editor_processor,
-                                                selected_txt_file=selected_txt_file, raw_url=raw_url)
+    def get_editor_metadata(self, selected_txt_file=None):
+        config_file = config_file_handler.load_json_file_content()
+        raw_folder = config_file.get('editor_raw_folder')
+        raw_folder_url = config_file.get('editor_raw_url')
+        return mp4_splitter.get_editor_metadata(raw_folder, self.editor_processor,
+                                                selected_txt_file=selected_txt_file, raw_url=raw_folder_url,
+                                                process_file=EDITOR_PROCESSED_LOG)
 
-    def editor_process_txt_file(self, editor_raw_folder, editor_metadata, media_output_parent_path):
-        return mp4_splitter.editor_process_txt_file(editor_raw_folder, editor_metadata, media_output_parent_path,
-                                                    self.editor_processor)
+    def editor_process_txt_file(self, editor_metadata, media_type):
+        with DatabaseHandler() as db_connection:
+            media_folder_path = db_connection.get_media_folder_path_from_type(media_type)
+        mp4_output_parent_path = pathlib.Path(media_folder_path).resolve()
+        error_log = mp4_splitter.editor_process_txt_file(editor_metadata, media_type, mp4_output_parent_path,
+                                                         self.editor_processor)
+        if not error_log:
+            mp4_splitter.update_processed_file(editor_metadata.get('txt_file_name'), EDITOR_PROCESSED_LOG)
+
+        return error_log
 
     def editor_get_process_metadata(self):
         return self.editor_processor.get_metadata()
@@ -180,7 +196,7 @@ class BackEndHandler:
         media_directory_disk_space = []
         for media_directory in media_directory_info:
             media_directory_path_str = media_directory.get(common_objects.MEDIA_DIRECTORY_PATH_COLUMN)
-            media_directory_disk_space.append({"free_disk_space": get_free_disk_space(media_directory_path_str, "G"),
+            media_directory_disk_space.append({"free_disk_space": get_free_disk_space("G"),
                                                "free_disk_percent": get_free_disk_space_percent(
                                                    media_directory_path_str),
                                                "directory_path": pathlib.Path(media_directory_path_str).parent.stem})

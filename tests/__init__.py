@@ -67,7 +67,8 @@ def patch_extract_subclip(test_class):
 
 
 def patch_collect_tv_shows(test_class):
-    collect_tv_shows_metadata = config_file_handler.load_js_file("collect_tv_shows_metadata.json")
+    json_file_path = pathlib.Path("collect_tv_shows_metadata.json").resolve()
+    collect_tv_shows_metadata = config_file_handler.load_json_file_content(json_file_path)
 
     patcher = patch('database_handler.media_metadata_collector.collect_tv_shows')
     test_class.collect_tv_shows = patcher.start()
@@ -76,7 +77,8 @@ def patch_collect_tv_shows(test_class):
 
 
 def patch_collect_movies(test_class):
-    collect_movies_metadata = config_file_handler.load_js_file("collect_movies_metadata.json")
+    json_file_path = pathlib.Path("collect_movies_metadata.json").resolve()
+    collect_movies_metadata = config_file_handler.load_json_file_content(json_file_path)
 
     patcher = patch('database_handler.media_metadata_collector.collect_movies')
     test_class.collect_movies = patcher.start()

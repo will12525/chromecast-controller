@@ -1,5 +1,4 @@
 import json
-import pathlib
 from unittest import TestCase
 import config_file_handler
 import database_handler.media_metadata_collector as md_collector
@@ -12,7 +11,7 @@ class TestMediaMetadataCollectorSetup(TestCase):
 
     def setUp(self) -> None:
         md_collector.MOVE_FILE = False
-        self.media_paths = config_file_handler.load_js_file().get("media_folders")
+        self.media_paths = config_file_handler.load_json_file_content().get("media_folders")
 
         __init__.patch_get_file_hash(self)
         __init__.patch_get_ffmpeg_metadata(self)

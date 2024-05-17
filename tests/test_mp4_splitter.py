@@ -1,15 +1,17 @@
 import json
 import pathlib
-import time
 from unittest import TestCase
 import mp4_splitter
 import config_file_handler
 import __init__
 from database_handler.common_objects import ContentType
+from database_handler.database_handler import DatabaseHandler
+
+EDITOR_PROCESSED_LOG = "editor_metadata.json"
 
 
 class TestMp4Splitter(TestCase):
-    default_config = config_file_handler.load_js_file()
+    default_config = config_file_handler.load_json_file_content()
     raw_folder = default_config.get('editor_raw_folder')
     raw_url = default_config.get('editor_raw_url')
     modify_output_path = default_config.get("media_folders")[2].get("media_directory_path")
@@ -20,14 +22,14 @@ class Test(TestMp4Splitter):
 
     def test_splitter_split_txt_file_content(self):
         subclip_metadata_str = "1:20:47,1:40:43"
-        subclip_metadata = mp4_splitter.TvShowSubclipMetadata(subclip_metadata_str)
+        subclip_metadata = mp4_splitter.TvShowSubclipMetadata(subclip_metadata_str, None, None, None)
         print(subclip_metadata.start_time)
         print(subclip_metadata.end_time)
         assert subclip_metadata.start_time == 4847
         assert subclip_metadata.end_time == 6043
 
         subclip_metadata_str = "Hilda,episode 1,2,1,1:20:47,1:40:43"
-        subclip_metadata = mp4_splitter.TvShowSubclipMetadata(subclip_metadata_str)
+        subclip_metadata = mp4_splitter.TvShowSubclipMetadata(subclip_metadata_str, None, None, None)
         assert subclip_metadata.start_time == 4847
         assert subclip_metadata.end_time == 6043
         assert subclip_metadata.episode_index == 1
@@ -37,8 +39,8 @@ class Test(TestMp4Splitter):
 
     def test_splitter_remove_quotes(self):
         subclip_metadata_str = 'Hilda,"episode 1",2,1,1:20:47,1:40:43'
-        subclip_metadata = mp4_splitter.TvShowSubclipMetadata(subclip_metadata_str)
-        print(json.dumps(subclip_metadata.error_list, indent=4))
+        subclip_metadata = mp4_splitter.TvShowSubclipMetadata(subclip_metadata_str, None, None, None)
+        print(json.dumps(subclip_metadata.error_log, indent=4))
         assert subclip_metadata.start_time == 4847
         assert subclip_metadata.end_time == 6043
         print(subclip_metadata.episode_index)
@@ -49,6 +51,7 @@ class Test(TestMp4Splitter):
 
     def test_validate_editor_txt_file(self):
         error_log = []
+        sub_clips = []
         txt_file_content = [
             "Hilda,episode name,2,1,7,13:43",
             'Hilda,"episode another name",2,1,13:49,29:33',
@@ -56,7 +59,11 @@ class Test(TestMp4Splitter):
             "Hilda,episode 2,2,2,47:26,1:02:10",
             "Hilda,episode 1,2,1,1:02:43,1:20:13"
         ]
-        sub_clips = mp4_splitter.get_tv_sub_clips_as_objs(txt_file_content, error_log)
+        for txt_line in txt_file_content:
+            sub_clip = mp4_splitter.convert_txt_to_sub_clip(txt_line, ContentType.TV.value, error_log, None, None,
+                                                            None)
+            error_log.extend(sub_clip.error_log)
+            sub_clips.append(sub_clip)
         # print(json.dumps(sub_clips, indent=4))
 
         print(sub_clips)
@@ -69,6 +76,7 @@ class Test(TestMp4Splitter):
 
     def test_validate_editor_txt_file_times(self):
         error_log = []
+        sub_clips = []
         txt_file_content = [
             "7,13:43",
             "13:49,29:33",
@@ -76,13 +84,19 @@ class Test(TestMp4Splitter):
             "47:26,1:02:10",
             "1:02:43,1:20:13"
         ]
-        sub_clips = mp4_splitter.get_tv_sub_clips_as_objs(txt_file_content, error_log)
+        for txt_line in txt_file_content:
+            sub_clip = mp4_splitter.convert_txt_to_sub_clip(txt_line, ContentType.TV.value, error_log, None, None,
+                                                            None)
+            error_log.extend(sub_clip.error_log)
+            sub_clips.append(sub_clip)
+
         print(len(sub_clips))
         assert len(sub_clips) == len(txt_file_content)
         assert len(error_log) == 0
 
     def test_validate_editor_txt_file_invalid(self):
         error_log = []
+        sub_clips = []
         txt_file_content = [
             "7,13:43",
             "1,13:49,29:33",
@@ -90,57 +104,57 @@ class Test(TestMp4Splitter):
             "episode 1,2,1,47:26,1:02:10",
             "Hilda,episode 1,hello,1,1:02:43,1:20:13"
         ]
-        sub_clips = mp4_splitter.get_tv_sub_clips_as_objs(txt_file_content, error_log)
-        print(sub_clips)
+        for txt_line in txt_file_content:
+            sub_clip = mp4_splitter.convert_txt_to_sub_clip(txt_line, ContentType.TV.value, error_log, None, None,
+                                                            None)
+            # error_log.extend(sub_clip.error_log)
+            sub_clips.append(sub_clip)
+
         print(json.dumps(error_log, indent=4))
         print(len(error_log))
-        assert 1 == len(sub_clips)
-        assert 13 == len(error_log)
-        for subclip in sub_clips:
-            assert not subclip.playlist_title
-            assert not subclip.media_title
-            assert not subclip.season_index
-            assert not subclip.episode_index
-            assert 7 == subclip.start_time
-            assert 823 == subclip.end_time
+        print(len(sub_clips))
+        assert 5 == len(sub_clips)
+        assert 0 == len(error_log)
 
-        assert error_log[0].get("message") == "Failing line index"
-        assert error_log[0].get("value") == 1
+        error_log = sub_clips[1].error_log
+        print(json.dumps(error_log, indent=4))
 
-        assert error_log[1].get("message") == "Missing content"
-        assert error_log[1].get("value") == "1,13:49,29:33"
+        assert error_log[0].get("message") == "Missing content"
+        assert error_log[0].get("value") == "1,13:49,29:33"
+
+        assert error_log[1].get("message") == f"Errors occurred while parsing line"
+        assert error_log[1].get("value") == txt_file_content[1]
+
+        # assert error_log[2].get("message") == "Failing line index"
+        # assert error_log[2].get("value") == 1
+        error_log = sub_clips[2].error_log
+        print(json.dumps(error_log, indent=4))
+
+        assert error_log[0].get("message") == "Missing content"
+        assert error_log[0].get("value") == "2,1,30:03,46:32"
+
+        assert error_log[1].get("message") == f"Errors occurred while parsing line"
+        assert error_log[1].get("value") == txt_file_content[2]
+
+        error_log = sub_clips[3].error_log
+        print(json.dumps(error_log, indent=4))
+
+        assert error_log[0].get("message") == "Missing content"
+        assert error_log[0].get("value") == "episode 1,2,1,47:26,1:02:10"
+
+        assert error_log[1].get("message") == f"Errors occurred while parsing line"
+        assert error_log[1].get("value") == txt_file_content[3]
+
+        error_log = sub_clips[4].error_log
+        print(json.dumps(error_log, indent=4))
+
+        assert error_log[0].get("message") == "Values not int"
+        assert error_log[0].get("season_index") == "hello"
+
+        assert error_log[1].get("message") == "Missing season index"
 
         assert error_log[2].get("message") == f"Errors occurred while parsing line"
-        assert error_log[2].get("value") == txt_file_content[1]
-
-        assert error_log[3].get("message") == "Failing line index"
-        assert error_log[3].get("value") == 2
-
-        assert error_log[4].get("message") == "Missing content"
-        assert error_log[4].get("value") == "2,1,30:03,46:32"
-
-        assert error_log[5].get("message") == f"Errors occurred while parsing line"
-        assert error_log[5].get("value") == txt_file_content[2]
-
-        assert error_log[6].get("message") == "Failing line index"
-        assert error_log[6].get("value") == 3
-
-        assert error_log[7].get("message") == "Missing content"
-        assert error_log[7].get("value") == "episode 1,2,1,47:26,1:02:10"
-
-        assert error_log[8].get("message") == f"Errors occurred while parsing line"
-        assert error_log[8].get("value") == txt_file_content[3]
-
-        assert error_log[9].get("message") == "Failing line index"
-        assert error_log[9].get("value") == 4
-
-        assert error_log[10].get("message") == "Values not int"
-        assert error_log[10].get("season_index") == "hello"
-
-        assert error_log[11].get("message") == "Missing season index"
-
-        assert error_log[12].get("message") == f"Errors occurred while parsing line"
-        assert error_log[12].get("value") == txt_file_content[4]
+        assert error_log[2].get("value") == txt_file_content[4]
 
     def test_load_txt_file_content(self):
         txt_file_name = "2024-01-31_16-32-36.txt"
@@ -149,20 +163,22 @@ class Test(TestMp4Splitter):
 
     def test_validate_editor_cmd_list(self):
         error_log = []
-        txt_file_name = "2024-01-31_16-32-36.txt"
-        txt_process_file = f"{self.raw_folder}{txt_file_name}"
-        text_path = pathlib.Path(txt_process_file).resolve()
-        mp4_process_file = txt_process_file.replace('.txt', '.mp4')
-        video_path = pathlib.Path(mp4_process_file).resolve()
-        assert text_path
-        assert video_path
+        sub_clips = []
+        editor_metadata = {
+            'txt_file_name': "2024-01-31_16-32-36.txt"
+        }
+        media_type = ContentType.TV.value
 
-        time_lines = config_file_handler.load_txt_file_content(text_path)
-        # print(time_lines)
-        # print(''.join(time_lines))
-        assert time_lines
-        sub_clips = mp4_splitter.get_tv_sub_clips_as_objs(time_lines, error_log)
-        mp4_splitter.get_cmd_list(sub_clips, mp4_process_file, pathlib.Path(self.modify_output_path).resolve())
+        with DatabaseHandler() as db_connection:
+            media_folder_path = db_connection.get_media_folder_path_from_type(media_type)
+        output_path = pathlib.Path(media_folder_path).resolve()
+        txt_file = f"{self.raw_folder}{editor_metadata.get('txt_file_name')}"
+        mp4_file = txt_file.replace('.txt', '.mp4')
+        txt_file_path = pathlib.Path(txt_file).resolve()
+        mp4_file_path = pathlib.Path(mp4_file).resolve()
+
+        mp4_splitter.get_sub_clips_from_txt_file(media_type, txt_file_path, output_path, sub_clips, error_log)
+
         # assert cmd_list
         print(sub_clips[0])
         assert 5 == len(sub_clips)
@@ -180,20 +196,22 @@ class Test(TestMp4Splitter):
 
     def test_validate_editor_cmd_list_remove_quotes(self):
         error_log = []
-        txt_file_name = "2024-01-31_16-32-36_quotes.txt"
-        txt_process_file = f"{self.raw_folder}{txt_file_name}"
-        text_path = pathlib.Path(txt_process_file).resolve()
-        mp4_process_file = txt_process_file.replace('.txt', '.mp4')
-        video_path = pathlib.Path(mp4_process_file).resolve()
-        assert text_path
-        assert video_path
+        sub_clips = []
+        editor_metadata = {
+            'txt_file_name': "2024-01-31_16-32-36_quotes.txt"
+        }
+        media_type = ContentType.TV.value
 
-        time_lines = config_file_handler.load_txt_file_content(text_path)
-        # print(time_lines)
-        # print(''.join(time_lines))
-        assert time_lines
-        sub_clips = mp4_splitter.get_tv_sub_clips_as_objs(time_lines, error_log)
-        mp4_splitter.get_cmd_list(sub_clips, mp4_process_file, pathlib.Path(self.modify_output_path).resolve())
+        with DatabaseHandler() as db_connection:
+            media_folder_path = db_connection.get_media_folder_path_from_type(media_type)
+        output_path = pathlib.Path(media_folder_path).resolve()
+        txt_file = f"{self.raw_folder}{editor_metadata.get('txt_file_name')}"
+        mp4_file = txt_file.replace('.txt', '.mp4')
+        txt_file_path = pathlib.Path(txt_file).resolve()
+        mp4_file_path = pathlib.Path(mp4_file).resolve()
+
+        mp4_splitter.get_sub_clips_from_txt_file(media_type, txt_file_path, output_path, sub_clips, error_log)
+
         # assert cmd_list
         print(sub_clips[0])
         assert 5 == len(sub_clips)
@@ -252,30 +270,30 @@ class TestSubclipMetadata(TestMp4Splitter):
         invalid_end_second_timestamp = "1:02:43,1:20:-13"
         invalid_start_second_timestamp = "1:02:-43,1:20:13"
 
-        sub_clip = mp4_splitter.TvShowSubclipMetadata(invalid_end_minute_timestamp)
-        assert type(sub_clip.error_list[0]) is dict
-        assert sub_clip.error_list[0].get("message") == "Values less than 0"
-        assert sub_clip.error_list[0].get("hour") == 1
-        assert sub_clip.error_list[0].get("minute") == -20
-        assert sub_clip.error_list[0].get("second") == 13
+        sub_clip = mp4_splitter.TvShowSubclipMetadata(invalid_end_minute_timestamp, None, None, None)
+        assert type(sub_clip.error_log[0]) is dict
+        assert sub_clip.error_log[0].get("message") == "Values less than 0"
+        assert sub_clip.error_log[0].get("hour") == 1
+        assert sub_clip.error_log[0].get("minute") == -20
+        assert sub_clip.error_log[0].get("second") == 13
 
-        sub_clip = mp4_splitter.TvShowSubclipMetadata(invalid_end_second_timestamp)
-        assert type(sub_clip.error_list[0]) is dict
-        assert sub_clip.error_list[0].get("message") == "Values less than 0"
-        assert sub_clip.error_list[0].get("hour") == 1
-        assert sub_clip.error_list[0].get("minute") == 20
-        assert sub_clip.error_list[0].get("second") == -13
+        sub_clip = mp4_splitter.TvShowSubclipMetadata(invalid_end_second_timestamp, None, None, None)
+        assert type(sub_clip.error_log[0]) is dict
+        assert sub_clip.error_log[0].get("message") == "Values less than 0"
+        assert sub_clip.error_log[0].get("hour") == 1
+        assert sub_clip.error_log[0].get("minute") == 20
+        assert sub_clip.error_log[0].get("second") == -13
 
-        sub_clip = mp4_splitter.TvShowSubclipMetadata(invalid_start_second_timestamp)
-        assert type(sub_clip.error_list[0]) is dict
-        assert sub_clip.error_list[0].get("message") == "Values less than 0"
-        assert sub_clip.error_list[0].get("hour") == 1
-        assert sub_clip.error_list[0].get("minute") == 2
-        assert sub_clip.error_list[0].get("second") == -43
+        sub_clip = mp4_splitter.TvShowSubclipMetadata(invalid_start_second_timestamp, None, None, None)
+        assert type(sub_clip.error_log[0]) is dict
+        assert sub_clip.error_log[0].get("message") == "Values less than 0"
+        assert sub_clip.error_log[0].get("hour") == 1
+        assert sub_clip.error_log[0].get("minute") == 2
+        assert sub_clip.error_log[0].get("second") == -43
 
     def test_valid_full_data_strings(self):
         valid_data_set = "Hilda,Running Up That Hill,2,1,7,13:43"
-        subclip_metadata = mp4_splitter.TvShowSubclipMetadata(valid_data_set)
+        subclip_metadata = mp4_splitter.TvShowSubclipMetadata(valid_data_set, None, None, None)
         assert subclip_metadata.playlist_title == "Hilda"
         assert subclip_metadata.media_title == "Running Up That Hill"
         assert subclip_metadata.season_index == 2
@@ -288,222 +306,222 @@ class TestSubclipMetadata(TestMp4Splitter):
         invalid_end_minute_is_str_timestamp = "Hilda,episode name,2,1,1:02:43,1:HELLO:13"
         invalid_missing_end_minute_timestamp = "Hilda,episode name,2,1,1:02:43,1::13"
 
-        sub_clip = mp4_splitter.TvShowSubclipMetadata(invalid_negative_end_minute_timestamp)
-        print(json.dumps(sub_clip.error_list, indent=4))
+        sub_clip = mp4_splitter.TvShowSubclipMetadata(invalid_negative_end_minute_timestamp, None, None, None)
+        print(json.dumps(sub_clip.error_log, indent=4))
 
-        assert len(sub_clip.error_list) == 3
-        assert type(sub_clip.error_list[0]) is dict
+        assert len(sub_clip.error_log) == 3
+        assert type(sub_clip.error_log[0]) is dict
 
-        assert sub_clip.error_list[0].get("message") == "Values less than 0"
-        assert sub_clip.error_list[0].get("value") == "1:-20:13"
-        assert sub_clip.error_list[0].get("hour") == 1
-        assert sub_clip.error_list[0].get("minute") == -20
-        assert sub_clip.error_list[0].get("second") == 13
+        assert sub_clip.error_log[0].get("message") == "Values less than 0"
+        assert sub_clip.error_log[0].get("value") == "1:-20:13"
+        assert sub_clip.error_log[0].get("hour") == 1
+        assert sub_clip.error_log[0].get("minute") == -20
+        assert sub_clip.error_log[0].get("second") == 13
 
-        assert sub_clip.error_list[1].get("message") == "End time >= start time"
+        assert sub_clip.error_log[1].get("message") == "End time >= start time"
 
-        assert sub_clip.error_list[2].get("message") == "Errors occurred while parsing line"
-        assert sub_clip.error_list[2].get("value") == invalid_negative_end_minute_timestamp
+        assert sub_clip.error_log[2].get("message") == "Errors occurred while parsing line"
+        assert sub_clip.error_log[2].get("value") == invalid_negative_end_minute_timestamp
 
-        sub_clip = mp4_splitter.TvShowSubclipMetadata(invalid_end_minute_is_str_timestamp)
-        assert len(sub_clip.error_list) == 3
-        assert type(sub_clip.error_list[0]) is dict
-        print(json.dumps(sub_clip.error_list, indent=4))
+        sub_clip = mp4_splitter.TvShowSubclipMetadata(invalid_end_minute_is_str_timestamp, None, None, None)
+        assert len(sub_clip.error_log) == 3
+        assert type(sub_clip.error_log[0]) is dict
+        print(json.dumps(sub_clip.error_log, indent=4))
 
-        assert sub_clip.error_list[0].get("message") == "Values not int"
-        assert sub_clip.error_list[0].get("value") == "1:HELLO:13"
-        assert sub_clip.error_list[0].get("hour") == 1
-        assert sub_clip.error_list[0].get("minute") == "HELLO"
-        assert sub_clip.error_list[0].get("second") == "13"
+        assert sub_clip.error_log[0].get("message") == "Values not int"
+        assert sub_clip.error_log[0].get("value") == "1:HELLO:13"
+        assert sub_clip.error_log[0].get("hour") == 1
+        assert sub_clip.error_log[0].get("minute") == "HELLO"
+        assert sub_clip.error_log[0].get("second") == "13"
 
-        assert sub_clip.error_list[1].get("message") == "End time >= start time"
+        assert sub_clip.error_log[1].get("message") == "End time >= start time"
 
-        assert sub_clip.error_list[2].get("message") == "Errors occurred while parsing line"
-        assert sub_clip.error_list[2].get("value") == invalid_end_minute_is_str_timestamp
+        assert sub_clip.error_log[2].get("message") == "Errors occurred while parsing line"
+        assert sub_clip.error_log[2].get("value") == invalid_end_minute_is_str_timestamp
 
-        sub_clip = mp4_splitter.TvShowSubclipMetadata(invalid_missing_end_minute_timestamp)
-        assert len(sub_clip.error_list) == 3
-        assert type(sub_clip.error_list[0]) is dict
-        print(json.dumps(sub_clip.error_list, indent=4))
+        sub_clip = mp4_splitter.TvShowSubclipMetadata(invalid_missing_end_minute_timestamp, None, None, None)
+        assert len(sub_clip.error_log) == 3
+        assert type(sub_clip.error_log[0]) is dict
+        print(json.dumps(sub_clip.error_log, indent=4))
 
-        assert sub_clip.error_list[0].get("message") == "Missing timestamp value"
-        assert sub_clip.error_list[0].get("value") == "1::13"
-        assert sub_clip.error_list[0].get("hour") == "1"
-        assert sub_clip.error_list[0].get("minute") == ""
-        assert sub_clip.error_list[0].get("second") == "13"
+        assert sub_clip.error_log[0].get("message") == "Missing timestamp value"
+        assert sub_clip.error_log[0].get("value") == "1::13"
+        assert sub_clip.error_log[0].get("hour") == "1"
+        assert sub_clip.error_log[0].get("minute") == ""
+        assert sub_clip.error_log[0].get("second") == "13"
 
-        assert sub_clip.error_list[1].get("message") == "End time >= start time"
+        assert sub_clip.error_log[1].get("message") == "End time >= start time"
 
-        assert sub_clip.error_list[2].get("message") == "Errors occurred while parsing line"
-        assert sub_clip.error_list[2].get("value") == invalid_missing_end_minute_timestamp
+        assert sub_clip.error_log[2].get("message") == "Errors occurred while parsing line"
+        assert sub_clip.error_log[2].get("value") == invalid_missing_end_minute_timestamp
 
     def test_invalid_start_second(self):
         invalid_negative_start_second_timestamp = "Hilda,Running Up That Hill,1,1,13:-49,29:33"
         invalid_start_second_is_str_timestamp = "Hilda,Running Up That Hill,1,1,13:HELLO,29:33"
         invalid_missing_start_second_timestamp = "Hilda,Running Up That Hill,1,1,13:,29:33"
 
-        sub_clip = mp4_splitter.TvShowSubclipMetadata(invalid_negative_start_second_timestamp)
-        assert type(sub_clip.error_list[0]) is dict
-        assert sub_clip.error_list[0].get("message") == "Values less than 0"
-        assert sub_clip.error_list[0].get("value") == "13:-49"
-        assert sub_clip.error_list[0].get("hour") == 0
-        assert sub_clip.error_list[0].get("minute") == 13
-        assert sub_clip.error_list[0].get("second") == -49
+        sub_clip = mp4_splitter.TvShowSubclipMetadata(invalid_negative_start_second_timestamp, None, None, None)
+        assert type(sub_clip.error_log[0]) is dict
+        assert sub_clip.error_log[0].get("message") == "Values less than 0"
+        assert sub_clip.error_log[0].get("value") == "13:-49"
+        assert sub_clip.error_log[0].get("hour") == 0
+        assert sub_clip.error_log[0].get("minute") == 13
+        assert sub_clip.error_log[0].get("second") == -49
 
-        sub_clip = mp4_splitter.TvShowSubclipMetadata(invalid_start_second_is_str_timestamp)
-        assert type(sub_clip.error_list[0]) is dict
-        assert sub_clip.error_list[0].get("message") == "Values not int"
-        assert sub_clip.error_list[0].get("hour") == 0
-        assert sub_clip.error_list[0].get("minute") == 13
-        assert sub_clip.error_list[0].get("second") == "HELLO"
+        sub_clip = mp4_splitter.TvShowSubclipMetadata(invalid_start_second_is_str_timestamp, None, None, None)
+        assert type(sub_clip.error_log[0]) is dict
+        assert sub_clip.error_log[0].get("message") == "Values not int"
+        assert sub_clip.error_log[0].get("hour") == 0
+        assert sub_clip.error_log[0].get("minute") == 13
+        assert sub_clip.error_log[0].get("second") == "HELLO"
 
-        sub_clip = mp4_splitter.TvShowSubclipMetadata(invalid_missing_start_second_timestamp)
-        assert type(sub_clip.error_list[0]) is dict
-        assert sub_clip.error_list[0].get("message") == "Missing timestamp value"
-        assert sub_clip.error_list[0].get("hour") == 0
-        assert sub_clip.error_list[0].get("minute") == "13"
-        assert sub_clip.error_list[0].get("second") == ""
+        sub_clip = mp4_splitter.TvShowSubclipMetadata(invalid_missing_start_second_timestamp, None, None, None)
+        assert type(sub_clip.error_log[0]) is dict
+        assert sub_clip.error_log[0].get("message") == "Missing timestamp value"
+        assert sub_clip.error_log[0].get("hour") == 0
+        assert sub_clip.error_log[0].get("minute") == "13"
+        assert sub_clip.error_log[0].get("second") == ""
 
     def test_invalid_episode_index(self):
         invalid_negative_episode_index = "Hilda,Running Up That Hill,1,-1,30:03,46:32"
         invalid_episode_index_is_str = "Hilda,Running Up That Hill,1,HELLO,13:49,29:33"
         invalid_missing_episode_index = "Hilda,Running Up That Hill,1,,13:48,29:33"
 
-        sub_clip = mp4_splitter.TvShowSubclipMetadata(invalid_negative_episode_index)
-        print(json.dumps(sub_clip.error_list, indent=4))
-        assert len(sub_clip.error_list) == 2
-        assert type(sub_clip.error_list[0]) is dict
-        assert sub_clip.error_list[0].get("message") == "Values less than 0"
-        assert sub_clip.error_list[0].get("episode_index") == "-1"
+        sub_clip = mp4_splitter.TvShowSubclipMetadata(invalid_negative_episode_index, None, None, None)
+        print(json.dumps(sub_clip.error_log, indent=4))
+        assert len(sub_clip.error_log) == 2
+        assert type(sub_clip.error_log[0]) is dict
+        assert sub_clip.error_log[0].get("message") == "Values less than 0"
+        assert sub_clip.error_log[0].get("episode_index") == "-1"
 
-        assert sub_clip.error_list[1].get("message") == "Errors occurred while parsing line"
-        assert sub_clip.error_list[1].get("value") == invalid_negative_episode_index
+        assert sub_clip.error_log[1].get("message") == "Errors occurred while parsing line"
+        assert sub_clip.error_log[1].get("value") == invalid_negative_episode_index
 
-        sub_clip = mp4_splitter.TvShowSubclipMetadata(invalid_episode_index_is_str)
-        print(json.dumps(sub_clip.error_list, indent=4))
-        assert len(sub_clip.error_list) == 3
-        assert type(sub_clip.error_list[0]) is dict
-        assert sub_clip.error_list[0].get("message") == "Values not int"
-        assert sub_clip.error_list[0].get("episode_index") == "HELLO"
+        sub_clip = mp4_splitter.TvShowSubclipMetadata(invalid_episode_index_is_str, None, None, None)
+        print(json.dumps(sub_clip.error_log, indent=4))
+        assert len(sub_clip.error_log) == 3
+        assert type(sub_clip.error_log[0]) is dict
+        assert sub_clip.error_log[0].get("message") == "Values not int"
+        assert sub_clip.error_log[0].get("episode_index") == "HELLO"
 
-        assert sub_clip.error_list[1].get("message") == "Missing episode index"
+        assert sub_clip.error_log[1].get("message") == "Missing episode index"
 
-        assert sub_clip.error_list[2].get("message") == "Errors occurred while parsing line"
-        assert sub_clip.error_list[2].get("value") == invalid_episode_index_is_str
+        assert sub_clip.error_log[2].get("message") == "Errors occurred while parsing line"
+        assert sub_clip.error_log[2].get("value") == invalid_episode_index_is_str
 
-        sub_clip = mp4_splitter.TvShowSubclipMetadata(invalid_missing_episode_index)
-        print(json.dumps(sub_clip.error_list, indent=4))
-        assert len(sub_clip.error_list) == 3
-        assert type(sub_clip.error_list[0]) is dict
-        assert sub_clip.error_list[0].get("message") == "Values not int"
-        assert sub_clip.error_list[0].get("episode_index") == ""
-        assert sub_clip.error_list[1].get("message") == "Missing episode index"
-        assert sub_clip.error_list[2].get("message") == "Errors occurred while parsing line"
-        assert sub_clip.error_list[2].get("value") == invalid_missing_episode_index
+        sub_clip = mp4_splitter.TvShowSubclipMetadata(invalid_missing_episode_index, None, None, None)
+        print(json.dumps(sub_clip.error_log, indent=4))
+        assert len(sub_clip.error_log) == 3
+        assert type(sub_clip.error_log[0]) is dict
+        assert sub_clip.error_log[0].get("message") == "Values not int"
+        assert sub_clip.error_log[0].get("episode_index") == ""
+        assert sub_clip.error_log[1].get("message") == "Missing episode index"
+        assert sub_clip.error_log[2].get("message") == "Errors occurred while parsing line"
+        assert sub_clip.error_log[2].get("value") == invalid_missing_episode_index
 
     def test_invalid_season_index(self):
         invalid_negative_season_index = "Hilda,Running Up That Hill,-1,1,30:03,46:32"
         invalid_season_index_is_str = "Hilda,Running Up That Hill,HI THERE,198,13:49,29:33"
         invalid_missing_season_index = "Hilda,Running Up That Hill,,287,13:48,29:33"
 
-        sub_clip = mp4_splitter.TvShowSubclipMetadata(invalid_negative_season_index)
-        print(json.dumps(sub_clip.error_list, indent=4))
-        assert len(sub_clip.error_list) == 2
-        assert type(sub_clip.error_list[0]) is dict
-        assert sub_clip.error_list[0].get("message") == "Values less than 0"
-        assert sub_clip.error_list[0].get("season_index") == "-1"
+        sub_clip = mp4_splitter.TvShowSubclipMetadata(invalid_negative_season_index, None, None, None)
+        print(json.dumps(sub_clip.error_log, indent=4))
+        assert len(sub_clip.error_log) == 2
+        assert type(sub_clip.error_log[0]) is dict
+        assert sub_clip.error_log[0].get("message") == "Values less than 0"
+        assert sub_clip.error_log[0].get("season_index") == "-1"
 
-        assert sub_clip.error_list[1].get("message") == "Errors occurred while parsing line"
-        assert sub_clip.error_list[1].get("value") == invalid_negative_season_index
+        assert sub_clip.error_log[1].get("message") == "Errors occurred while parsing line"
+        assert sub_clip.error_log[1].get("value") == invalid_negative_season_index
 
-        sub_clip = mp4_splitter.TvShowSubclipMetadata(invalid_season_index_is_str)
-        print(json.dumps(sub_clip.error_list, indent=4))
-        assert len(sub_clip.error_list) == 3
-        assert type(sub_clip.error_list[0]) is dict
-        assert sub_clip.error_list[0].get("message") == "Values not int"
-        assert sub_clip.error_list[0].get("season_index") == "HI THERE"
+        sub_clip = mp4_splitter.TvShowSubclipMetadata(invalid_season_index_is_str, None, None, None)
+        print(json.dumps(sub_clip.error_log, indent=4))
+        assert len(sub_clip.error_log) == 3
+        assert type(sub_clip.error_log[0]) is dict
+        assert sub_clip.error_log[0].get("message") == "Values not int"
+        assert sub_clip.error_log[0].get("season_index") == "HI THERE"
 
-        assert sub_clip.error_list[1].get("message") == "Missing season index"
+        assert sub_clip.error_log[1].get("message") == "Missing season index"
 
-        assert sub_clip.error_list[2].get("message") == "Errors occurred while parsing line"
-        assert sub_clip.error_list[2].get("value") == invalid_season_index_is_str
+        assert sub_clip.error_log[2].get("message") == "Errors occurred while parsing line"
+        assert sub_clip.error_log[2].get("value") == invalid_season_index_is_str
 
-        sub_clip = mp4_splitter.TvShowSubclipMetadata(invalid_missing_season_index)
-        print(json.dumps(sub_clip.error_list, indent=4))
-        assert len(sub_clip.error_list) == 3
-        assert type(sub_clip.error_list[0]) is dict
-        assert sub_clip.error_list[0].get("message") == "Values not int"
-        assert sub_clip.error_list[0].get("season_index") == ""
+        sub_clip = mp4_splitter.TvShowSubclipMetadata(invalid_missing_season_index, None, None, None)
+        print(json.dumps(sub_clip.error_log, indent=4))
+        assert len(sub_clip.error_log) == 3
+        assert type(sub_clip.error_log[0]) is dict
+        assert sub_clip.error_log[0].get("message") == "Values not int"
+        assert sub_clip.error_log[0].get("season_index") == ""
 
-        assert sub_clip.error_list[1].get("message") == "Missing season index"
+        assert sub_clip.error_log[1].get("message") == "Missing season index"
 
-        assert sub_clip.error_list[2].get("message") == "Errors occurred while parsing line"
-        assert sub_clip.error_list[2].get("value") == invalid_missing_season_index
+        assert sub_clip.error_log[2].get("message") == "Errors occurred while parsing line"
+        assert sub_clip.error_log[2].get("value") == invalid_missing_season_index
 
     def test_invalid_media_title(self):
         invalid_missing_media_title = "Hilda,,7,287,13:48,29:33"
         invalid_characters_in_media_title = "Hilda,Running\/*+ Up That Hill,7,287,13:48,29:33"
 
-        sub_clip = mp4_splitter.TvShowSubclipMetadata(invalid_missing_media_title)
-        print(json.dumps(sub_clip.error_list, indent=4))
+        sub_clip = mp4_splitter.TvShowSubclipMetadata(invalid_missing_media_title, None, None, None)
+        print(json.dumps(sub_clip.error_log, indent=4))
         assert sub_clip
-        assert sub_clip.error_list
-        assert len(sub_clip.error_list) == 3
-        assert type(sub_clip.error_list[0]) is dict
+        assert sub_clip.error_log
+        assert len(sub_clip.error_log) == 3
+        assert type(sub_clip.error_log[0]) is dict
 
-        assert sub_clip.error_list[0].get("message") == "media_title the value must not be an empty"
-        assert not sub_clip.error_list[0].get("value")
-        assert sub_clip.error_list[0].get("media_title") == ""
+        assert sub_clip.error_log[0].get("message") == "media_title the value must not be an empty"
+        assert not sub_clip.error_log[0].get("value")
+        assert sub_clip.error_log[0].get("media_title") == ""
 
-        assert sub_clip.error_list[1].get("message") == "Missing media title"
+        assert sub_clip.error_log[1].get("message") == "Missing media title"
 
-        assert sub_clip.error_list[2].get("message") == "Errors occurred while parsing line"
-        assert sub_clip.error_list[2].get("value") == invalid_missing_media_title
+        assert sub_clip.error_log[2].get("message") == "Errors occurred while parsing line"
+        assert sub_clip.error_log[2].get("value") == invalid_missing_media_title
 
-        sub_clip = mp4_splitter.TvShowSubclipMetadata(invalid_characters_in_media_title)
-        print(json.dumps(sub_clip.error_list, indent=4))
+        sub_clip = mp4_splitter.TvShowSubclipMetadata(invalid_characters_in_media_title, None, None, None)
+        print(json.dumps(sub_clip.error_log, indent=4))
 
         assert sub_clip
-        assert sub_clip.error_list
-        assert len(sub_clip.error_list) == 2
-        assert type(sub_clip.error_list[0]) is dict
-        assert sub_clip.error_list[0].get("message") == "media_title invalid characters found"
-        assert not sub_clip.error_list[0].get("value")
-        assert sub_clip.error_list[0].get("media_title") == "Running\/*+ Up That Hill"
-        assert sub_clip.error_list[0].get("invalids") == "(/)"
+        assert sub_clip.error_log
+        assert len(sub_clip.error_log) == 2
+        assert type(sub_clip.error_log[0]) is dict
+        assert sub_clip.error_log[0].get("message") == "media_title invalid characters found"
+        assert not sub_clip.error_log[0].get("value")
+        assert sub_clip.error_log[0].get("media_title") == "Running\/*+ Up That Hill"
+        assert sub_clip.error_log[0].get("invalids") == "(/)"
 
-        assert sub_clip.error_list[1].get("message") == "Errors occurred while parsing line"
-        assert sub_clip.error_list[1].get("value") == invalid_characters_in_media_title
+        assert sub_clip.error_log[1].get("message") == "Errors occurred while parsing line"
+        assert sub_clip.error_log[1].get("value") == invalid_characters_in_media_title
 
     def test_invalid_playlist_title(self):
         invalid_missing_playlist_title = ",Running Up That Hill,7,287,13:48,29:33"
         invalid_characters_in_playlist_title = "Hilda//*+,Running Up That Hill,7,287,13:48,29:33"
 
-        sub_clip = mp4_splitter.TvShowSubclipMetadata(invalid_missing_playlist_title)
-        print(json.dumps(sub_clip.error_list, indent=4))
-        assert len(sub_clip.error_list) == 3
-        assert type(sub_clip.error_list[0]) is dict
-        assert sub_clip.error_list[0].get("message") == "playlist_title the value must not be an empty"
-        assert not sub_clip.error_list[0].get("value")
-        assert sub_clip.error_list[0].get("playlist_title") == ""
+        sub_clip = mp4_splitter.TvShowSubclipMetadata(invalid_missing_playlist_title, None, None, None)
+        print(json.dumps(sub_clip.error_log, indent=4))
+        assert len(sub_clip.error_log) == 3
+        assert type(sub_clip.error_log[0]) is dict
+        assert sub_clip.error_log[0].get("message") == "playlist_title the value must not be an empty"
+        assert not sub_clip.error_log[0].get("value")
+        assert sub_clip.error_log[0].get("playlist_title") == ""
 
-        assert sub_clip.error_list[1].get("message") == "Missing playlist title"
+        assert sub_clip.error_log[1].get("message") == "Missing playlist title"
 
-        assert type(sub_clip.error_list[2]) is dict
-        assert sub_clip.error_list[2].get("message") == "Errors occurred while parsing line"
-        assert sub_clip.error_list[2].get("value") == invalid_missing_playlist_title
+        assert type(sub_clip.error_log[2]) is dict
+        assert sub_clip.error_log[2].get("message") == "Errors occurred while parsing line"
+        assert sub_clip.error_log[2].get("value") == invalid_missing_playlist_title
 
-        sub_clip = mp4_splitter.TvShowSubclipMetadata(invalid_characters_in_playlist_title)
-        print(json.dumps(sub_clip.error_list, indent=4))
-        assert len(sub_clip.error_list) == 2
-        assert type(sub_clip.error_list[0]) is dict
-        assert sub_clip.error_list[0].get("message") == "playlist_title invalid characters found"
-        assert not sub_clip.error_list[0].get("value")
-        assert sub_clip.error_list[0].get("playlist_title") == "Hilda//*+"
-        assert sub_clip.error_list[0].get("invalids") == "(/, /)"
+        sub_clip = mp4_splitter.TvShowSubclipMetadata(invalid_characters_in_playlist_title, None, None, None)
+        print(json.dumps(sub_clip.error_log, indent=4))
+        assert len(sub_clip.error_log) == 2
+        assert type(sub_clip.error_log[0]) is dict
+        assert sub_clip.error_log[0].get("message") == "playlist_title invalid characters found"
+        assert not sub_clip.error_log[0].get("value")
+        assert sub_clip.error_log[0].get("playlist_title") == "Hilda//*+"
+        assert sub_clip.error_log[0].get("invalids") == "(/, /)"
 
-        assert sub_clip.error_list[1].get("message") == "Errors occurred while parsing line"
-        assert sub_clip.error_list[1].get("value") == invalid_characters_in_playlist_title
+        assert sub_clip.error_log[1].get("message") == "Errors occurred while parsing line"
+        assert sub_clip.error_log[1].get("value") == invalid_characters_in_playlist_title
 
 
 class TestEditor(TestMp4Splitter):
@@ -511,35 +529,33 @@ class TestEditor(TestMp4Splitter):
 
     def test_editor_process_txt_file_error_invalid_file(self):
         editor_metadata = {
-            'txt_file_name': "2024hi-01-31_16-32-36.txt",
-            'txt_file_media_type': "TV_SHOW"
+            'txt_file_name': "2024hi-01-31_16-32-36.txt"
         }
-        error_log = mp4_splitter.editor_process_txt_file(self.raw_folder, editor_metadata, self.modify_output_path,
+        media_type = ContentType.TV.value
+        error_log = mp4_splitter.editor_process_txt_file(editor_metadata, media_type, self.modify_output_path,
                                                          self.editor_processor)
         print(json.dumps(error_log, indent=4))
         assert len(error_log) == 3
         assert type(error_log[0]) is dict
-        assert "Text file empty" == error_log[0].get("message")
-        assert editor_metadata.get("txt_file_name") in error_log[0].get("value")
 
-        assert "Missing file" == error_log[1].get("message")
-        assert "2024hi-01-31_16-32-36" == error_log[1].get("value")
+        assert "Text file empty" == error_log[1].get("message")
+        assert editor_metadata.get("txt_file_name") in error_log[1].get("value")
+
+        assert "Missing file" == error_log[0].get("message")
+        assert "2024hi-01-31_16-32-36.mp4" == error_log[0].get("value")
 
         assert "Errors occurred while processing file" == error_log[2].get("message")
         assert editor_metadata.get("txt_file_name") in error_log[2].get("value")
 
     def test_editor_process_txt_file_error_missing_mp4(self):
         editor_metadata = {
-            'txt_file_name': "2024-01-31_16-32-36_no_mp4.txt",
-            'media_type': ContentType.TV.value
+            'txt_file_name': "2024-01-31_16-32-36_no_mp4.txt"
         }
-        # with self.assertRaises(FileNotFoundError) as context:
-        error_log = mp4_splitter.editor_process_txt_file(self.raw_folder, editor_metadata, self.modify_output_path,
-                                                         self.editor_processor)
+        media_type = ContentType.TV.value
+
+        error_log = mp4_splitter.editor_process_txt_file(editor_metadata, media_type,
+                                                         self.modify_output_path, self.editor_processor)
         print(json.dumps(error_log, indent=4))
-        # error_dict = context.exception.args[0]
-        # print(error_dict)
-        # assert type(error_dict) is dict
         assert "Missing file" == error_log[0].get("message")
         assert "2024-01-31_16-32-36_no_mp4" in error_log[0].get("value")
         assert "Errors occurred while processing file" == error_log[1].get("message")
@@ -549,10 +565,9 @@ class TestEditor(TestMp4Splitter):
         editor_metadata = {
             'txt_file_name': "2024-01-31_16-32-36_empty.txt"
         }
-        # with self.assertRaises(ValueError) as context:
-        error_log = mp4_splitter.editor_process_txt_file(self.raw_folder, editor_metadata, self.modify_output_path,
-                                                         self.editor_processor)
-        # error_dict = context.exception.args[0]
+        media_type = ContentType.TV.value
+        error_log = mp4_splitter.editor_process_txt_file(editor_metadata, media_type,
+                                                         self.modify_output_path, self.editor_processor)
         print(json.dumps(error_log, indent=4))
         assert type(error_log) is list
         assert len(error_log) == 2
@@ -564,45 +579,47 @@ class TestEditor(TestMp4Splitter):
 
     def test_editor_process_txt_file_error_invalid_file_content(self):
         editor_metadata = {
-            'txt_file_name': "2024-01-31_16-32-36_invalid.txt",
-            'media_type': ContentType.TV.value
+            'txt_file_name': "2024-01-31_16-32-36_invalid.txt"
         }
-        error_log = mp4_splitter.editor_process_txt_file(self.raw_folder, editor_metadata, self.modify_output_path,
-                                                         self.editor_processor)
+        media_type = ContentType.TV.value
+
+        error_log = mp4_splitter.editor_process_txt_file(editor_metadata, media_type,
+                                                         self.modify_output_path, self.editor_processor)
+        print(error_log)
         print(json.dumps(error_log, indent=4))
-        assert len(error_log) == 6
+        print(len(error_log))
+        assert len(error_log) == 5
         assert type(error_log[0]) is dict
-        assert "Failing line index" == error_log[0].get("message")
-        assert 0 == error_log[0].get("value")
 
-        assert "Values less than 0" == error_log[1].get("message")
-        assert "13:-3" == error_log[1].get("value")
-        assert 0 == error_log[1].get("hour")
-        assert 13 == error_log[1].get("minute")
-        assert -3 == error_log[1].get("second")
+        error = error_log[0]
+        assert "Values less than 0" == error.get("message")
+        assert "13:-3" == error.get("value")
+        assert 0 == error.get("hour")
+        assert 13 == error.get("minute")
+        assert -3 == error.get("second")
 
-        assert "End time >= start time" == error_log[2].get("message")
+        error = error_log[1]
+        assert "End time >= start time" == error.get("message")
 
-        assert "Errors occurred while parsing line" == error_log[3].get("message")
-        assert "7,13:-3" == error_log[3].get("value")
+        error = error_log[2]
+        assert "Errors occurred while parsing line" == error.get("message")
+        assert "7,13:-3" == error.get("value")
 
-        assert "Broken text file" == error_log[4].get("message")
-        assert editor_metadata.get("txt_file_name") == error_log[4].get("value")
-
-        assert "Errors occurred while processing file" == error_log[5].get("message")
-        assert editor_metadata.get("txt_file_name") == error_log[5].get("value")
+        error = error_log[3]
+        assert "Failing line index" == error.get("message")
+        assert 0 == error.get("value")
 
     def test_editor_process_txt_file_name(self):
         __init__.patch_extract_subclip(self)
         __init__.patch_update_processed_file(self)
         editor_metadata = {
             'txt_file_name': "2024-01-31_16-32-36.txt",
-            'media_type': ContentType.TV.value
         }
-        mp4_splitter.editor_process_txt_file(self.raw_folder, editor_metadata,
-                                             pathlib.Path(self.modify_output_path).resolve(),
-                                             self.editor_processor)
-        new_editor_metadata = mp4_splitter.get_editor_metadata(self.raw_folder, self.editor_processor)
+        media_type = ContentType.TV.value
+        mp4_splitter.editor_process_txt_file(editor_metadata, media_type,
+                                             pathlib.Path(self.modify_output_path).resolve(), self.editor_processor)
+        new_editor_metadata = mp4_splitter.get_editor_metadata(self.raw_folder, self.editor_processor,
+                                                               process_file=EDITOR_PROCESSED_LOG)
         # print(json.dumps(new_editor_metadata, indent=4))
 
         assert type(new_editor_metadata) is dict
@@ -636,7 +653,8 @@ class TestEditor(TestMp4Splitter):
 
     def test_get_editor_metadata(self):
 
-        editor_metadata = mp4_splitter.get_editor_metadata(self.raw_folder, self.editor_processor)
+        editor_metadata = mp4_splitter.get_editor_metadata(self.raw_folder, self.editor_processor,
+                                                           process_file=EDITOR_PROCESSED_LOG)
         print(editor_metadata)
         print(json.dumps(editor_metadata, indent=4))
 
@@ -710,11 +728,21 @@ class TestEditor(TestMp4Splitter):
 
     def test_valid_txt_file(self):
         error_log = []
+        sub_clips = []
         editor_metadata = {
-            'txt_file_name': "2024-01-31_16-32-36.txt",
-            'media_type': ContentType.TV.value
+            'txt_file_name': "2024-01-31_16-32-36.txt"
         }
-        sub_clips = mp4_splitter.editor_validate_txt_file(self.raw_folder, editor_metadata, error_log)
+        media_type = ContentType.TV.value
+
+        with DatabaseHandler() as db_connection:
+            media_folder_path = db_connection.get_media_folder_path_from_type(media_type)
+        output_path = pathlib.Path(media_folder_path).resolve()
+        txt_file = f"{self.raw_folder}{editor_metadata.get('txt_file_name')}"
+        mp4_file = txt_file.replace('.txt', '.mp4')
+        txt_file_path = pathlib.Path(txt_file).resolve()
+        mp4_file_path = pathlib.Path(mp4_file).resolve()
+
+        mp4_splitter.get_sub_clips_from_txt_file(media_type, txt_file_path, output_path, sub_clips, error_log)
         assert len(error_log) == 0
 
     def test_empty_txt_file(self):
@@ -722,9 +750,11 @@ class TestEditor(TestMp4Splitter):
         editor_metadata = {
             'txt_file_name': "2024-01-31_16-32-36_empty.txt"
         }
-        # with self.assertRaises(ValueError) as context:
-        sub_clips = mp4_splitter.editor_validate_txt_file(self.raw_folder, editor_metadata, error_log)
-        # error_dict = context.exception.args[0]
+        txt_file = f"{self.raw_folder}{editor_metadata.get('txt_file_name')}"
+        sub_clips = []
+        txt_file_path = pathlib.Path(txt_file).resolve()
+
+        mp4_splitter.get_sub_clips_from_txt_file(editor_metadata, txt_file_path, None, sub_clips, error_log)
         print(json.dumps(error_log, indent=4))
         assert type(error_log) is list
         assert len(error_log) == 1
@@ -733,45 +763,67 @@ class TestEditor(TestMp4Splitter):
 
     def test_invalid_txt_file(self):
         error_log = []
+        sub_clips = []
         editor_metadata = {
             'txt_file_name': "2024-01-31_16-32-36_invalid.txt",
             'media_type': ContentType.TV.value
         }
+        txt_file = f"{self.raw_folder}{editor_metadata.get('txt_file_name')}"
+        txt_file_path = pathlib.Path(txt_file).resolve()
 
-        sub_clips = mp4_splitter.editor_validate_txt_file(self.raw_folder, editor_metadata, error_log)
+        mp4_splitter.get_sub_clips_from_txt_file(editor_metadata.get("media_type"), txt_file_path, None, sub_clips,
+                                                 error_log)
+        error_sum = []
+        for sub_clip in sub_clips:
+            error_sum.extend(sub_clip.error_log)
+        assert len(error_sum) == 4
+        assert len(error_log) == 0
+        error_log = sub_clips[0].error_log
         print(json.dumps(error_log, indent=4))
-        assert len(error_log) == 5
+        assert len(error_log) == 4
         assert type(error_log[0]) is dict
-        assert "Failing line index" == error_log[0].get("message")
-        assert 0 == error_log[0].get("value")
+        error = error_log[0]
+        assert "Values less than 0" == error.get("message")
+        assert "13:-3" == error.get("value")
+        assert 0 == error.get("hour")
+        assert 13 == error.get("minute")
+        assert -3 == error.get("second")
 
-        assert "Values less than 0" == error_log[1].get("message")
-        assert "13:-3" == error_log[1].get("value")
-        assert 0 == error_log[1].get("hour")
-        assert 13 == error_log[1].get("minute")
-        assert -3 == error_log[1].get("second")
+        error = error_log[1]
+        assert "End time >= start time" == error.get("message")
 
-        assert "End time >= start time" == error_log[2].get("message")
+        error = error_log[2]
+        assert "Errors occurred while parsing line" == error.get("message")
+        assert "7,13:-3" == error.get("value")
 
-        assert "Errors occurred while parsing line" == error_log[3].get("message")
-        assert "7,13:-3" == error_log[3].get("value")
-
-        assert "Broken text file" == error_log[4].get("message")
-        assert editor_metadata.get("txt_file_name") in error_log[4].get("value")
+        error = error_log[3]
+        assert "Failing line index" == error.get("message")
+        assert 0 == error.get("value")
 
 
 class TestGetCMDList(TestMp4Splitter):
 
     def test_get_cmd_list(self):
         error_log = []
-        content_type = ContentType.TV.value
+        sub_clips = []
+
         txt_file_name = "2024-01-31_16-32-36"
-        subclip_file = f"{self.raw_folder}{txt_file_name}.txt"
-        sub_clips = mp4_splitter.get_sub_clips_from_txt_file(subclip_file, error_log, content_type)
-        destination_dir = pathlib.Path(f"{self.raw_folder}test_destination_dir").resolve()
-        mp4_splitter.get_cmd_list(sub_clips, subclip_file, destination_dir)
+
+        media_type = ContentType.TV.value
+
+        with DatabaseHandler() as db_connection:
+            media_folder_path = db_connection.get_media_folder_path_from_type(media_type)
+        output_path = pathlib.Path(media_folder_path).resolve()
+        txt_file = f"{self.raw_folder}{txt_file_name}.txt"
+        mp4_file = txt_file.replace('.txt', '.mp4')
+        txt_file_path = pathlib.Path(txt_file).resolve()
+        mp4_file_path = pathlib.Path(mp4_file).resolve()
+
+        mp4_splitter.get_sub_clips_from_txt_file(media_type, txt_file_path, output_path, sub_clips, error_log)
+
         assert len(error_log) == 0
         for sub_clip in sub_clips:
+            print(sub_clip.source_file_path)
             assert txt_file_name in sub_clip.source_file_path
             assert self.raw_folder in sub_clip.source_file_path
             assert type(int(sub_clip.start_time)) is int
@@ -809,11 +861,17 @@ class TestProcessSubclipFile(TestMp4Splitter):
 
     def test_valid_full_content_txt_file(self):
         error_log = []
-        content_type = ContentType.TV.value
+        sub_clips = []
         txt_file_name = "2024-01-31_16-32-36"
-        txt_file_str_path = f"{self.raw_folder}{txt_file_name}.txt"
-        sub_clips = mp4_splitter.get_sub_clips_from_txt_file(txt_file_str_path, error_log, content_type)
-        mp4_splitter.get_cmd_list(sub_clips, txt_file_str_path)
+        media_type = ContentType.TV.value
+
+        txt_file = f"{self.raw_folder}{txt_file_name}.txt"
+        mp4_file = txt_file.replace('.txt', '.mp4')
+        txt_file_path = pathlib.Path(txt_file).resolve()
+        mp4_file_path = pathlib.Path(mp4_file).resolve()
+
+        mp4_splitter.get_sub_clips_from_txt_file(media_type, txt_file_path, pathlib.Path(self.raw_folder).resolve(),
+                                                 sub_clips, error_log)
         # assert type(cmd_list) is list
         # assert len(cmd_list) == 5
         assert len(error_log) == 0
@@ -853,11 +911,17 @@ class TestProcessSubclipFile(TestMp4Splitter):
 
     def test_valid_movie_full_content_txt_file(self):
         error_log = []
-        content_type = ContentType.MOVIE.value
+        sub_clips = []
         txt_file_name = "movie"
-        txt_file_str_path = f"{self.raw_folder}{txt_file_name}.txt"
-        sub_clips = mp4_splitter.get_sub_clips_from_txt_file(txt_file_str_path, error_log, content_type)
-        mp4_splitter.get_cmd_list(sub_clips, txt_file_str_path)
+        media_type = ContentType.MOVIE.value
+
+        txt_file = f"{self.raw_folder}{txt_file_name}.txt"
+        mp4_file = txt_file.replace('.txt', '.mp4')
+        txt_file_path = pathlib.Path(txt_file).resolve()
+        mp4_file_path = pathlib.Path(mp4_file).resolve()
+
+        mp4_splitter.get_sub_clips_from_txt_file(media_type, txt_file_path, pathlib.Path(self.raw_folder).resolve(),
+                                                 sub_clips, error_log)
         print(json.dumps(error_log, indent=4))
         assert len(error_log) == 0
         for sub_clip in sub_clips:
@@ -882,11 +946,16 @@ class TestProcessSubclipFile(TestMp4Splitter):
 
     def test_valid_timing_txt_file(self):
         error_log = []
-        content_type = ContentType.TV.value
+        sub_clips = []
         txt_file_name = "2024-01-31_16-32-37"
-        txt_file_str_path = f"{self.raw_folder}{txt_file_name}.txt"
-        sub_clips = mp4_splitter.get_sub_clips_from_txt_file(txt_file_str_path, error_log, content_type)
-        mp4_splitter.get_cmd_list(sub_clips, txt_file_str_path)
+        media_type = ContentType.TV.value
+        txt_file = f"{self.raw_folder}{txt_file_name}.txt"
+        mp4_file = txt_file.replace('.txt', '.mp4')
+        txt_file_path = pathlib.Path(txt_file).resolve()
+        mp4_file_path = pathlib.Path(mp4_file).resolve()
+
+        mp4_splitter.get_sub_clips_from_txt_file(media_type, txt_file_path, pathlib.Path(self.raw_folder).resolve(),
+                                                 sub_clips, error_log)
         assert len(error_log) == 0
         for index, sub_clip in enumerate(sub_clips):
             assert txt_file_name in sub_clip.source_file_path
@@ -924,23 +993,36 @@ class TestProcessSubclipFile(TestMp4Splitter):
 
     def test_already_exists_mp4_txt_file(self):
         error_log = []
-        content_type = ContentType.TV.value
+        sub_clips = []
         txt_file_name = "2024-01-31_16-32-36_already_exists"
-        txt_file_str_path = f"{self.raw_folder}{txt_file_name}.txt"
-        sub_clips = mp4_splitter.get_sub_clips_from_txt_file(txt_file_str_path, error_log, content_type)
+        media_type = ContentType.TV.value
+
+        with DatabaseHandler() as db_connection:
+            media_folder_path = db_connection.get_media_folder_path_from_type(media_type)
+        txt_file = f"{self.raw_folder}{txt_file_name}.txt"
+        mp4_file = txt_file.replace('.txt', '.mp4')
+        txt_file_path = pathlib.Path(txt_file).resolve()
+        mp4_file_path = pathlib.Path(mp4_file).resolve()
+
+        mp4_splitter.get_sub_clips_from_txt_file(media_type, txt_file_path, pathlib.Path(self.raw_folder).resolve(),
+                                                 sub_clips, error_log)
+
         assert len(error_log) == 0
-        mp4_splitter.get_cmd_list(sub_clips, txt_file_str_path, error_log=error_log)
         for sub_clip in sub_clips:
-            print(sub_clip.destination_file_path)
+            error_log.extend(sub_clip.error_log)
         # assert type(cmd_list) is list
         # assert len(cmd_list) == 5
         print(error_log)
-        assert len(error_log) == 2
-        assert "Failing line index" == error_log[0].get("message")
-        assert 3 == error_log[0].get("value")
-        assert "File already exists" == error_log[1].get("message")
-        assert "Hilda - s4e8.mp4" == error_log[1].get("value")
+        assert len(error_log) == 3
 
+        assert "File already exists" == error_log[0].get("message")
+        assert "Hilda - s4e8.mp4" == error_log[0].get("value")
+
+        assert "Errors occurred while parsing line" == error_log[1].get("message")
+        assert "Hilda,episode 2,4,8,47:26,1:02:10" == error_log[1].get("value")
+
+        assert "Failing line index" == error_log[2].get("message")
+        assert 3 == error_log[2].get("value")
         # print(len(sub_clips))
         # assert len(sub_clips) == 4
         for index, sub_clip in enumerate(sub_clips):
@@ -975,9 +1057,9 @@ class TestProcessSubclipFile(TestMp4Splitter):
         assert sub_clips[2].end_time == 2792
         assert sub_clips[2].media_title == "episode name"
 
-        assert sub_clips[3].error_list
-        assert len(sub_clips[3].error_list) == 1
-        assert sub_clips[3].error_list[0] == {'message': 'File already exists', 'value': 'Hilda - s4e8.mp4'}
+        assert sub_clips[3].error_log
+        assert len(sub_clips[3].error_log) == 3
+        assert sub_clips[3].error_log[0] == {'message': 'File already exists', 'value': 'Hilda - s4e8.mp4'}
 
         assert sub_clips[
                    4].source_file_path == f"{self.raw_folder}2024-01-31_16-32-36_already_exists.mp4"

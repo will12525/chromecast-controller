@@ -22,7 +22,7 @@ class TestChromecastHandler(TestCase):
         __init__.patch_extract_subclip(self)
         __init__.patch_update_processed_file(self)
 
-        self.media_paths = config_file_handler.load_js_file().get("media_folders")
+        self.media_paths = config_file_handler.load_json_file_content().get("media_folders")
         assert self.media_paths
         assert isinstance(self.media_paths, list)
         assert len(self.media_paths) == 3
@@ -134,7 +134,7 @@ class TestMyMediaDevice(TestCase):
         if os.path.exists(self.DB_PATH):
             os.remove(self.DB_PATH)
 
-        self.media_paths = config_file_handler.load_js_file().get("media_folders")
+        self.media_paths = config_file_handler.load_json_file_content().get("media_folders")
         assert self.media_paths
         assert isinstance(self.media_paths, list)
         assert len(self.media_paths) == 3

@@ -77,7 +77,7 @@ class TestDBCreatorInit(TestCase):
     media_items = media_items_default.copy()
 
     def setUp(self) -> None:
-        self.media_directory_info = config_file_handler.load_js_file().get("media_folders")
+        self.media_directory_info = config_file_handler.load_json_file_content().get("media_folders")
 
         __init__.patch_get_file_hash(self)
         __init__.patch_get_ffmpeg_metadata(self)
@@ -92,7 +92,7 @@ class TestDBCreator(TestDBCreatorInit):
         with DBCreator(DBType.MEMORY) as db_setter_connection:
             db_setter_connection.create_db()
 
-            if media_path_data := config_file_handler.load_js_file().get("media_folders"):
+            if media_path_data := config_file_handler.load_json_file_content().get("media_folders"):
                 for media_path in media_path_data:
                     # print(media_path)
                     db_setter_connection.setup_media_directory(media_path)

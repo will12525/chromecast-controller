@@ -41,7 +41,7 @@ GET_SEASON_LIST_INDEX_FROM_SEASON_ID = f'SELECT {common_objects.SEASON_INDEX_COL
 
 # Get media directory info
 GET_MEDIA_FOLDER_PATH_FROM_ID = f'SELECT * FROM {common_objects.MEDIA_DIRECTORY_TABLE} WHERE {common_objects.ID_COLUMN}=:{common_objects.MEDIA_DIRECTORY_ID_COLUMN};'
-GET_MEDIA_FOLDER_PATH_FROM_TYPE = f'SELECT * FROM {common_objects.MEDIA_DIRECTORY_TABLE} WHERE {common_objects.MEDIA_TYPE_COLUMN}=:{common_objects.MEDIA_TYPE_COLUMN};'
+GET_MEDIA_FOLDER_PATH_FROM_TYPE = f'SELECT {common_objects.MEDIA_DIRECTORY_PATH_COLUMN} FROM {common_objects.MEDIA_DIRECTORY_TABLE} WHERE {common_objects.MEDIA_TYPE_COLUMN}=:{common_objects.MEDIA_TYPE_COLUMN};'
 
 # Get playlist incremented media metadata
 GET_NEXT_IN_PLAYLIST_MEDIA_METADATA = [GET_LIST_INDEX, GET_PLAYLIST_NEXT_MEDIA_ID, GET_PLAYLIST_FIRST_MEDIA_ID]
@@ -181,8 +181,9 @@ class DatabaseHandler(DBConnection):
     def get_media_folder_path(self, content_id) -> dict:
         return self.get_data_from_db_first_result(GET_MEDIA_FOLDER_PATH_FROM_ID, (content_id,))
 
-    def get_media_folder_path_from_type(self, content_id) -> dict:
-        return self.get_data_from_db_first_result(GET_MEDIA_FOLDER_PATH_FROM_TYPE, (content_id,))
+    def get_media_folder_path_from_type(self, content_id) -> str:
+        return self.get_row_item(GET_MEDIA_FOLDER_PATH_FROM_TYPE, (content_id,),
+                                 common_objects.MEDIA_DIRECTORY_PATH_COLUMN)
 
     def get_season_list_index(self, params) -> int:
         return self.get_row_item(GET_SEASON_LIST_INDEX_FROM_SEASON_ID, params, common_objects.SEASON_INDEX_COLUMN)

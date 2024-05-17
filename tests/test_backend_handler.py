@@ -53,7 +53,7 @@ class TestSetupDB(TestCase):
         assert os.path.exists(self.DB_PATH)
 
     def test_setup_db_contents(self):
-        media_folders = config_file_handler.load_js_file().get("media_folders")
+        media_folders = config_file_handler.load_json_file_content().get("media_folders")
         assert not os.path.exists(self.DB_PATH)
         bh.setup_db()
         with DBCreator() as db_connection:
@@ -232,31 +232,28 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
     def test_editor_validate_txt_file(self):
         editor_metadata = {
             'txt_file_name': "2024-01-31_16-32-36.txt",
-            'media_type': ContentType.TV.value
+            'media_type': ContentType.TV.name
         }
-        raw_folder = config_file_handler.load_js_file().get('editor_raw_folder')
-        error_log = bh.editor_validate_txt_file(raw_folder, editor_metadata)
+        error_log = bh.editor_validate_txt_file(editor_metadata.get('txt_file_name'),
+                                                common_objects.ContentType[editor_metadata.get('media_type')].value)
         print(json.dumps(error_log, indent=4))
         assert not error_log
 
     def test_editor_validate_broken_txt_file(self):
         editor_metadata = {
             'txt_file_name': "2024-01-31_16-32-36_invalid.txt",
-            'media_type': ContentType.TV.value
+            'media_type': ContentType.TV.name
         }
-        raw_folder = config_file_handler.load_js_file().get('editor_raw_folder')
-        error_log = bh.editor_validate_txt_file(raw_folder, editor_metadata)
+        error_log = bh.editor_validate_txt_file(editor_metadata.get('txt_file_name'),
+                                                common_objects.ContentType[editor_metadata.get('media_type')].value)
         print(json.dumps(error_log, indent=4))
         assert error_log
-        assert len(error_log) == 5
+        assert len(error_log) == 4
 
     def test_editor_validate_movie_txt_file(self):
-        editor_metadata = {
-            'txt_file_name': "movie.txt",
-            "media_type": ContentType.MOVIE.value
-        }
-        raw_folder = config_file_handler.load_js_file().get('editor_raw_folder')
-        error_log = bh.editor_validate_txt_file(raw_folder, editor_metadata)
+        txt_file_name = "movie.txt"
+        media_type = ContentType.MOVIE.value
+        error_log = bh.editor_validate_txt_file(txt_file_name, media_type)
         print(json.dumps(error_log, indent=4))
         assert not error_log
 
@@ -268,11 +265,8 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
             'txt_file_name': "movie.txt",
             "media_type": ContentType.MOVIE.value
         }
-        raw_folder = config_file_handler.load_js_file().get('editor_raw_folder')
-        with DatabaseHandler() as db_connection:
-            media_metadata = db_connection.get_media_folder_path_from_type(json_request.get("media_type"))
-        output_path = pathlib.Path(media_metadata.get(common_objects.MEDIA_DIRECTORY_PATH_COLUMN)).resolve()
-        errors = self.backend_handler.editor_process_txt_file(raw_folder, json_request, output_path)
+        print(ContentType['MOVIE'].value)
+        errors = self.backend_handler.editor_process_txt_file(json_request, json_request.get('media_type'))
         print(json.dumps(errors, indent=4))
         assert not errors
 
@@ -284,11 +278,11 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
             'txt_file_name': "2024-01-31_16-32-36.txt",
             "media_type": ContentType.TV.value
         }
-        raw_folder = config_file_handler.load_js_file().get('editor_raw_folder')
+        raw_folder = config_file_handler.load_json_file_content().get('editor_raw_folder')
         with DatabaseHandler() as db_connection:
-            media_metadata = db_connection.get_media_folder_path_from_type(json_request.get("media_type"))
-        output_path = pathlib.Path(media_metadata.get(common_objects.MEDIA_DIRECTORY_PATH_COLUMN)).resolve()
-        errors = self.backend_handler.editor_process_txt_file(raw_folder, json_request, output_path)
+            media_folder_path = db_connection.get_media_folder_path_from_type(json_request.get("media_type"))
+        output_path = pathlib.Path(media_folder_path).resolve()
+        errors = self.backend_handler.editor_process_txt_file(json_request, json_request.get('media_type'))
         print(json.dumps(errors, indent=4))
         assert not errors
 

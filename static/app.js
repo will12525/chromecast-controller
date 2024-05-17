@@ -343,7 +343,7 @@ async function validate_txt_file() {
     let data = {
         "txt_file_name": editor_txt_file_name.textContent,
         "txt_file_content": editor_txt_file_content.value,
-        "txt_file_media_type": media_type_dropdown.innerText.trim()
+        "media_type": media_type_dropdown.innerText.trim()
     };
     // Send POST request
     let response = await fetch(url, {
@@ -366,7 +366,7 @@ async function process_txt_file() {
     let data = {
         "txt_file_name": editor_txt_file_name.textContent,
         "txt_file_content": editor_txt_file_content.value,
-        "txt_file_media_type": media_type_dropdown.innerText.trim()
+        "media_type": media_type_dropdown.innerText.trim()
 
     };
     let response = await fetch(url, {
