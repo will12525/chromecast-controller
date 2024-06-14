@@ -174,86 +174,6 @@ async function play_media(media_id, playlist_id=null) {
     }
 }
 
-async function update_editor_log(response_data) {
-        editor_txt_file_log = document.getElementById("editor_txt_file_log");
-        prepend_text = "";
-        console.log(response_data)
-
-        if (response_data["message"] !== undefined) {
-            prepend_text += response_data["message"];
-        }
-        if (response_data["file_name"] !== undefined) {
-            prepend_text += ": " + response_data["file_name"];
-        }
-        if (response_data["expected_path"] !== undefined) {
-            prepend_text += ": " + response_data["expected_path"];
-        }
-        if (response_data["value"] !== undefined) {
-            prepend_text += ": " + response_data["value"];
-        }
-        editor_txt_file_log.value = prepend_text + "\n" + editor_txt_file_log.value;
-}
-
-async function update_editor_webpage(response_data) {
-    if (response_data["selected_txt_file_title"] !== undefined) {
-        document.getElementById("editor_txt_file_name").innerHTML = response_data["selected_txt_file_title"];
-    }
-    if (response_data["selected_txt_file_content"] !== undefined) {
-        document.getElementById("editor_txt_file_content").value = response_data["selected_txt_file_content"];
-    }
-    if (response_data["error"] !== undefined) {
-          update_editor_log(response_data?.error)
-    }
-    if (response_data["process_log"] !== undefined) {
-        response_data?.process_log.forEach((element) => update_editor_log(element));
-    }
-
-    if (response_data["process_queue"] !== undefined && response_data["process_name"] !== undefined && response_data["process_end_time"] !== undefined && response_data["process_queue_size"] !== undefined) {
-        const process_queue_list = []
-
-        const queue_item_li = document.createElement("li");
-        queue_item_li.classList.add("list-group-item")
-
-        const queue_item_text = document.createElement("h5");
-        queue_item_text.classList.add("mb-1");
-        queue_item_text.appendChild(document.createTextNode(response_data["process_name"]));
-        queue_item_li.appendChild(queue_item_text);
-
-        if (response_data["process_name"] != "Split queue empty") {
-            const queue_item_progress = document.createElement("div");
-            queue_item_progress.classList.add("progress")
-            queue_item_progress.setAttribute("role", "progressbar");
-            queue_item_progress.setAttribute("aria-valuemin", "0");
-            queue_item_progress.setAttribute("aria-valuemax", "100");
-            queue_item_progress.setAttribute("aria-valuenow", response_data["percent_complete"]);
-            const queue_item_progress_bar = document.createElement("div");
-            queue_item_progress_bar.classList.add("progress-bar-striped")
-            queue_item_progress_bar.classList.add("bg-info")
-            queue_item_progress_bar.setAttribute("style", 'width: '.concat(response_data["percent_complete"], "%"));
-
-            queue_item_progress.appendChild(queue_item_progress_bar);
-            queue_item_li.appendChild(queue_item_progress);
-        }
-        process_queue_list.push(queue_item_li)
-
-        for (const queue_item of response_data["process_queue"]) {
-            const queue_item_li = document.createElement("li");
-            queue_item_li.classList.add("list-group-item")
-            const queue_item_text = document.createTextNode(queue_item);
-            queue_item_li.appendChild(queue_item_text);
-            process_queue_list.push(queue_item_li)
-
-        }
-//        document.getElementById("editor_process_metadata_name").innerText = response_data["process_name"];
-        document.getElementById("editor_process_metadata_end_time").innerText = response_data["process_end_time"];
-        document.getElementById("editor_process_metadata_queue_size").innerText = response_data["process_queue_size"];
-        document.getElementById("editor_process_queue").replaceChildren(...process_queue_list)
-    }
-}
-
-async function clear_editor_log() {
-    document.getElementById("editor_txt_file_log").value = "";
-}
 async function edit_metadata_modal_open(metadata, content_type) {
     console.log(metadata)
     console.log(content_type)
@@ -286,110 +206,6 @@ async function edit_metadata_modal_save(content_type, content_id) {
 //        let json_response = await response.json();
 //        console.log(json_response)
 //    }
-}
-
-async function load_txt_file(element) {
-    var url = "/load_txt_file";
-    var editor_txt_file_name = element.textContent;
-    let data = {
-        "editor_txt_file_name": editor_txt_file_name
-    };
-    console.log(data)
-    let response = await fetch(url, {
-        "method": "POST",
-        "headers": {"Content-Type": "application/json"},
-        "body": JSON.stringify(data),
-    });
-    // Send POST request
-    if (!response.ok) {
-        throw new Error("HTTP ERROR FAILED: " + response.status);
-    } else {
-        response_data = await response.json()
-        update_editor_webpage(response_data);
-        if (document.getElementById("load_media_for_local_play").checked) {
-            if (response_data["local_play_url"] !== undefined) {
-                update_local_media_player(response_data["local_play_url"])
-            }
-        }
-    }
-}
-
-async function save_txt_file() {
-    var url = "/save_txt_file";
-    const editor_txt_file_name = document.getElementById("editor_txt_file_name");
-    const editor_txt_file_content = document.getElementById("editor_txt_file_content");
-    let data = {
-        "txt_file_name": editor_txt_file_name.textContent,
-        "txt_file_content": editor_txt_file_content.value
-    };
-    // Send POST request
-    let response = await fetch(url, {
-        "method": "POST",
-        "headers": {"Content-Type": "application/json"},
-        "body": JSON.stringify(data),
-    });
-    if (!response.ok) {
-        throw new Error("HTTP ERROR FAILED: " + response.status);
-    } else {
-        update_editor_webpage(await response.json());
-    }
-}
-
-async function validate_txt_file() {
-    var url = "/validate_txt_file";
-    const editor_txt_file_name = document.getElementById("editor_txt_file_name");
-    const editor_txt_file_content = document.getElementById("editor_txt_file_content");
-    const media_type_dropdown = document.getElementById("media_type_dropdown");
-    let data = {
-        "txt_file_name": editor_txt_file_name.textContent,
-        "txt_file_content": editor_txt_file_content.value,
-        "media_type": media_type_dropdown.innerText.trim()
-    };
-    // Send POST request
-    let response = await fetch(url, {
-        "method": "POST",
-        "headers": {"Content-Type": "application/json"},
-        "body": JSON.stringify(data),
-    });
-    if (!response.ok) {
-        throw new Error("HTTP ERROR FAILED: " + response.status);
-    } else {
-        update_editor_webpage(await response.json());
-    }
-}
-
-async function process_txt_file() {
-    var url = "/process_txt_file";
-    const editor_txt_file_name = document.getElementById("editor_txt_file_name");
-    const editor_txt_file_content = document.getElementById("editor_txt_file_content");
-    const media_type_dropdown = document.getElementById("media_type_dropdown");
-    let data = {
-        "txt_file_name": editor_txt_file_name.textContent,
-        "txt_file_content": editor_txt_file_content.value,
-        "media_type": media_type_dropdown.innerText.trim()
-
-    };
-    let response = await fetch(url, {
-        "method": "POST",
-        "headers": {"Content-Type": "application/json"},
-        "body": JSON.stringify(data),
-    });
-    if (!response.ok) {
-        throw new Error("HTTP ERROR FAILED: " + response.status);
-    } else {
-        update_editor_webpage(await response.json());
-    }
-}
-
-async function updateEditorMetadata() {
-    if (document.getElementById("editor_process_queue"))
-    {
-        var url = "/process_metadata";
-        let response = await fetch(url);
-        if (response.ok) {
-            update_editor_webpage(await response.json())
-        }
-    }
 }
 
 async function scan_media_directories() {
@@ -444,7 +260,6 @@ async function setNavbarLinks() {
     var tv_show_select_button = document.getElementById("tv_show_select_button");
     var movie_select_button = document.getElementById("movie_select_button");
     var scan_media_button = document.getElementById("scan_media_button");
-    var editor_button = document.getElementById("editor_button");
 
     var url = "/get_media_content_types";
     let response = await fetch(url);
@@ -460,10 +275,6 @@ async function setNavbarLinks() {
         if (movie_select_button !== null)
         {
             movie_select_button.setAttribute('href', "/?content_type=" + response_data["MOVIE"]);
-        }
-        if (editor_button !== null)
-        {
-            editor_button.setAttribute('href', "/editor");
         }
         if (scan_media_button !== null)
         {
@@ -507,7 +318,6 @@ document.addEventListener("DOMContentLoaded", function(event){
     }
 
     setInterval(updateSeekSelector, 1000);
-    setInterval(updateEditorMetadata, 5000);
     getChromecastList();
     setNavbarLinks();
     setMediaControlButtons();

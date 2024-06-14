@@ -30,12 +30,6 @@ from werkzeug.utils import secure_filename
 
 class APIEndpoints(Enum):
     MAIN = "/"
-    EDITOR = "/editor"
-    EDITOR_VALIDATE_TXT_FILE = "/validate_txt_file"
-    EDITOR_SAVE_TXT_FILE = "/save_txt_file"
-    EDITOR_LOAD_TXT_FILE = "/load_txt_file"
-    EDITOR_PROCESS_TXT_FILE = "/process_txt_file"
-    EDITOR_PROCESSOR_METADATA = "/process_metadata"
     GET_CHROMECAST_CONTROLS = "/get_chromecast_controls"
     GET_MEDIA_CONTENT_TYPES = "/get_media_content_types"
     SET_CURRENT_MEDIA_RUNTIME = "/set_current_media_runtime"
@@ -106,105 +100,6 @@ def build_main_content(request_args):
         print(f"ERROR: {e}")
         print(traceback.print_exc())
         return str(traceback.print_exc())
-
-
-@app.route(APIEndpoints.EDITOR.value)
-def editor():
-    try:
-        return render_template("editor.html",
-                               homepage_url="/",
-                               button_dict=media_controller_button_dict,
-                               editor_metadata=backend_handler.get_editor_metadata(),
-                               media_types=media_types)
-    except Exception as e:
-        error_str = str(traceback.print_exc())
-        if len(e.args) > 0:
-            data = {"error": e.args[0]}
-            error_str = f"{error_str}\n{data}"
-            print(data)
-        print("Exception class: ", e.__class__)
-        print(f"ERROR: {e}")
-        print(traceback.print_exc())
-        return str(error_str)
-
-
-@app.route(APIEndpoints.EDITOR_VALIDATE_TXT_FILE.value, methods=['POST'])
-def editor_validate_txt_file():
-    data = {"error": {"message": "File valid"}}
-    if json_request := request.get_json():
-        try:
-            errors = bh.editor_validate_txt_file(json_request.get('txt_file_name'),
-                                                 common_objects.ContentType[json_request.get('media_type')].value)
-            if errors:
-                data = {"process_log": errors}
-        except Exception as e:
-            print("Exception class: ", e.__class__)
-            print(f"ERROR: {e}")
-            print(traceback.print_exc())
-            print(json.dumps(json_request, indent=4))
-    return data, 200
-
-
-@app.route(APIEndpoints.EDITOR_SAVE_TXT_FILE.value, methods=['POST'])
-def editor_save_txt_file():
-    data = {"error": {"message": "File saved"}}
-    if json_request := request.get_json():
-        try:
-            bh.editor_save_txt_file(json_request.get('txt_file_name'), json_request.get('txt_file_content'))
-        except Exception as e:
-            print("Exception class: ", e.__class__)
-            print(f"ERROR: {e}")
-            print(traceback.print_exc())
-            print(json.dumps(json_request, indent=4))
-    return data, 200
-
-
-@app.route(APIEndpoints.EDITOR_LOAD_TXT_FILE.value, methods=['POST'])
-def editor_load_txt_file():
-    data = {}
-    if json_request := request.get_json():
-        if editor_txt_file_name := json_request.get("editor_txt_file_name"):
-            try:
-                data = backend_handler.get_editor_metadata(selected_txt_file=editor_txt_file_name)
-            except Exception as e:
-                print("Exception class: ", e.__class__)
-                print(f"ERROR: {e}")
-                print(traceback.print_exc())
-                print(json.dumps(json_request, indent=4))
-    return data, 200
-
-
-@app.route(APIEndpoints.EDITOR_PROCESS_TXT_FILE.value, methods=['POST'])
-def editor_process_txt_file():
-    data = {}
-    if json_request := request.get_json():
-        if json_request.get("media_type"):
-            try:
-                errors = backend_handler.editor_process_txt_file(json_request, common_objects.ContentType[
-                    json_request.get('media_type')].value)
-                data = backend_handler.editor_get_process_metadata()
-                data["process_log"].extend(errors)
-                if not errors:
-                    data["process_log"].append({"message": "Success!"})
-            except Exception as e:
-                print("Exception class: ", e.__class__)
-                print(f"ERROR: {e}")
-                print(traceback.print_exc())
-                print(json.dumps(json_request, indent=4))
-    print(json.dumps(data, indent=4))
-    return data, 200
-
-
-@app.route(APIEndpoints.EDITOR_PROCESSOR_METADATA.value, methods=['GET'])
-def editor_processor_get_metadata():
-    data = {}
-    try:
-        data = backend_handler.editor_get_process_metadata()
-    except Exception as e:
-        print("Exception class: ", e.__class__)
-        print(f"ERROR: {e}")
-        print(traceback.print_exc())
-    return data, 200
 
 
 @app.route(APIEndpoints.MAIN.value)
@@ -279,11 +174,12 @@ def chromecast_command():
 @app.route(APIEndpoints.PLAY_MEDIA.value, methods=['POST'])
 def play_media():
     data = {}
+    content_type = ContentType.MEDIA
     if json_request := request.get_json():
         if json_request.get(common_objects.MEDIA_ID_COLUMN, None):
-            if not backend_handler.play_media_on_chromecast(json_request):
+            if not backend_handler.play_media_on_chromecast(json_request, content_type):
                 with DatabaseHandler() as db_connection:
-                    media_info = db_connection.get_media_content(content_type=ContentType.MEDIA,
+                    media_info = db_connection.get_media_content(content_type=content_type,
                                                                  params_dict=json_request)
                 data[
                     "local_play_url"] = f"{media_info.get(common_objects.MEDIA_DIRECTORY_URL_COLUMN)}{media_info.get(common_objects.PATH_COLUMN)}"

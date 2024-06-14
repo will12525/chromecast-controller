@@ -19,8 +19,6 @@ class TestBackEndHandler(TestCase):
     image_folder_path = "../images"
 
     def setUp(self):
-        __init__.patch_update_processed_file(self)
-        __init__.patch_extract_subclip(self)
         __init__.patch_get_file_hash(self)
         __init__.patch_get_ffmpeg_metadata(self)
         __init__.patch_get_free_disk_space(self)
@@ -42,8 +40,6 @@ class TestSetupDB(TestCase):
     def setUp(self):
         __init__.patch_get_file_hash(self)
         __init__.patch_get_ffmpeg_metadata(self)
-        __init__.patch_extract_subclip(self)
-        __init__.patch_update_processed_file(self)
         if os.path.exists(self.DB_PATH):
             os.remove(self.DB_PATH)
 
@@ -228,63 +224,6 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
         assert str(output_path).count(show_title) == 2
         assert file_name_str in str(output_path)
         assert str(output_path).count(file_name_str) == 1
-
-    def test_editor_validate_txt_file(self):
-        editor_metadata = {
-            'txt_file_name': "2024-01-31_16-32-36.txt",
-            'media_type': ContentType.TV.name
-        }
-        error_log = bh.editor_validate_txt_file(editor_metadata.get('txt_file_name'),
-                                                common_objects.ContentType[editor_metadata.get('media_type')].value)
-        print(json.dumps(error_log, indent=4))
-        assert not error_log
-
-    def test_editor_validate_broken_txt_file(self):
-        editor_metadata = {
-            'txt_file_name': "2024-01-31_16-32-36_invalid.txt",
-            'media_type': ContentType.TV.name
-        }
-        error_log = bh.editor_validate_txt_file(editor_metadata.get('txt_file_name'),
-                                                common_objects.ContentType[editor_metadata.get('media_type')].value)
-        print(json.dumps(error_log, indent=4))
-        assert error_log
-        assert len(error_log) == 4
-
-    def test_editor_validate_movie_txt_file(self):
-        txt_file_name = "movie.txt"
-        media_type = ContentType.MOVIE.value
-        error_log = bh.editor_validate_txt_file(txt_file_name, media_type)
-        print(json.dumps(error_log, indent=4))
-        assert not error_log
-
-    def test_editor_process_movie_txt_file(self):
-        __init__.patch_extract_subclip(self)
-        __init__.patch_update_processed_file(self)
-
-        json_request = {
-            'txt_file_name': "movie.txt",
-            "media_type": ContentType.MOVIE.value
-        }
-        print(ContentType['MOVIE'].value)
-        errors = self.backend_handler.editor_process_txt_file(json_request, json_request.get('media_type'))
-        print(json.dumps(errors, indent=4))
-        assert not errors
-
-    def test_editor_process_tv_txt_file(self):
-        __init__.patch_extract_subclip(self)
-        __init__.patch_update_processed_file(self)
-
-        json_request = {
-            'txt_file_name': "2024-01-31_16-32-36.txt",
-            "media_type": ContentType.TV.value
-        }
-        raw_folder = config_file_handler.load_json_file_content().get('editor_raw_folder')
-        with DatabaseHandler() as db_connection:
-            media_folder_path = db_connection.get_media_folder_path_from_type(json_request.get("media_type"))
-        output_path = pathlib.Path(media_folder_path).resolve()
-        errors = self.backend_handler.editor_process_txt_file(json_request, json_request.get('media_type'))
-        print(json.dumps(errors, indent=4))
-        assert not errors
 
     def test_get_system_data(self):
         system_data = self.backend_handler.get_system_data()

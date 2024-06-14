@@ -59,13 +59,6 @@ def patch_move_media_file(test_class):
     test_class.addCleanup(patcher.stop)
 
 
-def patch_extract_subclip(test_class):
-    patcher = patch('mp4_splitter.extract_subclip')
-    test_class.extract_subclip = patcher.start()
-    test_class.extract_subclip.side_effect = extract_subclip
-    test_class.addCleanup(patcher.stop)
-
-
 def patch_collect_tv_shows(test_class):
     json_file_path = pathlib.Path("collect_tv_shows_metadata.json").resolve()
     collect_tv_shows_metadata = config_file_handler.load_json_file_content(json_file_path)
@@ -90,10 +83,4 @@ def patch_get_free_disk_space(test_class):
     patcher = patch('backend_handler.get_free_disk_space')
     test_class.get_free_disk_space = patcher.start()
     test_class.get_free_disk_space.return_value = 100
-    test_class.addCleanup(patcher.stop)
-
-
-def patch_update_processed_file(test_class):
-    patcher = patch('mp4_splitter.update_processed_file')
-    test_class.patch_update_processed_file = patcher.start()
     test_class.addCleanup(patcher.stop)

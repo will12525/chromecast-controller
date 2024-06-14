@@ -11,10 +11,7 @@ import database_handler.common_objects as common_objects
 from chromecast_handler import ChromecastHandler
 from database_handler.create_database import DBCreator
 from database_handler.database_handler import DatabaseHandler
-import mp4_splitter
 from database_handler.media_metadata_collector import extract_tv_show_file_name_content
-
-EDITOR_PROCESSED_LOG = "editor_metadata.json"
 
 
 def setup_db():
@@ -24,31 +21,23 @@ def setup_db():
             db_connection.setup_media_directory(media_folder_info)
 
 
-def get_free_disk_space(size=None, ret=3):
-    raw_folder = config_file_handler.load_json_file_content().get('editor_raw_folder')
-    cmd = ["df", f"{raw_folder}"]
-    if size:
-        cmd = ["df", "-B", size, f"{raw_folder}"]
-    df = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-    output = df.communicate()[0]
-    # device, size, used, available, percent, mount_point
-    cmd_output_list = output.decode("utf-8").split("\n")[1].split()
-    return cmd_output_list[ret]
-
-
-def editor_validate_txt_file(txt_file_name, media_type):
-    with DatabaseHandler() as db_connection:
-        media_folder_path = db_connection.get_media_folder_path_from_type(media_type)
-    mp4_output_parent_path = pathlib.Path(media_folder_path).resolve()
-    return mp4_splitter.editor_validate_txt_file(txt_file_name, media_type, mp4_output_parent_path)
-
-
-def editor_save_txt_file(txt_file, txt_file_content):
-    mp4_splitter.editor_save_txt_file(txt_file, txt_file_content)
+def get_free_disk_space(size=None, ret=3, raw_folder=None):
+    if not raw_folder:
+        raw_folder = config_file_handler.load_json_file_content().get('editor_raw_folder')
+    if raw_folder:
+        cmd = ["df", f"{raw_folder}"]
+        if size:
+            cmd = ["df", "-B", size, f"{raw_folder}"]
+        df = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+        output = df.communicate()[0]
+        # device, size, used, available, percent, mount_point
+        cmd_output_list = output.decode("utf-8").split("\n")[1].split()
+        return cmd_output_list[ret]
+    return []
 
 
 def get_free_disk_space_percent(editor_folder):
-    return get_free_disk_space(ret=4)
+    return get_free_disk_space(ret=4, raw_folder=editor_folder)
 
 
 def download_image(json_request):
@@ -118,7 +107,6 @@ def build_tv_show_output_path(file_name_str):
 class BackEndHandler:
     startup_sha = None
     chromecast_handler = None
-    editor_processor = mp4_splitter.SubclipProcessHandler()
     media_scan_in_progress = False
 
     def __init__(self):
@@ -157,8 +145,8 @@ class BackEndHandler:
     def get_chromecast_media_controller_metadata(self):
         return self.chromecast_handler.get_media_controller_metadata()
 
-    def play_media_on_chromecast(self, media_request_ids):
-        return self.chromecast_handler.play_from_sql(media_request_ids)
+    def play_media_on_chromecast(self, media_request_ids, content_type):
+        return self.chromecast_handler.play_from_sql(media_request_ids, content_type)
 
     def scan_media_directories(self):
         if not self.media_scan_in_progress:
@@ -166,28 +154,6 @@ class BackEndHandler:
             with DBCreator() as db_connection:
                 db_connection.scan_all_media_directories()
         self.media_scan_in_progress = False
-
-    def get_editor_metadata(self, selected_txt_file=None):
-        config_file = config_file_handler.load_json_file_content()
-        raw_folder = config_file.get('editor_raw_folder')
-        raw_folder_url = config_file.get('editor_raw_url')
-        return mp4_splitter.get_editor_metadata(raw_folder, self.editor_processor,
-                                                selected_txt_file=selected_txt_file, raw_url=raw_folder_url,
-                                                process_file=EDITOR_PROCESSED_LOG)
-
-    def editor_process_txt_file(self, editor_metadata, media_type):
-        with DatabaseHandler() as db_connection:
-            media_folder_path = db_connection.get_media_folder_path_from_type(media_type)
-        mp4_output_parent_path = pathlib.Path(media_folder_path).resolve()
-        error_log = mp4_splitter.editor_process_txt_file(editor_metadata, media_type, mp4_output_parent_path,
-                                                         self.editor_processor)
-        if not error_log:
-            mp4_splitter.update_processed_file(editor_metadata.get('txt_file_name'), EDITOR_PROCESSED_LOG)
-
-        return error_log
-
-    def editor_get_process_metadata(self):
-        return self.editor_processor.get_metadata()
 
     def get_system_data(self):
         with DBCreator() as db_connection:

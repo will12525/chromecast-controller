@@ -541,6 +541,7 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
         content_type = ContentType.TV_SHOW
         with DatabaseHandler() as db_connection:
             metadata = db_connection.get_media_content(content_type=content_type)
+            print(json.dumps(metadata, indent=4))
             assert not metadata
             assert isinstance(metadata, dict)
             assert metadata == {}

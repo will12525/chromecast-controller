@@ -82,6 +82,26 @@ sql_create_media_folder_path_table = f'''CREATE TABLE IF NOT EXISTS {common_obje
 
 sql_insert_media_folder_path_table = f'{INSERT_IGNORE} {common_objects.MEDIA_DIRECTORY_TABLE} VALUES(:{common_objects.ID_COLUMN}, :{common_objects.MEDIA_TYPE_COLUMN}, :{common_objects.MEDIA_DIRECTORY_PATH_COLUMN}, :{common_objects.NEW_MEDIA_DIRECTORY_PATH_COLUMN}, :{common_objects.MEDIA_DIRECTORY_URL_COLUMN});'
 
+sql_create_user_info_table = f'''CREATE TABLE IF NOT EXISTS {common_objects.MEDIA_DIRECTORY_TABLE} (
+                                        {common_objects.ID_COLUMN} integer PRIMARY KEY,
+                                        {common_objects.MEDIA_TYPE_COLUMN} integer NOT NULL,
+                                        {common_objects.MEDIA_DIRECTORY_PATH_COLUMN} text NOT NULL UNIQUE,
+                                        {common_objects.NEW_MEDIA_DIRECTORY_PATH_COLUMN} text,
+                                        {common_objects.MEDIA_DIRECTORY_URL_COLUMN} text NOT NULL UNIQUE
+                                     );'''
+
+sql_insert_user_info_table = f'{INSERT_IGNORE} {common_objects.MEDIA_DIRECTORY_TABLE} VALUES(:{common_objects.ID_COLUMN}, :{common_objects.MEDIA_TYPE_COLUMN}, :{common_objects.MEDIA_DIRECTORY_PATH_COLUMN}, :{common_objects.NEW_MEDIA_DIRECTORY_PATH_COLUMN}, :{common_objects.MEDIA_DIRECTORY_URL_COLUMN});'
+
+sql_create_media_folder_path_table = f'''CREATE TABLE IF NOT EXISTS {common_objects.MEDIA_DIRECTORY_TABLE} (
+                                        {common_objects.ID_COLUMN} integer PRIMARY KEY,
+                                        {common_objects.MEDIA_TYPE_COLUMN} integer NOT NULL,
+                                        {common_objects.MEDIA_DIRECTORY_PATH_COLUMN} text NOT NULL UNIQUE,
+                                        {common_objects.NEW_MEDIA_DIRECTORY_PATH_COLUMN} text,
+                                        {common_objects.MEDIA_DIRECTORY_URL_COLUMN} text NOT NULL UNIQUE
+                                     );'''
+
+sql_insert_media_folder_path_table = f'{INSERT_IGNORE} {common_objects.MEDIA_DIRECTORY_TABLE} VALUES(:{common_objects.ID_COLUMN}, :{common_objects.MEDIA_TYPE_COLUMN}, :{common_objects.MEDIA_DIRECTORY_PATH_COLUMN}, :{common_objects.NEW_MEDIA_DIRECTORY_PATH_COLUMN}, :{common_objects.MEDIA_DIRECTORY_URL_COLUMN});'
+
 # Get row ID's from various contents
 GET_ID = f'SELECT {common_objects.ID_COLUMN} FROM '
 GET_PLAYLIST_ID_FROM_TITLE = f'{GET_ID} {common_objects.PLAYLIST_INFO_TABLE} WHERE {common_objects.PLAYLIST_TITLE}=:{common_objects.PLAYLIST_TITLE};'
