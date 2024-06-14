@@ -8,7 +8,7 @@ StartLimitBurst=5
 Type=simple
 Restart=always
 RestartSec=1
-User=willow
+User=INSTALL_USER
 WorkingDirectory=MEDIA_DIR
 ExecStart=http-server -p 8000
 
