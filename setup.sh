@@ -19,9 +19,10 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 install_packages() {
-    apt install sqlite3 ffmpeg npm
+    apt update -y && apt install -y sqlite3 ffmpeg npm python3-venv
     # https://nodejs.org/en/download/package-manager
     npm install -g http-server
+    python3 -m ensurepip --upgrade
 }
 
 source_config_file() {

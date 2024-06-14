@@ -17,8 +17,9 @@ from database_handler.media_metadata_collector import extract_tv_show_file_name_
 def setup_db():
     with DBCreator() as db_connection:
         db_connection.create_db()
-        for media_folder_info in config_file_handler.load_json_file_content().get("media_folders"):
+        for media_folder_info in config_file_handler.load_json_file_content().get("media_folders", []):
             db_connection.setup_media_directory(media_folder_info)
+
 
 
 def get_free_disk_space(size=None, ret=3, raw_folder=None):
