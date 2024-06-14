@@ -86,10 +86,10 @@
                     <div class="row">
                         <div class="col-md-3">
                             {% if media_metadata.get('image_url', '')|length %}
-                            <img src="http://192.168.1.201:8000/images/{{ media_metadata.get('image_url', '1.webp') }}"
+                            <img src="http://localhost:8000/images/{{ media_metadata.get('image_url', '1.webp') }}"
                                  class="img-fluid">
                             {% else %}
-                            <img src="http://192.168.1.201:8000/images/{{ ['10.jpg', '11.jpg', '12.png', '13.png', '14.png', '15.png', '16.png', '1.webp', '2.webp', '3.jpg', '4.jpg', '5.jpg', '6.jpg', '7.jpg', '8.jpg', '9.jpg'] | random }}"
+                            <img src="http://localhost:8000/images/{{ ['10.jpg', '11.jpg', '12.png', '13.png', '14.png', '15.png', '16.png', '1.webp', '2.webp', '3.jpg', '4.jpg', '5.jpg', '6.jpg', '7.jpg', '8.jpg', '9.jpg'] | random }}"
                                  class="img-fluid">
                             {% endif %}
                         </div>
@@ -148,10 +148,10 @@
                     <div class="row">
                         <div class="col-md-4">
                             {% if media_item.get('image_url')|length %}
-                            <img src="http://192.168.1.201:8000/images/{{ media_item.get('image_url', '1.webp') }}"
+                            <img src="http://localhost:8000/images/{{ media_item.get('image_url', '1.webp') }}"
                                  class="img-fluid">
                             {% else %}
-                            <img src="http://192.168.1.201:8000/images/{{ ['10.jpg', '11.jpg', '12.png', '13.png', '14.png', '15.png', '16.png', '1.webp', '2.webp', '3.jpg', '4.jpg', '5.jpg', '6.jpg', '7.jpg', '8.jpg', '9.jpg'] | random }}"
+                            <img src="http://localhost:8000/images/{{ ['10.jpg', '11.jpg', '12.png', '13.png', '14.png', '15.png', '16.png', '1.webp', '2.webp', '3.jpg', '4.jpg', '5.jpg', '6.jpg', '7.jpg', '8.jpg', '9.jpg'] | random }}"
                                  class="img-fluid">
                             {% endif %}
                         </div>
