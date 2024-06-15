@@ -11,6 +11,9 @@ MEDIA_DRIVE_WEBPAGE_SERVICE=media_drive_as_webpage.service
 MEDIA_DRIVE_SERVICE="${SERVICES_DIR}/${MEDIA_DRIVE_WEBPAGE_SERVICE}"
 SERVER_SERVICE="${SERVICES_DIR}/${CHROMECAST_CONTROLLER_SERVICE}"
 
+NPM_PACKAGES_DEST="${WORKSPACE}/static/"
+
+
 ERR_CODE=0
 
 if [[ $EUID -ne 0 ]]; then
@@ -23,6 +26,13 @@ install_packages() {
     # https://nodejs.org/en/download/package-manager
     npm install -g http-server
     python3 -m ensurepip --upgrade
+}
+
+setup_npm_packages() {
+    cd "${NPM_PACKAGES_DEST}"
+    npm install
+    cd "${WORKSPACE}"
+    chown -R $SUDO_USER:$SUDO_USER "${NPM_PACKAGES_DEST}"
 }
 
 source_config_file() {
@@ -74,6 +84,9 @@ install_system_services() {
     run_service "${CHROMECAST_CONTROLLER_SERVICE}"
 }
 
+if [ $ERR_CODE -eq 0 ]; then
+    setup_npm_packages
+fi
 if [ $ERR_CODE -eq 0 ]; then
     install_packages
 fi
