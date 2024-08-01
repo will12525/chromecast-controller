@@ -5,39 +5,39 @@ PRODUCTION_ENV=$1
 WORKSPACE=$(pwd)
 PORT=5001
 EXIT_CODE=0
+PYTHON_VENV="${WORKSPACE}/.venv"
 
 # Check if .venv exists
-if [ ! -d "${WORKSPACE}/.venv/" ]; then
-    echo "Creating virtual environment ${WORKSPACE}/.venv"
+if [ ! -d "${PYTHON_VENV}" ]; then
+    echo "Creating virtual environment ${PYTHON_VENV}"
     # Create virtual environment
-    python3 -m venv "$WORKSPACE/.venv"
+    python3 -m venv "${PYTHON_VENV}"
     EXIT_CODE=$?
 fi
-if [ "$EXIT_CODE" -ne "0" ]; then
-    echo "Install Python virtual env: apt install python3-virtualenv"
-    exit 1
+if [ $EXIT_CODE -ne "0" ]; then
+    echo "Install Python virtual env: apt install python3-venv"
+    exit $EXIT_CODE
 fi
 
 # Source virtual environment
 echo "Sourcing venv"
-source "$WORKSPACE/.venv/bin/activate"
+source "${PYTHON_VENV}/bin/activate"
 # Install requirements
 echo "Installing requirements"
-pip install -r "$WORKSPACE/requirements.txt"
+pip install -r "${WORKSPACE}/requirements.txt"
 
 
 # Check if using test environment
 echo "Checking server type server"
-if [ "$PRODUCTION_ENV" = "production" ]; then
-  echo "USING PRODUCTION PORT"
-  PORT=5000
+if [ "${PRODUCTION_ENV}" = "production" ]; then
+    echo "USING PRODUCTION PORT"
+    PORT=5000
 fi
 
 # Point to the main flask application
 echo "Setting flask app"
-export FLASK_APP=$WORKSPACE/flask_endpoints.py
+export FLASK_APP="${WORKSPACE}/flask_endpoints.py"
 
 # Start the flask server
 echo "Starting flask app"
-flask run --host=0.0.0.0 -p "$PORT"
-#flask run --host=0.0.0.0 -p "$PORT" --cert=adhoc
+flask run --host=0.0.0.0 -p "${PORT}"

@@ -5,18 +5,18 @@ SERVICES_DIR="${WORKSPACE}/system_services"
 SYSTEMCTL_DIR=/etc/systemd/system/
 
 CONFIG_FILE="${WORKSPACE}/config.cfg"
-CHROMECAST_CONTROLLER_SERVICE=chromecast_controller.service
+CAST_CONTROLLER_SERVICE=chromecast_controller.service
 MEDIA_DRIVE_WEBPAGE_SERVICE=media_drive_as_webpage.service
-MEDIA_DRIVE_WEBPAGE_SERVICE=editor_drive_as_webpage.service
+EDITOR_DRIVE_WEBPAGE_SERVICE=editor_drive_as_webpage.service
 
+CAST_SERVICE="${SERVICES_DIR}/${CAST_CONTROLLER_SERVICE}"
 MEDIA_DRIVE_SERVICE="${SERVICES_DIR}/${MEDIA_DRIVE_WEBPAGE_SERVICE}"
 EDITOR_DRIVE_SERVICE="${SERVICES_DIR}/${EDITOR_DRIVE_WEBPAGE_SERVICE}"
-SERVER_SERVICE="${SERVICES_DIR}/${CHROMECAST_CONTROLLER_SERVICE}"
 
 NPM_PACKAGES_DEST="${WORKSPACE}/static/"
+PYTHON_VENV="${WORKSPACE}/.venv"
 
-
-ERR_CODE=0
+EXIT_CODE=0
 
 if [[ $EUID -ne 0 ]]; then
     echo "RUN AS ROOT"
@@ -37,49 +37,44 @@ setup_npm_packages() {
     chown -R $SUDO_USER:$SUDO_USER "${NPM_PACKAGES_DEST}"
 }
 
+create_venv() {
+    # Create virtual environment
+    python3 -m venv "${PYTHON_VENV}"
+}
+
 source_config_file() {
+    EXIT_CODE=0
     # Check if config file exists
-    if [ $ERR_CODE -eq 0 ]; then
+    if [ $EXIT_CODE -eq 0 ]; then
         if [ -f "${CONFIG_FILE}" ]; then
             # Source the config file
             # shellcheck source=./config.cfg
             source "${CONFIG_FILE}"
             RESULT=$?
             if [ $RESULT != 0 ]; then
-                ERR_CODE=1
+                EXIT_CODE=1
                 echo "Source of ${CONFIG_FILE} failed, fix file"
             fi
             if [[ -z "${MEDIA_DIR}" ]]; then
-                ERR_CODE=1
+                EXIT_CODE=1
                 echo "Config file not set, update file param ${CONFIG_FILE}: MEDIA_DIR"
             fi
             if [[ -z "${EDITOR_DIR}" ]]; then
-                ERR_CODE=1
+                EXIT_CODE=1
                 echo "Config file not set, update file param ${CONFIG_FILE}: EDITOR_DIR"
             fi
         else
-            ERR_CODE=1
+            EXIT_CODE=1
             echo "Missing: ${CONFIG_FILE}"
         fi
     fi
+    return $EXIT_CODE
 }
 
-# Install the media drive webpage service and update the media drive dir
-install_media_drive_service() {
-    sed -i "s,MEDIA_DIR,${MEDIA_DIR},g" "${MEDIA_DRIVE_SERVICE}"
-    sed -i "s,INSTALL_USER,${SUDO_USER},g" "${MEDIA_DRIVE_SERVICE}"
-    cp "${MEDIA_DRIVE_SERVICE}" "${SYSTEMCTL_DIR}"
-}
-
-install_media_server_service() {
-    sed -i "s,INSTALL_DIR,${WORKSPACE},g" "${SERVER_SERVICE}"
-    sed -i "s,INSTALL_USER,${SUDO_USER},g" "${SERVER_SERVICE}"
-    cp "${SERVER_SERVICE}" "${SYSTEMCTL_DIR}"
-}
-install_editor_server_service() {
-    sed -i "s,INSTALL_DIR,${EDITOR_DIR},g" "${EDITOR_DRIVE_SERVICE}"
-    sed -i "s,INSTALL_USER,${SUDO_USER},g" "${EDITOR_DRIVE_SERVICE}"
-    cp "${EDITOR_DRIVE_SERVICE}" "${SYSTEMCTL_DIR}"
+install_service() {
+    sed -i "s,INSTALL_USER,${SUDO_USER},g" "${2}"
+    sed -i "s,INSTALL_DIR,${1},g" "${2}"
+    cp "${2}" "${SYSTEMCTL_DIR}"
 }
 
 run_service() {
@@ -88,27 +83,35 @@ run_service() {
 }
 
 install_system_services() {
-    install_media_drive_service
-    install_media_server_service
+    install_service "${WORKSPACE}" "${CAST_SERVICE}"
+    install_service "${MEDIA_DIR}" "${MEDIA_DRIVE_SERVICE}"
+    install_service "${EDITOR_DIR}" "${EDITOR_DRIVE_SERVICE}"
     systemctl daemon-reload
+    run_service "${CAST_CONTROLLER_SERVICE}"
     run_service "${MEDIA_DRIVE_WEBPAGE_SERVICE}"
-    run_service "${CHROMECAST_CONTROLLER_SERVICE}"
-    run_service "${EDITOR_DRIVE_SERVICE}"
+    run_service "${EDITOR_DRIVE_WEBPAGE_SERVICE}"
 }
 
-if [ $ERR_CODE -eq 0 ]; then
-    setup_npm_packages
-fi
-if [ $ERR_CODE -eq 0 ]; then
+if [ $EXIT_CODE -eq 0 ]; then
     install_packages
+    EXIT_CODE=$?
 fi
-if [ $ERR_CODE -eq 0 ]; then
+if [ $EXIT_CODE -eq 0 ]; then
+    setup_npm_packages
+    EXIT_CODE=$?
+fi
+if [ $EXIT_CODE -eq 0 ]; then
+    create_venv
+    EXIT_CODE=$?
+fi
+if [ $EXIT_CODE -eq 0 ]; then
     source_config_file
+    EXIT_CODE=$?
 fi
-if [ $ERR_CODE -eq 0 ]; then
+if [ $EXIT_CODE -eq 0 ]; then
     install_system_services
+    EXIT_CODE=$?
 fi
-
-if [ $ERR_CODE -ne 0 ]; then
+if [ $EXIT_CODE -ne 0 ]; then
     echo "INSTALL FAILED"
 fi

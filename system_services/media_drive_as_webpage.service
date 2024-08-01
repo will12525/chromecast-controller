@@ -7,7 +7,7 @@ Type=simple
 Restart=always
 RestartSec=10
 User=INSTALL_USER
-WorkingDirectory=MEDIA_DIR
+WorkingDirectory=INSTALL_DIR
 ExecStart=http-server -p 8000
 
 [Install]
