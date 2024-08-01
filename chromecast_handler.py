@@ -1,3 +1,4 @@
+import json
 import logging
 import threading
 import time
@@ -48,9 +49,11 @@ class MyMediaDevice:
     def __del__(self):
         self.media_controller = None
 
-    def play_episode_from_sql(self, media_request_ids):
+    def play_episode_from_sql(self, media_request_ids, content_type):
         with DatabaseHandler() as db_connection:
-            media_info = db_connection.get_media_content(content_type=ContentType.MEDIA, params_dict=media_request_ids)
+            print(json.dumps(media_request_ids, indent=4))
+            print(media_request_ids.get(common_objects.MEDIA_ID_COLUMN))
+            media_info = db_connection.get_media_content(content_type=content_type, params_dict=media_request_ids)
 
         if media_info:
             self.play_media_info(media_info)
@@ -203,9 +206,9 @@ class ChromecastHandler(threading.Thread):
         if self.media_controller:
             self.media_controller.seek(media_time)
 
-    def play_from_sql(self, media_request_ids):
+    def play_from_sql(self, media_request_ids, content_type):
         if self.media_controller:
-            self.media_controller.play_episode_from_sql(media_request_ids)
+            self.media_controller.play_episode_from_sql(media_request_ids, content_type)
             return True
         return False
 

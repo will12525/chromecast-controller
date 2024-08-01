@@ -13,6 +13,7 @@ media_folder*/
 tests/static/
 editor_raw_files/
 images/
+node_modules/
 
 # media database
 *.db

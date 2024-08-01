@@ -59,13 +59,13 @@ app.jinja_env.lstrip_blocks = True
 app.jinja_env.trim_blocks = True
 
 media_controller_button_dict = {
-    "rewind": {"icon": "fa-backward", "id": f"{CommandList.CMD_REWIND.name}_media_button"},
-    "rewind_15": {"icon": "fa-rotate-left", "id": f"{CommandList.CMD_REWIND_15.name}_media_button"},
-    "play": {"icon": "fa-play", "id": f"{CommandList.CMD_PLAY.name}_media_button"},
-    "pause": {"icon": "fa-pause", "id": f"{CommandList.CMD_PAUSE.name}_media_button"},
-    "skip_15": {"icon": "fa-rotate-right", "id": f"{CommandList.CMD_SKIP_15.name}_media_button"},
-    "skip": {"icon": "fa-forward", "id": f"{CommandList.CMD_SKIP.name}_media_button"},
-    "stop": {"icon": "fa-stop", "id": f"{CommandList.CMD_STOP.name}_media_button"}
+    "rewind": {"icon": "bi-rewind-fill", "id": f"{CommandList.CMD_REWIND.name}_media_button"},
+    "rewind_15": {"icon": "bi-rewind-circle", "id": f"{CommandList.CMD_REWIND_15.name}_media_button"},
+    "play": {"icon": "bi-play-fill", "id": f"{CommandList.CMD_PLAY.name}_media_button"},
+    "pause": {"icon": "bi-pause-fill", "id": f"{CommandList.CMD_PAUSE.name}_media_button"},
+    "skip_15": {"icon": "bi-fast-forward-circle", "id": f"{CommandList.CMD_SKIP_15.name}_media_button"},
+    "skip": {"icon": "bi-fast-forward-fill", "id": f"{CommandList.CMD_SKIP.name}_media_button"},
+    "stop": {"icon": "bi-stop-fill", "id": f"{CommandList.CMD_STOP.name}_media_button"}
 }
 media_types = {
     ContentType.TV.name: ContentType.TV.value,
@@ -279,11 +279,12 @@ def chromecast_command():
 @app.route(APIEndpoints.PLAY_MEDIA.value, methods=['POST'])
 def play_media():
     data = {}
+    content_type = ContentType.MEDIA
     if json_request := request.get_json():
         if json_request.get(common_objects.MEDIA_ID_COLUMN, None):
-            if not backend_handler.play_media_on_chromecast(json_request):
+            if not backend_handler.play_media_on_chromecast(json_request, content_type):
                 with DatabaseHandler() as db_connection:
-                    media_info = db_connection.get_media_content(content_type=ContentType.MEDIA,
+                    media_info = db_connection.get_media_content(content_type=content_type,
                                                                  params_dict=json_request)
                 data[
                     "local_play_url"] = f"{media_info.get(common_objects.MEDIA_DIRECTORY_URL_COLUMN)}{media_info.get(common_objects.PATH_COLUMN)}"

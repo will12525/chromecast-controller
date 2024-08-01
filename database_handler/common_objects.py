@@ -7,6 +7,8 @@ TV_SHOW_INFO_TABLE = 'tv_show_info'
 SEASON_INFO_TABLE = 'season_info'
 MEDIA_INFO_TABLE = 'media_info'
 MEDIA_DIRECTORY_TABLE = 'media_directory_info'
+USER_INFO_TABLE = 'user_info'
+PLAY_HISTORY_TABLE = 'user_info'
 
 
 class MediaDirectoryInfo:

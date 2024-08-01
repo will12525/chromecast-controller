@@ -7,6 +7,7 @@ from pychromecast.controllers.media import MediaStatus
 import config_file_handler
 from chromecast_handler import ChromecastHandler
 from database_handler import common_objects
+from database_handler.common_objects import ContentType
 from database_handler.create_database import DBCreator
 import __init__
 
@@ -182,12 +183,18 @@ class TestMediaPlayer(TestMyMediaDevice):
             "metadataType": 0
         }
 
-        media_metadata = self.media_controller.play_episode_from_sql({common_objects.MEDIA_ID_COLUMN: 1})
+        media_metadata = self.media_controller.play_episode_from_sql({common_objects.MEDIA_ID_COLUMN: 1},
+                                                                     ContentType.MEDIA)
         print(json.dumps(media_metadata, indent=4))
         for key in compare_value:
             print(key)
             assert key in media_metadata
             assert media_metadata[key] == compare_value[key]
+
+    def test_play_season_episode_from_sql(self):
+        media_metadata = self.media_controller.play_episode_from_sql({common_objects.SEASON_ID_COLUMN: 1},
+                                                                     ContentType.SEASON)
+        print(json.dumps(media_metadata, indent=4))
 
     def test_play_next_episode(self):
         compare_value = {

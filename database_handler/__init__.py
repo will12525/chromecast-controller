@@ -35,7 +35,7 @@ class DBConnection:
                                          version integer NOT NULL
                                       );'''
     __version_table_creation_script = ''.join(['BEGIN;', __sql_create_version_info_table, 'COMMIT;'])
-    __sql_insert_version_info_table = 'INSERT INTO version_info(version) VALUES(?)'
+    __sql_insert_version_info_table = "INSERT INTO version_info(version) VALUES(:version_info);"
     __version_info_query = 'SELECT * FROM version_info;'
 
     connection = None
@@ -111,6 +111,6 @@ class DBConnection:
     def check_db_version(self):
         if not (version := self.get_row_item(self.__version_info_query, (), 'version')):
             self.create_tables(self.__version_table_creation_script)
-            self.execute_db_query(self.__sql_insert_version_info_table, get_last_row_id, (self.VERSION,))
+            self.add_data_to_db(self.__sql_insert_version_info_table, {"version_info": self.VERSION})
             version = self.VERSION
         return version
