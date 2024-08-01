@@ -24,13 +24,15 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 install_packages() {
+    echo "Install system packages"
     apt update -y && apt install -y sqlite3 ffmpeg npm python3-venv
     # https://nodejs.org/en/download/package-manager
     npm install -g http-server
-    python3 -m ensurepip --upgrade
+#    python3 -m ensurepip --upgrade
 }
 
 setup_npm_packages() {
+    echo "Installing npm packages"
     cd "${NPM_PACKAGES_DEST}"
     npm install
     cd "${WORKSPACE}"
@@ -38,12 +40,15 @@ setup_npm_packages() {
 }
 
 create_venv() {
+    echo "Creating Python venv"
     # Create virtual environment
     python3 -m venv "${PYTHON_VENV}"
+    chown -R $SUDO_USER:$SUDO_USER "${PYTHON_VENV}"
 }
 
 source_config_file() {
     EXIT_CODE=0
+    echo "Sourcing config file"
     # Check if config file exists
     if [ $EXIT_CODE -eq 0 ]; then
         if [ -f "${CONFIG_FILE}" ]; then
@@ -83,6 +88,7 @@ run_service() {
 }
 
 install_system_services() {
+    echo "Installing services"
     install_service "${WORKSPACE}" "${CAST_SERVICE}"
     install_service "${MEDIA_DIR}" "${MEDIA_DRIVE_SERVICE}"
     install_service "${EDITOR_DIR}" "${EDITOR_DRIVE_SERVICE}"

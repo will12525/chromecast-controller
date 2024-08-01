@@ -24,6 +24,7 @@ echo "Sourcing venv"
 source "${PYTHON_VENV}/bin/activate"
 # Install requirements
 echo "Installing requirements"
+python3 -m ensurepip --upgrade
 pip install -r "${WORKSPACE}/requirements.txt"
 
 
@@ -41,3 +42,4 @@ export FLASK_APP="${WORKSPACE}/flask_endpoints.py"
 # Start the flask server
 echo "Starting flask app"
 flask run --host=0.0.0.0 -p "${PORT}"
+
