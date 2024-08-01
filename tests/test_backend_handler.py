@@ -177,44 +177,47 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
 
     def test_image_download(self):
         # Add test for each content type
-        json_request = {'content_type': 4, 'id': 1, 'image_url': 'http://192.168.1.201:8000/images/3.jpg',
+        json_request = {'content_type': 4, 'id': 1, 'image_url': 'http://192.168.1.175:8000/images/3.jpg',
                         'description': 'World!!'}
         bh.download_image(json_request)
 
     def test_image_download_media(self):
         # Add test for each content type
         json_request = {'content_type': ContentType.MEDIA.value, 'id': 1,
-                        'image_url': 'http://192.168.1.201:8000/images/3.jpg',
+                        'image_url': 'http://192.168.1.175:8000/images/3.jpg',
                         'description': 'World!!'}
         bh.download_image(json_request)
         print(json.dumps(json_request, indent=4))
-        assert json_request.get("image_url") == f"{json_request.get('content_type')}_{json_request.get('id')}.jpg"
+        assert json_request.get("image_url") == "\\Vampire\\Vampire - s01e001.mp4.jpg"
 
     def test_image_download_season(self):
         # Add test for each content type
-        json_request = {'content_type': ContentType.SEASON.value, 'id': 1,
-                        'image_url': 'http://192.168.1.201:8000/images/3.jpg',
+        json_request = {'content_type': ContentType.SEASON.value, common_objects.ID_COLUMN: 1,
+                        'image_url': 'http://192.168.1.175:8000/images/3.jpg',
                         'description': 'World!!'}
         bh.download_image(json_request)
-        assert json_request.get("image_url") == f"{json_request.get('content_type')}_{json_request.get('id')}.jpg"
+        print(json.dumps(json_request, indent=4))
+        assert json_request.get("image_url") == f"Vampire\\Season 1.jpg"
 
     def test_image_download_tv_show(self):
         # Add test for each content type
         json_request = {'content_type': ContentType.TV_SHOW.value, 'id': 1,
-                        'image_url': 'http://192.168.1.201:8000/images/3.jpg',
+                        'image_url': 'http://192.168.1.175:8000/images/3.jpg',
                         'description': 'World!!'}
         bh.download_image(json_request)
-        assert json_request.get("image_url") == f"{json_request.get('content_type')}_{json_request.get('id')}.jpg"
+        print(json.dumps(json_request, indent=4))
+        assert json_request.get("image_url") == f"Vampire\\cover.jpg"
 
     def test_image_download_playlist(self):
         # Add test for each content type
         json_request = {'content_type': ContentType.PLAYLIST.value, 'id': 1,
-                        'image_url': 'http://192.168.1.201:8000/images/3.jpg',
+                        'image_url': 'http://192.168.1.175:8000/images/3.jpg',
                         'description': 'World!!'}
         bh.download_image(json_request)
+        print(json.dumps(json_request, indent=4))
         assert json_request.get("image_url") == f"{json_request.get('content_type')}_{json_request.get('id')}.jpg"
         json_request = {'content_type': ContentType.PLAYLIST.value, 'id': 1,
-                        'image_url': 'http://192.168.1.201:8000/images/3.jpg',
+                        'image_url': 'http://192.168.1.175:8000/images/3.jpg',
                         'description': 'World!!'}
 
         self.assertRaises(ValueError, bh.download_image, json_request)

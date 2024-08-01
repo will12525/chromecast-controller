@@ -1,3 +1,4 @@
+import json
 import subprocess
 import threading
 
@@ -48,42 +49,92 @@ def download_image(json_request):
             or len(json_request.get(common_objects.IMAGE_URL)) < 5
             or not json_request.get('content_type')
             or not json_request.get(common_objects.ID_COLUMN)
-            or json_request.get(common_objects.IMAGE_URL)[-4:] not in ['.jpg', '.png']):
+            or json_request.get(common_objects.IMAGE_URL)[-4:] not in ['.jpg', '.png', '.webp']):
+        print({"message": "Image url must be .jpg or .png"})
         raise ValueError({{"message": "Image url must be .jpg or .png"}})
 
     file_name = f"{json_request.get('content_type')}_{json_request.get(common_objects.ID_COLUMN)}{json_request.get(common_objects.IMAGE_URL)[-4:]}"
 
     with DatabaseHandler() as db_connection:
         media_folder_path = db_connection.get_media_folder_path(1)
-        if len(common_objects.ContentType) > json_request.get('content_type'):
-            content_type = common_objects.ContentType(json_request.get('content_type'))
-            media_metadata = db_connection.get_media_content(content_type, params_dict=json_request)
+        content_type = common_objects.ContentType(json_request.get('content_type'))
+        params_dict = {}
+        if content_type == common_objects.ContentType.MEDIA:
+            params_dict[common_objects.MEDIA_ID_COLUMN] = json_request.get(common_objects.ID_COLUMN)
+        elif content_type == common_objects.ContentType.SEASON:
+            params_dict[common_objects.SEASON_ID_COLUMN] = json_request.get(common_objects.ID_COLUMN)
+        elif content_type == common_objects.ContentType.TV_SHOW:
+            params_dict[common_objects.TV_SHOW_ID_COLUMN] = json_request.get(common_objects.ID_COLUMN)
+        elif content_type == common_objects.ContentType.PLAYLIST:
+            params_dict[common_objects.PLAYLIST_ID_COLUMN] = json_request.get(common_objects.ID_COLUMN)
         else:
+            print({"message": 'Unknown content type provided', 'value': json_request.get('content_type')})
             raise ValueError(
                 {"message": 'Unknown content type provided', 'value': json_request.get('content_type')})
+        media_metadata = db_connection.get_media_content(content_type, params_dict=params_dict)
 
     if json_request.get(common_objects.IMAGE_URL) == media_metadata.get(common_objects.IMAGE_URL):
         json_request[common_objects.IMAGE_URL] = file_name
         return
 
     if not media_folder_path:
+        print({"message": "Error media directory table missing paths"})
         raise ValueError({"message": "Error media directory table missing paths"})
 
-    output_path = f"{pathlib.Path(media_folder_path.get(common_objects.MEDIA_DIRECTORY_PATH_COLUMN)).resolve().parent.absolute()}/images/{file_name}"
+    file_name = ""
+    file_parent = ""
+    file_path = ""
+    # print(json.dumps(media_metadata, indent=4))
+    if content_type == common_objects.ContentType.MEDIA:
+        file_path = pathlib.Path(media_metadata.get(common_objects.PATH_COLUMN))
+        file_parent = file_path.parent
+        file_name = f"{file_path.name}{pathlib.Path(json_request[common_objects.IMAGE_URL]).suffix}"
+        file_path = f"{media_metadata.get(common_objects.PLAYLIST_TITLE)}/{file_path.name}{pathlib.Path(json_request[common_objects.IMAGE_URL]).suffix}"
 
-    if pathlib.Path(output_path).resolve().exists():
+
+    elif content_type == common_objects.ContentType.SEASON:
+        file_path = pathlib.Path(
+            f"{media_metadata.get(common_objects.PLAYLIST_TITLE)}/{media_metadata.get('season_title')}")
+        file_parent = file_path.parent
+        file_name = f"{file_path.name}{pathlib.Path(json_request[common_objects.IMAGE_URL]).suffix}"
+        file_path = f"{file_path}{pathlib.Path(json_request[common_objects.IMAGE_URL]).suffix}"
+    elif content_type in [common_objects.ContentType.TV_SHOW, common_objects.ContentType.PLAYLIST]:
+        file_path = pathlib.Path(
+            f"{media_metadata.get(common_objects.PLAYLIST_TITLE)}/cover")
+        file_parent = file_path.parent
+        file_name = f"{file_path.name}{pathlib.Path(json_request[common_objects.IMAGE_URL]).suffix}"
+        file_path = f"{file_path}{pathlib.Path(json_request[common_objects.IMAGE_URL]).suffix}"
+    else:
+        print({"message": 'Unknown content type provided', 'value': json_request.get('content_type')})
+        raise ValueError(
+            {"message": 'Unknown content type provided', 'value': json_request.get('content_type')})
+
+    print(media_folder_path)
+    output_path = pathlib.Path(
+        f"{media_folder_path.get(common_objects.MEDIA_DIRECTORY_PATH_COLUMN)}/{file_parent}").resolve().absolute()
+    output_path.mkdir(parents=True, exist_ok=True)
+    output_file = output_path / file_name
+
+    print(output_file)
+    print(file_path)
+    if pathlib.Path(output_file).resolve().exists():
         json_request[common_objects.IMAGE_URL] = file_name
+        print({"message": "Image url already exists, assigning existing image",
+               "file_name": json_request.get(common_objects.IMAGE_URL), "string": f"{file_name}"})
         raise ValueError({"message": "Image url already exists, assigning existing image",
                           "file_name": json_request.get(common_objects.IMAGE_URL), "string": f"{file_name}"})
 
     res = requests.get(json_request.get(common_objects.IMAGE_URL), stream=True)
 
     if res.status_code == 200:
-        with open(output_path, 'wb') as f:
+        with open(output_file, 'wb') as f:
             shutil.copyfileobj(res.raw, f)
-        print('Image successfully Downloaded: ', output_path)
-        json_request[common_objects.IMAGE_URL] = file_name
+        print('Image successfully Downloaded: ', output_file)
+        json_request[common_objects.IMAGE_URL] = str(file_path)
     else:
+        print({"message": "requests error encountered while saving image",
+               "file_name": json_request.get(common_objects.IMAGE_URL),
+               "string": f"{res.status_code}"})
         raise ValueError(
             {"message": "requests error encountered while saving image",
              "file_name": json_request.get(common_objects.IMAGE_URL),
