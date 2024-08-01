@@ -90,8 +90,6 @@ def download_image(json_request):
         file_parent = file_path.parent
         file_name = f"{file_path.name}{pathlib.Path(json_request[common_objects.IMAGE_URL]).suffix}"
         file_path = f"{media_metadata.get(common_objects.PLAYLIST_TITLE)}/{file_path.name}{pathlib.Path(json_request[common_objects.IMAGE_URL]).suffix}"
-
-
     elif content_type == common_objects.ContentType.SEASON:
         file_path = pathlib.Path(
             f"{media_metadata.get(common_objects.PLAYLIST_TITLE)}/{media_metadata.get('season_title')}")
@@ -117,12 +115,12 @@ def download_image(json_request):
 
     print(output_file)
     print(file_path)
-    if pathlib.Path(output_file).resolve().exists():
-        json_request[common_objects.IMAGE_URL] = file_name
-        print({"message": "Image url already exists, assigning existing image",
-               "file_name": json_request.get(common_objects.IMAGE_URL), "string": f"{file_name}"})
-        raise ValueError({"message": "Image url already exists, assigning existing image",
-                          "file_name": json_request.get(common_objects.IMAGE_URL), "string": f"{file_name}"})
+    # if pathlib.Path(output_file).resolve().exists():
+    #     json_request[common_objects.IMAGE_URL] = file_name
+    #     print({"message": "Image url already exists, assigning existing image",
+    #            "file_name": json_request.get(common_objects.IMAGE_URL), "string": f"{file_name}"})
+    #     raise ValueError({"message": "Image url already exists, assigning existing image",
+    #                       "file_name": json_request.get(common_objects.IMAGE_URL), "string": f"{file_name}"})
 
     res = requests.get(json_request.get(common_objects.IMAGE_URL), stream=True)
 
