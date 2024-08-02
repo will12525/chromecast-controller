@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<!-- Top Navbar -->
+<nav class="navbar fixed-top navbar-expand-lg bg-dark" data-bs-theme="dark">
+    <div class="container-fluid"><a class="navbar-brand" href="{{ homepage_url }}">&#x1F422;&#x1F995;</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent"
+                aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span></button>
+        <div class="collapse navbar-collapse" id="navbarSupportedContent">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                <li class="nav-item"><a id=tv_show_select_button class="nav-link" aria-current="page">TV Shows</a></li>
+                <li class="nav-item"><a id=movie_select_button class="nav-link" aria-current="page">Movies</a></li>
+                <li class="nav-item"><a id=scan_media_button class="nav-link" aria-current="page">Scan Media</a></li>
+                <li class="nav-item"><a id=editor_button class="nav-link" aria-current="page">Editor</a></li>
+            </ul>
+            <ul class="navbar-nav ml-auto mb-2 mb-lg-0">
+                <li class="nav-item">
+                    <a id=connected_chromecast_id class="nav-link" aria-disabled="true">Local</a></li>
+                <li class="nav-item dropstart">
+                    <a id="chromecast_menu" class="nav-link" href="#" role="button" data-bs-toggle="dropdown"
+                       aria-expanded="false">
+                        <span class="bi-cast"></span></a>
+                    <ul id="dropdown_scanned_chromecasts" class="dropdown-menu">
+                        <li>
+                            <hr class="dropdown-divider">
+                        </li>
+                        <li><a id="chromecast_disconnect_button" class="dropdown-item">Disconnect</a></li>
+                        <li>
+                            <hr class="dropdown-divider">
+                        </li>
+                        <li><a id="local_play_button" class="dropdown-item">Local</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>

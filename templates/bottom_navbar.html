@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<nav class="navbar fixed-bottom navbar-expand-xl bg-dark bg-body-tertiary" data-bs-theme="light">
+    <div class="container-fluid text-center">
+        <div class="col bottom-nav-col">
+            <div class="row justify-content-center">
+                <div class="col">
+                    <input type="range" id="mediaTimeInputId" onMouseUp="set_media_runtime(this);" min=0 value=0
+                           class="slider">
+                </div>
+            </div>
+            <div class="row justify-content-center">
+                <div class="col">
+                    <output id="mediaTimeOutputId"></output>
+                </div>
+            </div>
+            <div class="row justify-content-center">
+                {% for key, value in button_dict.items() %}
+                <div class="col-1">
+                    <button id="{{ value['id'] }}" class="btn"><i class="{{ value['icon'] }}"
+                                                                  style="font-size: 2rem; color: black;"></i>
+                    </button>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</nav>

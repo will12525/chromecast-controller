@@ -112,7 +112,7 @@ def build_main_content(request_args):
 def editor():
     try:
         return render_template("editor.html",
-                               homepage_url="/",
+                               homepage_url=APIEndpoints.MAIN.value,
                                button_dict=media_controller_button_dict,
                                editor_metadata=backend_handler.get_editor_metadata(),
                                media_types=media_types)
