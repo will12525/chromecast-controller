@@ -8,7 +8,7 @@ import config_file_handler
 from chromecast_handler import ChromecastHandler
 from database_handler import common_objects
 from database_handler.common_objects import ContentType
-from database_handler.create_database import DBCreator
+from database_handler.db_setter import DBCreator
 import __init__
 
 

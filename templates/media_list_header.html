@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+{% if 'container_content_type' in media_metadata %}
 <div class="col-md-12">
     <div class="card mb-3" style="background-color:Linen;">
         <div class="card-header">
@@ -32,8 +32,7 @@
                 </div>
                 <div class="col-md-8">
                     <h4 class="card-title">{{ media_metadata.get('season_title') or "No title" }}</h4>
-                    <p class="card-text">{{ media_metadata.get('description', 'Description not provided')
-                        }}</p>
+                    <p class="card-text">{{ media_metadata.get('description', 'Description not provided') }}</p>
                     <p class="card-text">
                         {% if 'season_count' in media_metadata %}
                         Seasons: {{ media_metadata.get('season_count', '') }},
@@ -56,4 +55,14 @@
         </div>
     </div>
 </div>
-
+{% endif %}
+{% if 'containers' in media_metadata %}
+{% for media_item in media_metadata['containers']: %}
+{% include 'media_card.html' %}
+{% endfor %}
+{% endif %}
+{% if 'content' in media_metadata %}
+{% for media_item in media_metadata['content']: %}
+{% include 'media_card.html' %}
+{% endfor %}
+{% endif %}

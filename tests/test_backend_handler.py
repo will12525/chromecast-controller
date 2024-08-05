@@ -9,8 +9,8 @@ import backend_handler as bh
 import config_file_handler
 from database_handler import common_objects
 from database_handler.common_objects import ContentType
-from database_handler.database_handler import DatabaseHandler
-from database_handler.create_database import DBCreator
+from database_handler.db_getter import DatabaseHandler
+from database_handler.db_setter import DBCreator
 import __init__
 
 

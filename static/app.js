@@ -1,3 +1,5 @@
+default_image_array = ['10.jpg', '11.jpg', '12.png', '13.png', '14.png', '15.png', '16.png', '1.webp', '2.webp', '3.jpg', '4.jpg', '5.jpg', '6.jpg', '7.jpg', '8.jpg', '9.jpg']
+
 String.prototype.toHHMMSS = function () {
     var sec_num = parseInt(this, 10);
     var hours   = Math.floor(sec_num / 3600);
@@ -35,6 +37,10 @@ async function connectChromecast(chromecast_id) {
         }
     }
 };
+
+async function apply_default_image(imageElement) {
+    imageElement.src = "http://192.168.1.175:8000/images/" + default_image_array[Math.floor(Math.random()*default_image_array.length)];
+}
 
 async function getChromecastList() {
     var url = "/get_chromecast_list";
@@ -140,6 +146,23 @@ async function set_media_runtime(range) {
         "body": JSON.stringify(data),
     });
 };
+
+
+async function queryDB(data) {
+    document.getElementById("rainbow_loading_bar").hidden = false
+    const url = "/query_db";
+    let response = await fetch(url, {
+        "method": "POST",
+        "headers": {"Content-Type": "application/json"},
+        "body": JSON.stringify(data),
+    }).then(response => response.text())
+        .then(htmlContent => {
+            const dynamicContent = document.getElementById("mediaContentSelectDiv");
+            dynamicContent.innerHTML = htmlContent;
+        })
+        .catch(error => console.error(error));
+    document.getElementById("rainbow_loading_bar").hidden = true
+}
 
 async function update_local_media_player(url) {
     console.log(url)
@@ -511,6 +534,12 @@ document.addEventListener("DOMContentLoaded", function(event){
     getChromecastList();
     setNavbarLinks();
     setMediaControlButtons();
+
+    let data = {
+        "tag_list": ["tv show"],
+        "container_dict": {}
+    };
+    queryDB(data)
 
 });
 

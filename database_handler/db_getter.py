@@ -1,11 +1,105 @@
 import json
 import pathlib
 
-from . import DBConnection, common_objects
 from .common_objects import ContentType
+from . import common_objects
+from .db_access import DBConnection
 
 SEASON_TITLE_BUILDER = f"'Season' || ' ' || {common_objects.SEASON_INDEX_COLUMN} AS season_title"
 SORT_ALPHABETICAL = "GLOB '[A-Za-z]*'"
+
+
+class DatabaseHandlerV2(DBConnection):
+    # BASE_QUERY = f"FROM {common_objects.CARD_INFO_TABLE} INNER JOIN {common_objects.SET_INFO_TABLE} ON {common_objects.CARD_INFO_TABLE}.{common_objects.SET_ID_COLUMN} = {common_objects.SET_INFO_TABLE}.{common_objects.ID_COLUMN}"
+
+    def build_tag_clause(self, table_name, tag_list, params):
+        placeholders = ', '.join([f':tag_{i}' for i in range(len(tag_list))])
+        for index, value in enumerate(tag_list):
+            params[f'tag_{index}'] = value
+
+        return f"INNER JOIN user_tags_content ON {table_name}.id = user_tags_content.{table_name}_id INNER JOIN user_tags ON user_tags_content.user_tags_id = user_tags.id WHERE user_tags.tag_title IN ({placeholders}) GROUP BY {table_name}.id"
+
+    def query_content(
+            self,
+            tag_list,
+            container_dict
+    ):
+        ret_data = {}
+        params = {}
+        container_where_clauses = []
+        content_where_clauses = []
+        container_join_clauses = []
+        content_join_clauses = []
+
+        # container_tag_clause = ""
+        # content_tag_clause = ""
+        # parent_container_clause = ""
+
+        if tag_list:
+            placeholders = ', '.join([f':tag_{i}' for i in range(len(tag_list))])
+            for index, value in enumerate(tag_list):
+                params[f'tag_{index}'] = value
+            container_join_clauses.append(
+                "INNER JOIN user_tags_content ON container.id = user_tags_content.container_id INNER JOIN user_tags ON user_tags_content.user_tags_id = user_tags.id")
+            container_where_clauses.append(f"user_tags.tag_title IN ({placeholders})")
+            content_join_clauses.append(
+                "INNER JOIN user_tags_content ON content.id = user_tags_content.content_id INNER JOIN user_tags ON user_tags_content.user_tags_id = user_tags.id")
+            content_where_clauses.append(f"user_tags.tag_title IN ({placeholders})")
+
+        if container_dict.get("container_id"):
+            container_join_clauses.append(
+                "INNER JOIN container_content ON container.id = container_content.container_id")
+            container_where_clauses.append("container_content.parent_container_id = :parent_container_id")
+
+            content_join_clauses.append(
+                "INNER JOIN container_content ON content.id = container_content.content_id")
+            content_where_clauses.append("container_content.parent_container_id = :parent_container_id")
+            params["parent_container_id"] = container_dict.get("container_id")
+
+        container_join_clause = ""
+        if container_join_clauses:
+            container_join_clause = " ".join(container_join_clauses)
+
+        container_where_clause = ""
+        if container_where_clauses:
+            container_where_clause = "WHERE " + " AND ".join(container_where_clauses)
+
+        content_join_clause = ""
+        if content_join_clauses:
+            content_join_clause = " ".join(content_join_clauses)
+
+        content_where_clause = ""
+        if content_where_clauses:
+            content_where_clause = "WHERE " + " AND ".join(content_where_clauses)
+
+        ret_data["containers"] = self.get_data_from_db(
+            f"SELECT * FROM container {container_join_clause} {container_where_clause} GROUP BY container.id;",
+            params
+        )
+        ret_data["content"] = self.get_data_from_db(
+            f"SELECT * FROM content {content_join_clause} {content_where_clause} GROUP BY content.id;",
+            params
+        )
+
+        # params = {}
+        # db_query = ""
+        # where_clauses = []
+        # where_clause = ""
+        # sort_order = ""  # self.get_sort_order(filter_str)
+        #
+        # ret_data["content"] = self.get_data_from_db(
+        #     f"SELECT * {db_query} {where_clause} {sort_order};",
+        #     params,
+        # )
+        # ret_data.update(
+        #     self.get_data_from_db_first_result(
+        #         f"{self.STAT_QUERY_SELECT} {self.BASE_QUERY} {where_clause} {sort_order};",
+        #         params,
+        #     )
+        # )
+
+        return ret_data
+
 
 # Get title lists
 GET_TV_SHOW_TITLE = f'SELECT {common_objects.PLAYLIST_TITLE} FROM {common_objects.TV_SHOW_INFO_TABLE} INNER JOIN {common_objects.PLAYLIST_INFO_TABLE} ON {common_objects.TV_SHOW_INFO_TABLE}.{common_objects.PLAYLIST_ID_COLUMN} = {common_objects.PLAYLIST_INFO_TABLE}.{common_objects.ID_COLUMN} WHERE {common_objects.TV_SHOW_INFO_TABLE}.{common_objects.ID_COLUMN} = :{common_objects.TV_SHOW_ID_COLUMN};'

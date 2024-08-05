@@ -1,9 +1,11 @@
 import json
+import os
 from unittest import TestCase
 
 import config_file_handler
-from database_handler import common_objects, DBType
-from database_handler.create_database import DBCreator
+from database_handler import common_objects
+from database_handler.common_objects import DBType
+from database_handler.db_setter import DBCreator, DBCreatorV2
 from database_handler.media_metadata_collector import get_playlist_list_index
 import __init__
 
@@ -76,6 +78,8 @@ class TestDBCreatorInit(TestCase):
                            werewolf_season_2_episode_2_metadata, werewolf_season_2_episode_3_metadata]
     media_items = media_items_default.copy()
 
+    DB_PATH = "media_metadata.db"
+
     def setUp(self) -> None:
         self.media_directory_info = config_file_handler.load_json_file_content().get("media_folders")
 
@@ -85,8 +89,22 @@ class TestDBCreatorInit(TestCase):
         __init__.patch_extract_subclip(self)
         __init__.patch_update_processed_file(self)
 
+    def erase_db(self):
+        if os.path.exists(self.DB_PATH):
+            os.remove(self.DB_PATH)
+
 
 class TestDBCreator(TestDBCreatorInit):
+
+    def test_setup_media_metadata_v2(self):
+        self.erase_db()
+        with DBCreatorV2(DBType.PHYSICAL) as db_setter_connection:
+            db_setter_connection.create_db()
+
+            if self.media_directory_info:
+                for media_path in self.media_directory_info:
+                    # print(media_path)
+                    db_setter_connection.setup_content_directory(media_path)
 
     def test_setup_new_media_metadata(self):
         with DBCreator(DBType.MEMORY) as db_setter_connection:

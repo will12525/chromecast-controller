@@ -10,8 +10,8 @@ import pathlib
 import config_file_handler
 import database_handler.common_objects as common_objects
 from chromecast_handler import ChromecastHandler
-from database_handler.create_database import DBCreator
-from database_handler.database_handler import DatabaseHandler
+from database_handler.db_setter import DBCreator, DBCreatorV2
+from database_handler.db_getter import DatabaseHandler
 import mp4_splitter
 from database_handler.media_metadata_collector import extract_tv_show_file_name_content
 
@@ -19,10 +19,10 @@ EDITOR_PROCESSED_LOG = "editor_metadata.json"
 
 
 def setup_db():
-    with DBCreator() as db_connection:
+    with DBCreatorV2() as db_connection:
         db_connection.create_db()
         for media_folder_info in config_file_handler.load_json_file_content().get("media_folders", []):
-            db_connection.setup_media_directory(media_folder_info)
+            db_connection.setup_content_directory(media_folder_info)
 
 
 def get_free_disk_space(size=None, ret=3, raw_folder=None):
@@ -42,6 +42,17 @@ def get_free_disk_space(size=None, ret=3, raw_folder=None):
 
 def get_free_disk_space_percent(editor_folder):
     return get_free_disk_space(ret=4, raw_folder=editor_folder)
+
+
+def editor_validate_txt_file(txt_file_name, media_type):
+    with DatabaseHandler() as db_connection:
+        media_folder_path = db_connection.get_media_folder_path_from_type(media_type)
+    mp4_output_parent_path = pathlib.Path(media_folder_path).resolve()
+    return mp4_splitter.editor_validate_txt_file(txt_file_name, media_type, mp4_output_parent_path)
+
+
+def editor_save_txt_file(txt_file, txt_file_content):
+    mp4_splitter.editor_save_txt_file(txt_file, txt_file_content)
 
 
 def download_image(json_request):

@@ -18,7 +18,7 @@
 </head>
 <body style="background-color:aquamarine;">
 {% include 'top_navbar.html' %}
-<div id="mediaContentSelectDiv" class="main-content-container container-fluid">
+<div class="main-content-container container-fluid">
     <div class="row gx-2 gy-2">
         {% if 'local_play_url' %}
         <div class="col-md-12">
@@ -27,14 +27,26 @@
             </video>
         </div>
         {% endif %}
-        {% if 'container_content_type' in media_metadata %}
-        {% include 'media_list_header.html' %}
-        {% endif %}
-        {% if 'media_list' in media_metadata %}
-        {% for media_item in media_metadata['media_list']: %}
-        {% include 'media_card.html' %}
-        {% endfor %}
-        {% endif %}
+        <div class="col-md-12" id="rainbow_loading_bar">
+            <div class="spinner-grow" role="status" style="color: red;">
+            </div>
+            <div class="spinner-grow" role="status" style="color: orange;">
+            </div>
+            <div class="spinner-grow" role="status" style="color: yellow;">
+            </div>
+            <div class="spinner-grow" role="status" style="color: green;">
+            </div>
+            <div class="spinner-grow" role="status" style="color: blue;">
+            </div>
+            <div class="spinner-grow" role="status" style="color: purple;">
+            </div>
+            <div class="spinner-grow" role="status" style="color: pink;">
+            </div>
+            <div class="spinner-grow" role="status" style="color: cyan;">
+            </div>
+        </div>
+    </div>
+    <div class="row gx-2 gy-2" id="mediaContentSelectDiv">
     </div>
 </div>
 <!-- Modal -->

@@ -5,7 +5,7 @@ import mp4_splitter
 import config_file_handler
 import __init__
 from database_handler.common_objects import ContentType
-from database_handler.database_handler import DatabaseHandler
+from database_handler.db_getter import DatabaseHandler
 
 EDITOR_PROCESSED_LOG = "editor_metadata.json"
 

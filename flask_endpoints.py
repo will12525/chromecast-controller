@@ -9,7 +9,7 @@ from flask import Flask, request, render_template
 import backend_handler as bh
 from chromecast_handler import CommandList
 from database_handler import common_objects
-from database_handler.database_handler import DatabaseHandler
+from database_handler.db_getter import DatabaseHandlerV2
 from database_handler.common_objects import ContentType
 from werkzeug.utils import secure_filename
 
@@ -30,6 +30,7 @@ from werkzeug.utils import secure_filename
 
 class APIEndpoints(Enum):
     MAIN = "/"
+    QUERY_DB = "/query_db"
     EDITOR = "/editor"
     EDITOR_VALIDATE_TXT_FILE = "/validate_txt_file"
     EDITOR_SAVE_TXT_FILE = "/save_txt_file"
@@ -96,11 +97,11 @@ def build_main_content(request_args):
     system_data = backend_handler.get_system_data()
 
     try:
-        with DatabaseHandler() as db_connection:
-            media_metadata = db_connection.get_media_content(content_type, params_dict=data)
+        with DatabaseHandlerV2() as db_connection:
+            media_metadata = db_connection.query_content(["tv show"], {})
+            # media_metadata = db_connection.get_media_content(content_type, params_dict=data)
         return render_template("index.html", homepage_url=APIEndpoints.MAIN.value,
-                               button_dict=media_controller_button_dict, media_metadata=media_metadata,
-                               system_data=system_data)
+                               button_dict=media_controller_button_dict)
     except Exception as e:
         print("Exception class: ", e.__class__)
         print(f"ERROR: {e}")
@@ -212,6 +213,25 @@ def main_index():
     return build_main_content(request.args)
 
 
+@app.route(APIEndpoints.QUERY_DB.value, methods=["POST"])
+def query_media_db():
+    media_metadata = {}
+    if json_request := request.get_json():
+        print(json_request)
+        with DatabaseHandlerV2() as db_getter_connection:
+            media_metadata.update(
+                db_getter_connection.query_content(
+                    json_request.get("tag_list", ["tv shows"]),
+                    json_request.get("container_dict", {}),
+                )
+            )
+
+    return render_template(
+        "media_list_header.html",
+        homepage_url=APIEndpoints.MAIN.value, button_dict=media_controller_button_dict, media_metadata=media_metadata,
+    )
+
+
 @app.route(APIEndpoints.GET_MEDIA_CONTENT_TYPES.value, methods=['GET'])
 def get_media_content_types():
     data = {i.name: i.value for i in ContentType}
@@ -283,7 +303,7 @@ def play_media():
     if json_request := request.get_json():
         if json_request.get(common_objects.MEDIA_ID_COLUMN, None):
             if not backend_handler.play_media_on_chromecast(json_request, content_type):
-                with DatabaseHandler() as db_connection:
+                with DatabaseHandlerV2() as db_connection:
                     media_info = db_connection.get_media_content(content_type=content_type,
                                                                  params_dict=json_request)
                 data[
@@ -313,7 +333,7 @@ def update_media_metadata():
                     data = {"error": e.args[0]}
                     print(data)
             print(f"{common_objects.IMAGE_URL}: {json_request.get(common_objects.IMAGE_URL)}")
-        with DatabaseHandler() as db_connection:
+        with DatabaseHandlerV2() as db_connection:
             db_connection.update_media_metadata(json_request)
     return data, 200
 

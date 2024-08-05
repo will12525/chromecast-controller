@@ -7,7 +7,7 @@ from enum import Enum, auto
 import pychromecast
 
 from database_handler import common_objects
-from database_handler.database_handler import DatabaseHandler
+from database_handler.db_getter import DatabaseHandler
 from database_handler.common_objects import ContentType
 
 

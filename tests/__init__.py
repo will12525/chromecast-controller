@@ -3,6 +3,7 @@ import time
 import random
 import pathlib
 from unittest.mock import patch
+import os
 
 import config_file_handler
 from database_handler import common_objects
@@ -14,9 +15,10 @@ def get_file_hash(extra_metadata):
     extra_metadata[common_objects.MD5SUM_COLUMN] = time_hash.hexdigest()
 
 
-def get_ffmpeg_metadata(extra_metadata):
-    extra_metadata[common_objects.DURATION_COLUMN] = 22
-    extra_metadata[common_objects.MEDIA_TITLE_COLUMN] = ""
+def get_ffmpeg_metadata(path, extra_metadata):
+    assert os.path.exists(path)
+    extra_metadata["content_duration"] = 22
+    extra_metadata["content_title"] = "Test Tile"
 
 
 def extract_subclip(sub_clip):
