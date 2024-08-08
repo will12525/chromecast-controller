@@ -205,6 +205,14 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
         print(json.dumps(json_request, indent=4))
         assert json_request.get("img_src") == f"editor_raw_files/Hilda/Season 4.jpg"
 
+    def test_image_download_movie(self):
+        # Add test for each content type
+        json_request = {'container_id': None, 'content_id': 13, 'img_src': 'http://192.168.1.175:8000/images/3.jpg',
+                        'description': 'World!'}
+        bh.download_image(json_request)
+        print(json.dumps(json_request, indent=4))
+        assert json_request.get("img_src") == f"media_folder_movie/Vampire_2/Shrek (2001).mp4.jpg"
+
     def test_image_download_tv_show(self):
         # Add test for each content type
         json_request = {'container_id': 2, 'content_id': None, 'img_src': 'http://192.168.1.175:8000/images/3.jpg',

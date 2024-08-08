@@ -1,5 +1,9 @@
 default_image_array = ['10.jpg', '11.jpg', '12.png', '13.png', '14.png', '15.png', '16.png', '1.webp', '2.webp', '3.jpg', '4.jpg', '5.jpg', '6.jpg', '7.jpg', '8.jpg', '9.jpg']
 
+let clickHandler = (event) => {
+    // ... event handler logic
+};
+
 String.prototype.toHHMMSS = function () {
     var sec_num = parseInt(this, 10);
     var hours   = Math.floor(sec_num / 3600);
@@ -152,9 +156,12 @@ async function generate_media_container(content_data, media_card_template, fragm
     template.className = "col-sm-3 my-class";
     template.innerHTML = media_card_template;
 
-    template.querySelector("#content_container").dataset.containerId = content_data["container_id"];
-    template.querySelector("#content_container").dataset.contentId = content_data["content_id"];
-
+    if ('container_id' in content_data) {
+        template.querySelector("#content_container").dataset.containerId = content_data["container_id"];
+    }
+    if ('content_id' in content_data) {
+        template.querySelector("#content_container").dataset.contentId = content_data["content_id"];
+    }
     if ('container_title' in content_data) {
         template.querySelector("#content_navigator").textContent = content_data["container_title"]
         template.querySelector("#content_navigator").setAttribute('href', "javascript:load_container(" + content_data["id"] + ")")
@@ -376,11 +383,16 @@ async function clear_editor_log() {
 async function edit_metadata_modal_save(container_id, content_id, reference_item) {
     var url = "/update_media_metadata";
     let data = {
-        "container_id": container_id,
-        "content_id": content_id,
         "img_src": document.getElementById("modal_text_area_image_url").value,
         "description": document.getElementById("modal_text_area_description").value
     };
+
+    if (container_id != "null") {
+        data["container_id"] = container_id
+    }
+    if (content_id != "null") {
+        data["content_id"] = content_id
+    }
     let response = await fetch(url, {
         "method": "POST",
         "headers": {"Content-Type": "application/json"},
@@ -400,9 +412,12 @@ async function edit_metadata_modal_open(container_id, content_id, title, img_src
     document.getElementById("modal_text_area_image_url").value = img_src;
     document.getElementById("modal_text_area_description").value = description;
     save_button = document.getElementById("modal_metadata_save")
-    save_button.addEventListener('click', (event) => {
+
+    save_button.removeEventListener('click', clickHandler);
+    clickHandler = (event) => {
         edit_metadata_modal_save(container_id, content_id, reference_item);
-    });
+    };
+    save_button.addEventListener('click', clickHandler);
 }
 
 async function load_txt_file(element) {
@@ -642,6 +657,8 @@ document.addEventListener("DOMContentLoaded", function(event){
     getChromecastList();
     setNavbarLinks();
     setMediaControlButtons();
+
+    document.getElementById("modal_metadata_save").addEventListener('click', clickHandler);
 
     load_tv_shows()
 

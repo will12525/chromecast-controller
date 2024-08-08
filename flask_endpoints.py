@@ -323,7 +323,8 @@ def update_media_metadata():
             print("Downloading")
             try:
                 bh.download_image(json_request)
-            except ValueError as e:
+            except (ValueError, Exception) as e:
+                print(e)
                 if len(e.args) > 0:
                     data = {"error": e.args[0]}
                     print(data)
