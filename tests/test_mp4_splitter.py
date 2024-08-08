@@ -5,7 +5,8 @@ import mp4_splitter
 import config_file_handler
 import __init__
 from database_handler.common_objects import ContentType
-from database_handler.db_getter import DatabaseHandler
+from database_handler.db_getter import DatabaseHandler, DatabaseHandlerV2
+from database_handler.db_setter import DBCreatorV2
 
 EDITOR_PROCESSED_LOG = "editor_metadata.json"
 
@@ -14,7 +15,7 @@ class TestMp4Splitter(TestCase):
     default_config = config_file_handler.load_json_file_content()
     raw_folder = default_config.get('editor_raw_folder')
     raw_url = default_config.get('editor_raw_url')
-    modify_output_path = default_config.get("media_folders")[2].get("media_directory_path")
+    modify_output_path = default_config.get("media_folders")[0].get("content_src")
     editor_metadata_file = f"{raw_folder}editor_metadata.json"
 
 
@@ -666,9 +667,10 @@ class TestEditor(TestMp4Splitter):
             'media_type': ContentType.TV.value
         }
 
-        error_log = mp4_splitter.editor_process_txt_file(self.raw_folder, editor_metadata,
+        error_log = mp4_splitter.editor_process_txt_file(editor_metadata, ContentType.TV.value,
                                                          pathlib.Path(self.modify_output_path).resolve(),
                                                          self.editor_processor)
+
         assert not error_log
         editor_metadata = self.editor_processor.get_metadata()
         print(editor_metadata)
@@ -681,7 +683,7 @@ class TestEditor(TestMp4Splitter):
             'txt_file_name': "2024-01-31_16-32-38.txt",
             'media_type': ContentType.TV.value
         }
-        error_log = mp4_splitter.editor_process_txt_file(self.raw_folder, editor_metadata,
+        error_log = mp4_splitter.editor_process_txt_file(editor_metadata, ContentType.TV.value,
                                                          pathlib.Path(self.modify_output_path).resolve(),
                                                          self.editor_processor)
 
@@ -689,15 +691,15 @@ class TestEditor(TestMp4Splitter):
         print(editor_metadata)
         assert editor_metadata.get("process_queue_size") == 8
         assert len(editor_metadata.get("process_queue")) == 8
-
+        print(error_log)
         assert error_log
-        assert error_log[0] == {'message': 'Failing line index', 'value': 3}
-        assert error_log[1] == {'message': 'Values not int', 'season_index': 'HELLO THERE'}
-        assert error_log[2] == {'message': 'Missing season index'}
-        assert error_log[3] == {'message': 'Errors occurred while parsing line',
-                                'value': 'Hilda,episode 2,HELLO THERE,8,47:26,1:02:10\n'}
-        assert error_log[4] == {'message': 'Broken text file', 'value': '2024-01-31_16-32-38.txt'}
-        assert error_log[5] == {'message': 'Errors occurred while processing file', 'value': '2024-01-31_16-32-38.txt'}
+        assert error_log[0] == {'message': 'Values not int', 'season_index': 'HELLO THERE'}
+        assert error_log[1] == {'message': 'Missing season index'}
+        assert error_log[2] == {'message': 'Errors occurred while parsing line',
+                                'value': 'Hilda,episode 2,HELLO THERE,8,47:26,1:02:10'}
+        assert error_log[3] == {'message': 'Failing line index', 'value': 3}
+
+        assert error_log[4] == {'message': 'Errors occurred while processing file', 'value': '2024-01-31_16-32-38.txt'}
 
         while not self.editor_processor.subclip_process_queue.empty():
             editor_metadata = self.editor_processor.get_metadata()
@@ -734,9 +736,9 @@ class TestEditor(TestMp4Splitter):
         }
         media_type = ContentType.TV.value
 
-        with DatabaseHandler() as db_connection:
-            media_folder_path = db_connection.get_media_folder_path_from_type(media_type)
-        output_path = pathlib.Path(media_folder_path).resolve()
+        with DBCreatorV2() as db_connection:
+            media_folder_path = db_connection.get_all_content_directory_info()[0]
+        output_path = pathlib.Path(media_folder_path.get("content_src")).resolve()
         txt_file = f"{self.raw_folder}{editor_metadata.get('txt_file_name')}"
         mp4_file = txt_file.replace('.txt', '.mp4')
         txt_file_path = pathlib.Path(txt_file).resolve()

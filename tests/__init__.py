@@ -68,26 +68,6 @@ def patch_extract_subclip(test_class):
     test_class.addCleanup(patcher.stop)
 
 
-def patch_collect_tv_shows(test_class):
-    json_file_path = pathlib.Path("collect_tv_shows_metadata.json").resolve()
-    collect_tv_shows_metadata = config_file_handler.load_json_file_content(json_file_path)
-
-    patcher = patch('database_handler.media_metadata_collector.collect_tv_shows')
-    test_class.collect_tv_shows = patcher.start()
-    test_class.collect_tv_shows.return_value = collect_tv_shows_metadata
-    test_class.addCleanup(patcher.stop)
-
-
-def patch_collect_movies(test_class):
-    json_file_path = pathlib.Path("collect_movies_metadata.json").resolve()
-    collect_movies_metadata = config_file_handler.load_json_file_content(json_file_path)
-
-    patcher = patch('database_handler.media_metadata_collector.collect_movies')
-    test_class.collect_movies = patcher.start()
-    test_class.collect_movies.return_value = collect_movies_metadata
-    test_class.addCleanup(patcher.stop)
-
-
 def patch_get_free_disk_space(test_class):
     patcher = patch('backend_handler.get_free_disk_space')
     test_class.get_free_disk_space = patcher.start()

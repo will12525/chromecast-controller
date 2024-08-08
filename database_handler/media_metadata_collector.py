@@ -215,7 +215,10 @@ def build_tv_show(content_src, mp4_file_path, match, content_data):
     tv_container_content["tags"] = [{"tag_title": "tv"}, {"tag_title": "tv show"}]
     tv_container_content["container_content"] = [season_container_content]
     tv_container_content["container_path"] = container_path
-    if img_src := file_exists_with_extensions(parent_folder, "cover"):
+    if img_src := file_exists_with_extensions(parent_folder, tv_show_title):
+        tv_container_content['img_src'] = img_src.as_posix().replace(
+            content_src, '')
+    elif img_src := file_exists_with_extensions(parent_folder, "cover"):
         tv_container_content['img_src'] = img_src.as_posix().replace(
             content_src, '')
 
@@ -246,35 +249,3 @@ def collect_mp4_files(content_directory_info):
             yield container_data
         else:
             yield content_data
-
-
-def collect_tv_shows(content_directory_info):
-    media_folder_path = pathlib.Path(content_directory_info.get("content_src"))
-    for media_folder_mp4 in list(media_folder_path.rglob(mp4_file_ext)):
-        print(media_folder_mp4)
-        media_metadata = default_metadata.copy()
-        media_metadata["full_file_path"] = str(media_folder_mp4.as_posix())
-        media_metadata["content_directory_id"] = content_directory_info.get("id")
-
-        try:
-            media_metadata["content_url"] = get_url(media_folder_mp4, media_folder_path)
-            extract_tv_show_file_name_content(media_metadata, media_folder_mp4.stem)
-
-            yield media_metadata
-        except ValueError as e:
-            print(f'{e}\nNEW MEDIA ERROR: expected: <show_name> - sXXeXXX.mp4, Actual: {media_folder_mp4}')
-
-
-def collect_movies(media_directory_info):
-    media_folder_path = pathlib.Path(media_directory_info.get("common_objects.MEDIA_DIRECTORY_PATH_COLUMN"))
-
-    for media_folder_mp4 in list(media_folder_path.rglob(mp4_file_ext)):
-        media_metadata = default_metadata.copy()
-        media_metadata["full_file_path"] = str(media_folder_mp4.as_posix())
-        media_metadata[common_objects.MEDIA_DIRECTORY_ID_COLUMN] = media_directory_info.get(
-            common_objects.MEDIA_DIRECTORY_ID_COLUMN)
-
-        media_metadata[common_objects.PATH_COLUMN] = get_url(media_folder_mp4, media_folder_path)
-        media_metadata[common_objects.MEDIA_TITLE_COLUMN] = media_folder_mp4.stem
-
-        yield media_metadata

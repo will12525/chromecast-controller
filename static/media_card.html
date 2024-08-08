@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<div class="card" id="content_container" style="background-color:Linen;min-height: 100%;">
+    <div class="card-header">
+        <a id="content_navigator" href="#"></a>
+        <span id="new_tag" class="position-absolute top-0 start-100 translate-middle badge rounded-pill text-bg-warning"
+              hidden>New</span>
+    </div>
+    <div class="card-body">
+        <img id="content_img" src="" loading="lazy" class="img-fluid" onerror="apply_default_image(this)">
+        <p id="card_description" class="card-text card_description"></p>
+    </div>
+    <div class="card-footer">
+        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+            <button id="content_editor" class="btn btn-primary me-md-2" type="button" data-bs-toggle="modal"
+                    data-bs-target="#exampleModal"><i class="bi-pencil-fill"></i>
+            </button>
+        </div>
+    </div>
+</div>

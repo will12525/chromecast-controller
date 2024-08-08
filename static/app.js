@@ -147,6 +147,104 @@ async function set_media_runtime(range) {
     });
 };
 
+async function generate_media_container(content_data, media_card_template, fragment) {
+    const template = document.createElement("div");
+    template.className = "col-sm-3 my-class";
+    template.innerHTML = media_card_template;
+
+    template.querySelector("#content_container").dataset.containerId = content_data["container_id"];
+    template.querySelector("#content_container").dataset.contentId = content_data["content_id"];
+
+    if ('container_title' in content_data) {
+        template.querySelector("#content_navigator").textContent = content_data["container_title"]
+        template.querySelector("#content_navigator").setAttribute('href', "javascript:load_container(" + content_data["id"] + ")")
+    }
+    else if ('content_title' in content_data) {
+        template.querySelector("#content_navigator").textContent = content_data["content_title"]
+        template.querySelector("#content_navigator").setAttribute('href', "javascript:play_media(" + content_data["id"] + ")")
+    }
+    else {
+        console.log("Missing title")
+    }
+    if ('play_count' in content_data) {
+        template.querySelector("#new_tag").hidden = false
+    }
+//    if ('content_index' in content_data) {
+//        template.querySelector("#content_index").hidden = false
+//        template.querySelector("#content_index").textContent = "Index: " + content_data["content_index"]
+//    }
+    template.querySelector("#card_description").textContent = content_data["description"]
+    template.querySelector("#content_img").src = "http://192.168.1.175:8000/" + content_data['img_src'];
+    template.querySelector("#content_img").dataset.img_src = content_data['img_src'];
+
+    fragment.appendChild(template)
+}
+async function update_media_container(response_data) {
+    const header_res = await fetch("static/media_list_header.html")
+    const media_list_template = await header_res.text()
+    const card_res = await fetch("static/media_card.html")
+    const media_card_template = await card_res.text()
+
+    const fragment = document.createDocumentFragment();
+    if ('parent_containers' in response_data) {
+        const template = document.createElement("div");
+        template.className = "col-md-12";
+        template.innerHTML = media_list_template;
+
+        const parent_containers = response_data["parent_containers"]
+        const parent_container = parent_containers[parent_containers.length - 1];
+        const nav_item_container = template.querySelector("#nav_item_container")
+        for (const content_data of response_data["parent_containers"]) {
+            nav_item = document.createElement("li");
+            nav_item.className = "nav-item";
+            nav_item_a = document.createElement("a");
+            nav_item_a.className = "nav-link";
+            nav_item_a.setAttribute('aria-current', true)
+            nav_item_a.textContent = content_data["container_title"];
+            nav_item_a.setAttribute('href', "javascript:load_container(" + content_data["id"] + ")")
+            nav_item.appendChild(nav_item_a)
+            nav_item_container.appendChild(nav_item)
+        }
+
+        template.querySelector("#content_container").dataset.containerId = parent_container["container_id"];
+        template.querySelector("#card_description").textContent = parent_container["description"];
+        template.querySelector("#content_img").src = "http://192.168.1.175:8000/" + parent_container['img_src'];
+        template.querySelector("#content_img").dataset.img_src = parent_container['img_src'];
+
+        fragment.appendChild(template)
+    }
+    for (const content_data of response_data["containers"]) {
+        generate_media_container(content_data, media_card_template, fragment)
+    }
+    for (const content_data of response_data["content"]) {
+        generate_media_container(content_data, media_card_template, fragment)
+    }
+    const mainContent = document.getElementById("mediaContentSelectDiv");
+    mainContent.innerHTML = "";
+    document.getElementById("mediaContentSelectDiv").appendChild(fragment);
+
+    const contentEditors = document.querySelectorAll("#content_editor");
+    contentEditors.forEach(editor => {
+        editor.addEventListener('click', (event) => {
+            const cardElement = event.target.closest('.card');
+            if (cardElement) {
+                const container_id = cardElement?.dataset.containerId;
+                const content_id = cardElement?.dataset.contentId;
+                const img_src = cardElement.querySelector('#content_img')?.dataset.img_src;
+                const description = cardElement.querySelector("#card_description")?.textContent
+                const content_title = cardElement.querySelector("#content_navigator")?.textContent
+                edit_metadata_modal_open(container_id, content_id, content_title, img_src, description, cardElement.querySelector('#content_img'));
+            }
+        });
+    });
+
+    document.getElementById("rainbow_loading_bar").hidden = true;
+    window.scroll({
+        top: 0,
+        behavior: 'smooth'
+    });
+}
+
 
 async function queryDB(data) {
     document.getElementById("rainbow_loading_bar").hidden = false
@@ -155,13 +253,11 @@ async function queryDB(data) {
         "method": "POST",
         "headers": {"Content-Type": "application/json"},
         "body": JSON.stringify(data),
-    }).then(response => response.text())
-        .then(htmlContent => {
-            const dynamicContent = document.getElementById("mediaContentSelectDiv");
-            dynamicContent.innerHTML = htmlContent;
+    }).then(response => response.json())
+        .then(response_data => {
+            update_media_container(response_data)
         })
         .catch(error => console.error(error));
-    document.getElementById("rainbow_loading_bar").hidden = true
 }
 
 async function update_local_media_player(url) {
@@ -277,38 +373,36 @@ async function update_editor_webpage(response_data) {
 async function clear_editor_log() {
     document.getElementById("editor_txt_file_log").value = "";
 }
-async function edit_metadata_modal_open(metadata, content_type) {
-    console.log(metadata)
-    console.log(content_type)
-    document.getElementById("modal_title").innerHTML = metadata['playlist_title'] || metadata['season_title'] || metadata['media_title'];
-    document.getElementById("modal_text_area_image_url").value = metadata['image_url'];
-    document.getElementById("modal_text_area_description").value = metadata['description'];
-    document.getElementById("modal_metadata_save").setAttribute("onclick", "edit_metadata_modal_save(" + content_type + "," + metadata['id'] + ");");
-}
-async function edit_metadata_modal_save(content_type, content_id) {
-    image_url = document.getElementById("modal_text_area_image_url").value;
-    description = document.getElementById("modal_text_area_description").value;
+async function edit_metadata_modal_save(container_id, content_id, reference_item) {
     var url = "/update_media_metadata";
     let data = {
-        "content_type": content_type,
-        "id": content_id,
-        "image_url": image_url,
-        "description": description,
+        "container_id": container_id,
+        "content_id": content_id,
+        "img_src": document.getElementById("modal_text_area_image_url").value,
+        "description": document.getElementById("modal_text_area_description").value
     };
     let response = await fetch(url, {
         "method": "POST",
         "headers": {"Content-Type": "application/json"},
         "body": JSON.stringify(data),
     });
-    location.reload();
+    if (!response.ok) {
+        throw new Error("HTTP ERROR FAILED: " + response.status);
+    } else {
+        response_data = await response.json()
+        reference_item.src = "http://192.168.1.175:8000/" + response_data["img_src"];
+        reference_item.dataset.img_src = response_data["img_src"];
+    }
+}
 
-    // Send POST request
-//    if (!response.ok) {
-//        throw new Error("HTTP ERROR FAILED: " + response.status);
-//    } else {
-//        let json_response = await response.json();
-//        console.log(json_response)
-//    }
+async function edit_metadata_modal_open(container_id, content_id, title, img_src, description, reference_item) {
+    document.getElementById("modal_title").innerHTML = title;
+    document.getElementById("modal_text_area_image_url").value = img_src;
+    document.getElementById("modal_text_area_description").value = description;
+    save_button = document.getElementById("modal_metadata_save")
+    save_button.addEventListener('click', (event) => {
+        edit_metadata_modal_save(container_id, content_id, reference_item);
+    });
 }
 
 async function load_txt_file(element) {
@@ -464,8 +558,6 @@ async function updateSeekSelector() {
 }
 
 async function setNavbarLinks() {
-    var tv_show_select_button = document.getElementById("tv_show_select_button");
-    var movie_select_button = document.getElementById("movie_select_button");
     var scan_media_button = document.getElementById("scan_media_button");
     var editor_button = document.getElementById("editor_button");
 
@@ -476,14 +568,6 @@ async function setNavbarLinks() {
         throw new Error("HTTP status setNavbarLinks: " + response.status);
     } else {
         let response_data = await response.json();
-        if (tv_show_select_button !== null)
-        {
-            tv_show_select_button.setAttribute('href', "/?content_type=" + response_data["TV"]);
-        }
-        if (movie_select_button !== null)
-        {
-            movie_select_button.setAttribute('href', "/?content_type=" + response_data["MOVIE"]);
-        }
         if (editor_button !== null)
         {
             editor_button.setAttribute('href', "/editor");
@@ -512,6 +596,30 @@ async function setMediaControlButtons() {
     }
 }
 
+async function load_container(container_id) {
+    let data = {
+        "tag_list": [],
+        "container_dict": {"container_id": container_id}
+    };
+    queryDB(data)
+}
+
+async function load_tv_shows() {
+    let data = {
+        "tag_list": ["tv show"],
+        "container_dict": {}
+    };
+    queryDB(data)
+}
+
+async function load_movies() {
+    let data = {
+        "tag_list": ["movie"],
+        "container_dict": {}
+    };
+    queryDB(data)
+}
+
 document.addEventListener("DOMContentLoaded", function(event){
     var chromecast_menu = document.getElementById("chromecast_menu");
     if (chromecast_menu !== null)
@@ -535,11 +643,7 @@ document.addEventListener("DOMContentLoaded", function(event){
     setNavbarLinks();
     setMediaControlButtons();
 
-    let data = {
-        "tag_list": ["tv show"],
-        "container_dict": {}
-    };
-    queryDB(data)
+    load_tv_shows()
 
 });
 

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<div class="col-sm-3">
+    <div class="card" id="sub_card_{{ media_item.get('id') }}"
+         style="background-color:Linen;min-height: 100%;">
+        <div class="card-header">
+            {% if 'container_title' in media_item %}
+            <a href="javascript:load_container({{ media_item.get('id') }})">{{ media_item.get("container_title", "No
+                title") }}</a>
+            {% elif 'content_title' in media_item %}
+            <a href="javascript:play_media({{ media_item.get('id') }})">{{ media_item.get("content_title", "No title")
+                }}</a>
+            {% endif %}
+
+            {% if 'play_count' in media_item %}
+            {% if media_item['play_count'] == 0 %}
+            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill text-bg-warning">New</span>
+            {% endif %}
+            {% endif %}
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <img src="http://192.168.1.175:8000/{{ media_item.get('img_src', '1.webp') }}"
+                         loading="lazy" class="img-fluid" onerror="apply_default_image(this)">
+                </div>
+                <div class="col-md-8">
+                    <p class="card-text">{{ media_item.get("description") }}</p>
+                    {% if 'content_index' in media_item %}
+                    <h6 class="card-subtitle mb-2 text-body-secondary">Index: {{ media_item.get("content_index") }}</h6>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="card-footer">
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                <button class="btn btn-primary me-md-2" type="button" data-bs-toggle="modal"
+                        data-bs-target="#exampleModal"
+                        onclick="javascript:edit_metadata_modal_open({{ media_item.get('container_id', 'null')|tojson }}, {{ media_item.get('content_id', 'null')|tojson }}, '{{ media_item.get('container_title', media_item.get('content_title')) }}', '{{ media_item.get('img_src') }}', '{{ media_item.get('description') }}')">
+                    <i class="bi-pencil-fill"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

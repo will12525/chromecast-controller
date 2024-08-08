@@ -3,7 +3,7 @@ import queue
 
 from enum import Enum
 import traceback
-from flask import Flask, request, render_template
+from flask import Flask, request, render_template, jsonify
 
 # jsonify, redirect, current_app, render_template
 import backend_handler as bh
@@ -97,9 +97,6 @@ def build_main_content(request_args):
     system_data = backend_handler.get_system_data()
 
     try:
-        with DatabaseHandlerV2() as db_connection:
-            media_metadata = db_connection.query_content(["tv show"], {})
-            # media_metadata = db_connection.get_media_content(content_type, params_dict=data)
         return render_template("index.html", homepage_url=APIEndpoints.MAIN.value,
                                button_dict=media_controller_button_dict)
     except Exception as e:
@@ -225,11 +222,8 @@ def query_media_db():
                     json_request.get("container_dict", {}),
                 )
             )
-
-    return render_template(
-        "media_list_header.html",
-        homepage_url=APIEndpoints.MAIN.value, button_dict=media_controller_button_dict, media_metadata=media_metadata,
-    )
+    # print(json.dumps(media_metadata, indent=4))
+    return media_metadata, 200
 
 
 @app.route(APIEndpoints.GET_MEDIA_CONTENT_TYPES.value, methods=['GET'])
@@ -325,16 +319,17 @@ def update_media_metadata():
     data = {}
     # If exception, pass to error log
     if json_request := request.get_json():
-        if json_request.get(common_objects.IMAGE_URL):
+        if json_request.get("img_src"):
+            print("Downloading")
             try:
                 bh.download_image(json_request)
             except ValueError as e:
                 if len(e.args) > 0:
                     data = {"error": e.args[0]}
                     print(data)
-            print(f"{common_objects.IMAGE_URL}: {json_request.get(common_objects.IMAGE_URL)}")
+            data["img_src"] = json_request.get('img_src')
         with DatabaseHandlerV2() as db_connection:
-            db_connection.update_media_metadata(json_request)
+            db_connection.update_metadata(json_request)
     return data, 200
 
 

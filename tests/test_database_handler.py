@@ -4,7 +4,7 @@ from unittest import TestCase
 
 import config_file_handler
 from database_handler import common_objects
-from database_handler.db_setter import DBCreator, DBCreatorV2
+from database_handler.db_setter import DBCreatorV2
 from database_handler.db_getter import DatabaseHandler, DatabaseHandlerV2
 from database_handler.common_objects import ContentType, DBType
 import __init__
@@ -20,8 +20,6 @@ class TestDatabaseHandlerV2(TestCase):
         __init__.patch_get_file_hash(self)
         __init__.patch_get_ffmpeg_metadata(self)
         __init__.patch_move_media_file(self)
-        __init__.patch_collect_tv_shows(self)
-        __init__.patch_collect_movies(self)
         __init__.patch_extract_subclip(self)
         __init__.patch_update_processed_file(self)
 
@@ -151,6 +149,7 @@ class TestDatabaseHandlerFunctionsV2(TestDatabaseHandlerV2):
     def test_query_db_specific_season_content(self):
         with DatabaseHandlerV2() as db_connection:
             metadata = db_connection.query_content([], {"container_id": 11})
+        print(json.dumps(metadata, indent=4))
         print(f"Found containers: {len(metadata.get('containers'))}")
         assert len(metadata.get('containers')) == 0
         for container in metadata.get("containers"):
@@ -165,6 +164,9 @@ class TestDatabaseHandlerFunctionsV2(TestDatabaseHandlerV2):
         with DatabaseHandlerV2() as db_connection:
             metadata = db_connection.query_content(["episode"], {"container_id": 11})
         print(f"Result: {metadata}")
+        assert not metadata.get("containers")
+        assert not metadata.get("content")
+        assert not metadata.get("parent_container")
 
 
 class TestDatabaseHandler(TestCase):
@@ -175,7 +177,6 @@ class TestDatabaseHandler(TestCase):
     media_paths = None
 
     def setUp(self) -> None:
-
         __init__.patch_get_file_hash(self)
         __init__.patch_get_ffmpeg_metadata(self)
         __init__.patch_move_media_file(self)
@@ -191,10 +192,10 @@ class TestDatabaseHandler(TestCase):
         assert self.media_paths
         assert isinstance(self.media_paths, list)
         assert len(self.media_paths) == 3
-        with DBCreator() as db_connection:
-            db_connection.create_db()
-            for media_path in self.media_paths:
-                db_connection.setup_media_directory(media_path)
+        # with DBCreator() as db_connection:
+        #     db_connection.create_db()
+        #     for media_path in self.media_paths:
+        #         db_connection.setup_media_directory(media_path)
 
 
 class TestDatabaseHandlerFunctions(TestDatabaseHandler):
@@ -398,10 +399,10 @@ class TestDatabaseHandlerFunctions(TestDatabaseHandler):
                     common_objects.IMAGE_URL: ''},
                    {common_objects.ID_COLUMN: 17, common_objects.MEDIA_TITLE_COLUMN: '', common_objects.DESCRIPTION: '',
                     common_objects.IMAGE_URL: ''}]
-        with DBCreator() as db_connection:
-            row_id = db_connection.set_playlist_metadata(
-                {common_objects.ID_COLUMN: None, common_objects.PLAYLIST_TITLE: "Dinosaurs"})
-            print(row_id)
+        # with DBCreator() as db_connection:
+        #     row_id = db_connection.set_playlist_metadata(
+        #         {common_objects.ID_COLUMN: None, common_objects.PLAYLIST_TITLE: "Dinosaurs"})
+        #     print(row_id)
 
         with DatabaseHandler() as db_connection:
             metadata = db_connection.get_content_list(ContentType.PLAYLISTS)
