@@ -27,26 +27,135 @@
             </video>
         </div>
         {% endif %}
-        <div class="col-md-12" id="rainbow_loading_bar">
-            <div class="spinner-grow" role="status" style="color: red;">
-            </div>
-            <div class="spinner-grow" role="status" style="color: orange;">
-            </div>
-            <div class="spinner-grow" role="status" style="color: yellow;">
-            </div>
-            <div class="spinner-grow" role="status" style="color: green;">
-            </div>
-            <div class="spinner-grow" role="status" style="color: blue;">
-            </div>
-            <div class="spinner-grow" role="status" style="color: purple;">
-            </div>
-            <div class="spinner-grow" role="status" style="color: pink;">
-            </div>
-            <div class="spinner-grow" role="status" style="color: cyan;">
+        <div class="col-md-12">
+            <div class="row gx-2 gy-2">
+                <div class="col-sm-2">
+                    <div class="card sticky-top mb-3" style="background-color:Linen;">
+                        <div class="card-header">
+                            Filters
+                        </div>
+                        <!--                        <div class="card-body">-->
+                        <!--                            <h5 class="card-title" id="filter_ownership" hidden="hidden">want</h5>-->
+
+                        <!--                            <div class="form-check">-->
+                        <!--                                <input class="form-check-input" type="radio" name="exampleRadios" id="exampleRadios1"-->
+                        <!--                                       value="option1" onchange="javascript:applyFilterOwnership('')">-->
+                        <!--                                <label class="form-check-label" for="exampleRadios1">-->
+                        <!--                                    All-->
+                        <!--                                </label>-->
+                        <!--                            </div>-->
+                        <!--                            <div class="form-check">-->
+                        <!--                                <input class="form-check-input" type="radio" name="exampleRadios" id="exampleRadios2"-->
+                        <!--                                       value="option2" onchange="javascript:applyFilterOwnership('have')">-->
+                        <!--                                <label class="form-check-label" for="exampleRadios2">-->
+                        <!--                                    Have-->
+                        <!--                                </label>-->
+                        <!--                            </div>-->
+                        <!--                            <div class="form-check">-->
+                        <!--                                <input class="form-check-input" type="radio" name="exampleRadios" id="exampleRadios3"-->
+                        <!--                                       value="option3" checked onchange="javascript:applyFilterOwnership('want')">-->
+                        <!--                                <label class="form-check-label" for="exampleRadios3">-->
+                        <!--                                    Want-->
+                        <!--                                </label>-->
+                        <!--                            </div>-->
+                        <!--                        </div>-->
+                        <!--                        <ul class="list-group list-group-flush">-->
+                        <!--                        </ul>-->
+                        <!--                        <div class="card-body">-->
+                        <!--                            <h5 class="card-title" id="sort_by_selected_item">Sets</h5>-->
+                        <!--                            <div class="dropdown">-->
+                        <!--                                <button class="btn btn-secondary dropdown-toggle" type="button"-->
+                        <!--                                        data-bs-toggle="dropdown" aria-expanded="false">-->
+                        <!--                                    Sort by-->
+                        <!--                                </button>-->
+                        <!--                                <ul class="dropdown-menu">-->
+                        <!--                                    <li><a class="dropdown-item" href="javascript:applySortFilter('Sets')">Sets</a></li>-->
+                        <!--                                    <li><a class="dropdown-item" href="javascript:applySortFilter('Sets Reverse')">Sets-->
+                        <!--                                        Reverse</a></li>-->
+                        <!--                                    <li><a class="dropdown-item" href="javascript:applySortFilter('Card Index')">Card-->
+                        <!--                                        Index</a></li>-->
+                        <!--                                    <li><a class="dropdown-item"-->
+                        <!--                                           href="javascript:applySortFilter('Card Index Reverse')">Card-->
+                        <!--                                        Index Reverse</a></li>-->
+                        <!--                                    <li><a class="dropdown-item" href="javascript:applySortFilter('A-Z')">A-Z</a></li>-->
+                        <!--                                    <li><a class="dropdown-item" href="javascript:applySortFilter('Z-A')">Z-A</a></li>-->
+                        <!--                                    <li><a class="dropdown-item" href="javascript:applySortFilter('Price: Low - High')">Price:-->
+                        <!--                                        Low - High</a></li>-->
+                        <!--                                    <li><a class="dropdown-item" href="javascript:applySortFilter('Price: High - Low')">Price:-->
+                        <!--                                        High - Low</a></li>-->
+                        <!--                                    <li><a class="dropdown-item" href="javascript:applySortFilter('Have')">Have</a></li>-->
+                        <!--                                    <li><a class="dropdown-item" href="javascript:applySortFilter('Want')">Want</a></li>-->
+                        <!--                                </ul>-->
+                        <!--                            </div>-->
+                        <!--                        </div>-->
+                        <!--                        <ul class="list-group list-group-flush">-->
+                        <!--                        </ul>-->
+                        <div id="metadata_card_body" class="card-body">
+                            <h5 class="card-title" id="primary_card_set_title"></h5>
+                            <ul class="list-group" id="tag_list_group">
+                                {% for tag_data in tag_list: %}
+                                <li class="list-group-item">
+                                    <input class="form-check-input me-1" type="checkbox"
+                                           value="{{ tag_data['tag_title'] }}"
+                                           id="tag_checkbox_{{ tag_data['tag_title'] }}">
+                                    <label class="form-check-label stretched-link"
+                                           for="tag_checkbox_{{ tag_data['tag_title'] }}">{{ tag_data['tag_title']
+                                        }}</label>
+                                </li>
+                                {% endfor %}
+                            </ul>
+
+                        </div>
+                        <!--                        <ul class="list-group list-group-flush">-->
+                        <!--                        </ul>-->
+                        <!--                        <div class="card-body">-->
+                        <!--                            <h5 class="card-title">Search Cards</h5>-->
+                        <!--                            <div class="input-group mb-3">-->
+                        <!--                                <input type="text" class="form-control" placeholder="Mudkip"-->
+                        <!--                                       aria-label="Search card names" aria-describedby="button-addon2"-->
+                        <!--                                       id="card_name_search_query_text_field" onclick="javascript:this.select()"-->
+                        <!--                                       oninput="javascript:applySearchTerm()">-->
+                        <!--                            </div>-->
+                        <!--                        </div>-->
+                        <!--                        <ul class="list-group list-group-flush">-->
+                        <!--                        </ul>-->
+                        <!--                        <div class="card-body">-->
+                        <!--                            <h5 class="card-title">Search Sets</h5>-->
+                        <!--                            <div class="input-group mb-3">-->
+                        <!--                                <input type="text" class="form-control" placeholder="Neo Genesis"-->
+                        <!--                                       aria-label="Search card names" aria-describedby="button-addon2"-->
+                        <!--                                       id="card_season_search_query_text_field" onclick="javascript:this.select()"-->
+                        <!--                                       onchange="javascript:applySeasonSearchTerm()">-->
+                        <!--                            </div>-->
+                        <!--                        </div>-->
+                    </div>
+                </div>
+                <div class="col-sm-10">
+                    <div class="row">
+                        <div class="col-md-12" id="rainbow_loading_bar">
+                            <div class="spinner-grow" role="status" style="color: red;">
+                            </div>
+                            <div class="spinner-grow" role="status" style="color: orange;">
+                            </div>
+                            <div class="spinner-grow" role="status" style="color: yellow;">
+                            </div>
+                            <div class="spinner-grow" role="status" style="color: green;">
+                            </div>
+                            <div class="spinner-grow" role="status" style="color: blue;">
+                            </div>
+                            <div class="spinner-grow" role="status" style="color: purple;">
+                            </div>
+                            <div class="spinner-grow" role="status" style="color: pink;">
+                            </div>
+                            <div class="spinner-grow" role="status" style="color: cyan;">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row gx-2 gy-2" id="mediaContentSelectDiv">
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
-    <div class="row gx-2 gy-2" id="mediaContentSelectDiv">
     </div>
 </div>
 <!-- Modal -->

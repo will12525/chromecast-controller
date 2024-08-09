@@ -109,11 +109,30 @@ class DBCreatorV2(DBConnection):
     def get_all_content_directory_info(self):
         return self.get_data_from_db(GET_CONTENT_DIRECTORY_INFO)
 
+    def get_tag_id(self, tag):
+        return self.get_row_id(GET_USER_TAGS_INFO_ID, tag)
+
     def insert_tag(self, tag):
         if tag_id := self.add_data_to_db(SET_USER_TAGS_INFO_TABLE, tag):
             tag["id"] = tag_id
         else:
-            tag["id"] = self.get_row_id(GET_USER_TAGS_INFO_ID, tag)
+            tag["id"] = self.get_tag_id(tag)
+
+    def add_tag_to_container(self, params):
+        self.add_data_to_db(SET_USER_TAGS_CONTAINER_INFO_TABLE, params)
+
+    def remove_tag_from_container(self, params):
+        self.add_data_to_db(
+            "DELETE FROM user_tags_content WHERE user_tags_id = :user_tags_id AND container_id = :container_id;",
+            params)
+
+    def add_tag_to_content(self, params):
+        self.add_data_to_db(SET_USER_TAGS_CONTENT_INFO_TABLE, params)
+
+    def remove_tag_from_content(self, params):
+        self.add_data_to_db(
+            "DELETE FROM user_tags_content WHERE user_tags_id = :user_tags_id AND content_id = :content_id;",
+            params)
 
     def insert_container(self, container):
         if container_id := self.add_data_to_db(SET_CONTAINER_INFO_TABLE, container):
@@ -123,8 +142,7 @@ class DBCreatorV2(DBConnection):
 
         for tag in container.get("tags"):
             self.insert_tag(tag)
-            self.add_data_to_db(SET_USER_TAGS_CONTAINER_INFO_TABLE,
-                                {"user_tags_id": tag["id"], "container_id": container["id"]})
+            self.add_tag_to_container({"user_tags_id": tag["id"], "container_id": container["id"]})
         for container_content in container.get("container_content", []):
             if "container_content" in container_content:
                 self.add_data_to_db(SET_CONTAINER_CONTAINER_INFO_TABLE,
@@ -140,8 +158,7 @@ class DBCreatorV2(DBConnection):
         content["id"] = self.add_data_to_db(SET_CONTENT_INFO_TABLE, content)
         for tag in content.get("tags"):
             self.insert_tag(tag)
-            self.add_data_to_db(SET_USER_TAGS_CONTENT_INFO_TABLE,
-                                {"user_tags_id": tag["id"], "content_id": content["id"]})
+            self.add_tag_to_content({"user_tags_id": tag["id"], "content_id": content["id"]})
 
     def insert_container_content(self, container_content):
         if "container_content" in container_content:

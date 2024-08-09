@@ -208,6 +208,70 @@ class TestDatabaseHandlerFunctionsV2(TestDatabaseHandlerV2):
             print(json.dumps(next_content, indent=4))
             assert next_content.get("id") == 17
 
+    def test_query_db_all_tags(self):
+        with DatabaseHandlerV2() as db_connection:
+            tag_list = db_connection.get_all_tags()
+        print(json.dumps(tag_list, indent=4))
+
+    def test_query_db_add_tag_to_content(self):
+        json_request = {'content_id': 18, "tag_title": "season"}
+        with DBCreatorV2() as db_connection:
+            json_request["user_tags_id"] = db_connection.get_tag_id(json_request)
+            db_connection.add_tag_to_content(json_request)
+        with DatabaseHandlerV2() as db_connection:
+            content_info = db_connection.get_content_info(json_request.get("content_id"))
+        print(json.dumps(content_info, indent=4))
+        assert json_request.get("tag_title") in content_info.get("user_tags")
+
+    def test_query_db_remove_tag_from_content(self):
+        json_request = {'content_id': 18, "tag_title": "episode"}
+        with DBCreatorV2() as db_connection:
+            json_request["user_tags_id"] = db_connection.get_tag_id(json_request)
+            print(json.dumps(json_request, indent=4))
+            db_connection.remove_tag_from_content(json_request)
+        with DatabaseHandlerV2() as db_connection:
+            content_info = db_connection.get_content_info(json_request.get("content_id"))
+        print(json.dumps(content_info, indent=4))
+        assert not content_info.get("user_tags")
+
+    def test_query_db_remove_tag_from_container(self):
+        json_request = {'container_id': 10, "tag_title": "tv show"}
+        with DBCreatorV2() as db_connection:
+            json_request["user_tags_id"] = db_connection.get_tag_id(json_request)
+            print(json.dumps(json_request, indent=4))
+            db_connection.remove_tag_from_container(json_request)
+        with DatabaseHandlerV2() as db_connection:
+            content_info = db_connection.get_container_info(json_request.get("container_id"))
+        print(json.dumps(content_info, indent=4))
+        assert content_info.get("user_tags") == "tv"
+
+    def test_query_db_add_tag_to_container(self):
+        json_request = {'container_id': 10, "tag_title": "season"}
+        with DBCreatorV2() as db_connection:
+            json_request["user_tags_id"] = db_connection.get_tag_id(json_request)
+            db_connection.add_tag_to_container(json_request)
+        with DatabaseHandlerV2() as db_connection:
+            content_info = db_connection.get_container_info(json_request.get("container_id"))
+        print(json.dumps(content_info, indent=4))
+        assert json_request.get("tag_title") in content_info.get("user_tags")
+
+    def test_query_db_add_tag(self):
+        new_tag = {"tag_title": "Hello world"}
+        with DatabaseHandlerV2() as db_connection:
+            tag_list = db_connection.get_all_tags()
+        for tag in tag_list:
+            assert tag.get("tag_title") != new_tag.get("tag_title")
+        with DBCreatorV2() as db_connection:
+            db_connection.insert_tag(new_tag)
+        with DatabaseHandlerV2() as db_connection:
+            tag_list = db_connection.get_all_tags()
+        new_tag_found = False
+        for tag in tag_list:
+            if tag.get("tag_title") == new_tag.get("tag_title"):
+                new_tag_found = True
+        assert new_tag_found
+        print(json.dumps(tag_list, indent=4))
+
 
 class TestDatabaseHandler(TestCase):
     DB_PATH = "media_metadata.db"

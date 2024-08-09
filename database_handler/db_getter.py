@@ -19,13 +19,17 @@ class DatabaseHandlerV2(DBConnection):
 
         return f"INNER JOIN user_tags_content ON {table_name}.id = user_tags_content.{table_name}_id INNER JOIN user_tags ON user_tags_content.user_tags_id = user_tags.id WHERE user_tags.tag_title IN ({placeholders}) GROUP BY {table_name}.id"
 
+    def get_all_tags(self):
+        return self.get_data_from_db("SELECT * FROM user_tags;")
+
     def get_container_info(self, container_id):
-        return self.get_data_from_db_first_result("SELECT * FROM container WHERE id = :id;",
-                                                  {'id': container_id})
+        return self.get_data_from_db_first_result(
+            "SELECT *, GROUP_CONCAT(user_tags.tag_title) AS user_tags FROM container LEFT JOIN user_tags_content ON container.id = user_tags_content.container_id LEFT JOIN user_tags ON user_tags_content.user_tags_id = user_tags.id WHERE container.id = :id;",
+            {'id': container_id})
 
     def get_content_info(self, content_id):
         return self.get_data_from_db_first_result(
-            "SELECT *, content_directory.content_url || '/' || content.content_src AS url FROM content INNER JOIN content_directory ON content.content_directory_id = content_directory.id WHERE content.id = :id;",
+            "SELECT *, content_directory.content_url || '/' || content.content_src AS url, GROUP_CONCAT(user_tags.tag_title) AS user_tags FROM content INNER JOIN content_directory ON content.content_directory_id = content_directory.id LEFT JOIN user_tags_content ON content.id = user_tags_content.content_id LEFT JOIN user_tags ON user_tags_content.user_tags_id = user_tags.id WHERE content.id = :id;",
             {'id': content_id})
 
     def collect_all_sub_content(self, container_id, sub_content_list):
@@ -109,6 +113,8 @@ class DatabaseHandlerV2(DBConnection):
         # print()
         ret_data = {}
         params = {}
+        container_select_clauses = ["*", "CAST(SUBSTR(container_title, 7) AS INTEGER) AS season_index"]
+        content_select_clauses = ["*"]
         container_where_clauses = []
         content_where_clauses = []
         container_join_clauses = []
@@ -120,9 +126,11 @@ class DatabaseHandlerV2(DBConnection):
             placeholders = ', '.join([f':tag_{i}' for i in range(len(tag_list))])
             for index, value in enumerate(tag_list):
                 params[f'tag_{index}'] = value
+            container_select_clauses.append("GROUP_CONCAT(user_tags.tag_title) AS user_tags")
             container_join_clauses.append(
                 "INNER JOIN user_tags_content ON container.id = user_tags_content.container_id INNER JOIN user_tags ON user_tags_content.user_tags_id = user_tags.id")
             container_where_clauses.append(f"user_tags.tag_title IN ({placeholders})")
+            content_select_clauses.append("GROUP_CONCAT(user_tags.tag_title) AS user_tags")
             content_join_clauses.append(
                 "INNER JOIN user_tags_content ON content.id = user_tags_content.content_id INNER JOIN user_tags ON user_tags_content.user_tags_id = user_tags.id")
             content_where_clauses.append(f"user_tags.tag_title IN ({placeholders})")
@@ -139,6 +147,10 @@ class DatabaseHandlerV2(DBConnection):
             content_sort_order = f"ORDER BY content_index ASC NULLS LAST, content_title {SORT_ALPHABETICAL}"
             params["parent_container_id"] = container_dict.get("container_id")
 
+        container_select_clause = ""
+        if container_select_clauses:
+            container_select_clause = ", ".join(container_select_clauses)
+
         container_join_clause = ""
         if container_join_clauses:
             container_join_clause = " ".join(container_join_clauses)
@@ -146,6 +158,10 @@ class DatabaseHandlerV2(DBConnection):
         container_where_clause = ""
         if container_where_clauses:
             container_where_clause = "WHERE " + " AND ".join(container_where_clauses)
+
+        content_select_clause = ""
+        if content_select_clauses:
+            content_select_clause = ", ".join(content_select_clauses)
 
         content_join_clause = ""
         if content_join_clauses:
@@ -156,11 +172,11 @@ class DatabaseHandlerV2(DBConnection):
             content_where_clause = "WHERE " + " AND ".join(content_where_clauses)
 
         ret_data["containers"] = self.get_data_from_db(
-            f"SELECT *, CAST(SUBSTR(container_title, 7) AS INTEGER) AS season_index FROM container {container_join_clause} {container_where_clause} GROUP BY container.id {container_sort_order};",
+            f"SELECT {container_select_clause} FROM container {container_join_clause} {container_where_clause} GROUP BY container.id {container_sort_order};",
             params
         )
         ret_data["content"] = self.get_data_from_db(
-            f"SELECT * FROM content {content_join_clause} {content_where_clause} GROUP BY content.id {content_sort_order};",
+            f"SELECT {content_select_clause} FROM content {content_join_clause} {content_where_clause} GROUP BY content.id {content_sort_order};",
             params
         )
 

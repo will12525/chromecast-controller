@@ -153,7 +153,7 @@ async function set_media_runtime(range) {
 
 async function generate_media_container(content_data, media_card_template, fragment) {
     const template = document.createElement("div");
-    template.className = "col-sm-3 my-class";
+    template.className = "col-sm-4 my-class";
     template.innerHTML = media_card_template;
 
     if ('container_id' in content_data) {
@@ -177,6 +177,9 @@ async function generate_media_container(content_data, media_card_template, fragm
         if (content_data["play_count"] == 0) {
             template.querySelector("#new_tag").hidden = false
         }
+    }
+    if ('user_tags' in content_data) {
+        template.querySelector("#card_tags").textContent = "Tags:" + content_data["user_tags"]
     }
 //    if ('content_index' in content_data) {
 //        template.querySelector("#content_index").hidden = false
@@ -219,7 +222,9 @@ async function update_media_container(response_data) {
         template.querySelector("#card_description").textContent = parent_container["description"];
         template.querySelector("#content_img").src = "http://192.168.1.175:8000/" + parent_container['img_src'];
         template.querySelector("#content_img").dataset.img_src = parent_container['img_src'];
-
+        if ('user_tags' in parent_container) {
+            template.querySelector("#card_tags").textContent = "Tags:" + parent_container["user_tags"]
+        }
         fragment.appendChild(template)
     }
     for (const content_data of response_data["containers"]) {
@@ -267,6 +272,19 @@ async function queryDB(data) {
             update_media_container(response_data)
         })
         .catch(error => console.error(error));
+}
+
+function getSelectedCheckboxes(listGroup) {
+  const checkboxes = listGroup.querySelectorAll('input[type="checkbox"]:checked');
+  return Array.from(checkboxes).map(checkbox => checkbox.value);
+}
+
+async function query_db_get_all_filters(event) {
+    let data = {
+        "tag_list": getSelectedCheckboxes(document.getElementById("tag_list_group")),
+        "container_dict": {}
+    };
+    queryDB(data)
 }
 
 async function update_local_media_player(url) {
@@ -654,6 +672,13 @@ document.addEventListener("DOMContentLoaded", function(event){
     {
         local_play_button.addEventListener("click", connect_local_player.bind(null));
     }
+
+    const listGroup = document.getElementById('tag_list_group');
+    listGroup.addEventListener('change', (event) => {
+        if (event.target.type === 'checkbox') {
+            query_db_get_all_filters(event)
+        }
+    });
 
     setInterval(updateSeekSelector, 1000);
     setInterval(updateEditorMetadata, 5000);
