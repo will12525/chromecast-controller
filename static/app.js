@@ -174,7 +174,9 @@ async function generate_media_container(content_data, media_card_template, fragm
         console.log("Missing title")
     }
     if ('play_count' in content_data) {
-        template.querySelector("#new_tag").hidden = false
+        if (content_data["play_count"] == 0) {
+            template.querySelector("#new_tag").hidden = false
+        }
     }
 //    if ('content_index' in content_data) {
 //        template.querySelector("#content_index").hidden = false
