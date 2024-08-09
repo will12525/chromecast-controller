@@ -34,6 +34,7 @@ CREATE_CONTENT_INFO_TABLE = f'''CREATE TABLE IF NOT EXISTS content (
                                     content_src text NOT NULL UNIQUE,
                                     description text DEFAULT "",
                                     img_src text DEFAULT "",
+                                    play_count integer DEFAULT 0,
                                     FOREIGN KEY (content_directory_id) REFERENCES content_directory (id)
                                 );'''
 SET_CONTENT_INFO_TABLE = f'{INSERT_IGNORE} content (content_directory_id, content_title, content_src, description, img_src) VALUES (:content_directory_id, :content_title, :content_src, :description, :img_src);'

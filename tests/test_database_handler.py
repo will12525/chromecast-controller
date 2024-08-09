@@ -168,6 +168,46 @@ class TestDatabaseHandlerFunctionsV2(TestDatabaseHandlerV2):
         assert not metadata.get("content")
         assert not metadata.get("parent_container")
 
+    def test_query_db_media(self):
+        with DatabaseHandlerV2() as db_connection:
+            metadata = db_connection.query_content([], {"container_id": 9})
+        content = metadata.get("content")[0]
+        json_request = {"content_id": content["content_id"], "parent_container_id": content["parent_container_id"]}
+        print(json.dumps(json_request, indent=4))
+
+    def test_query_db_next_media(self):
+        with DatabaseHandlerV2() as db_connection:
+            # metadata = db_connection.query_content([], {"container_id": 9})
+            # content = metadata.get("content")[0]
+            # json_request = {"content_id": content["content_id"], "parent_container_id": content["parent_container_id"]}
+            json_request = {'content_id': 21, 'parent_container_id': 9}
+            next_content = db_connection.get_next_content_in_container(json_request)
+            print(json.dumps(next_content, indent=4))
+            assert next_content.get("id") == 17
+            json_request = {'content_id': 17, 'parent_container_id': 9}
+            next_content = db_connection.get_next_content_in_container(json_request)
+            print(json.dumps(next_content, indent=4))
+            assert next_content.get("id") == 18
+            json_request = {'content_id': 20, 'parent_container_id': 9}
+            next_content = db_connection.get_next_content_in_container(json_request)
+            print(json.dumps(next_content, indent=4))
+            assert next_content.get("id") == 21
+
+    def test_query_db_previous_media(self):
+        with DatabaseHandlerV2() as db_connection:
+            json_request = {'content_id': 17, 'parent_container_id': 9}
+            next_content = db_connection.get_previous_content_in_container(json_request)
+            print(json.dumps(next_content, indent=4))
+            assert next_content.get("id") == 21
+            json_request = {'content_id': 21, 'parent_container_id': 9}
+            next_content = db_connection.get_previous_content_in_container(json_request)
+            print(json.dumps(next_content, indent=4))
+            assert next_content.get("id") == 20
+            json_request = {'content_id': 18, 'parent_container_id': 9}
+            next_content = db_connection.get_previous_content_in_container(json_request)
+            print(json.dumps(next_content, indent=4))
+            assert next_content.get("id") == 17
+
 
 class TestDatabaseHandler(TestCase):
     DB_PATH = "media_metadata.db"

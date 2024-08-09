@@ -157,8 +157,8 @@ class BackEndHandler:
     def get_chromecast_media_controller_metadata(self):
         return self.chromecast_handler.get_media_controller_metadata()
 
-    def play_media_on_chromecast(self, media_request_ids, content_type):
-        return self.chromecast_handler.play_from_sql(media_request_ids, content_type)
+    def play_media_on_chromecast(self, content_data):
+        return self.chromecast_handler.play_from_sql(content_data)
 
     def scan_media_directories(self):
         if not self.media_scan_in_progress:

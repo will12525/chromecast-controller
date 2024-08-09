@@ -168,7 +168,7 @@ async function generate_media_container(content_data, media_card_template, fragm
     }
     else if ('content_title' in content_data) {
         template.querySelector("#content_navigator").textContent = content_data["content_title"]
-        template.querySelector("#content_navigator").setAttribute('href', "javascript:play_media(" + content_data["id"] + ")")
+        template.querySelector("#content_navigator").setAttribute('href', "javascript:play_media(" + content_data["id"] + ", " + content_data["parent_container_id"] + ")")
     }
     else {
         console.log("Missing title")
@@ -277,11 +277,12 @@ async function update_local_media_player(url) {
     document.getElementById("local_video_player").scrollIntoView();
     document.getElementById("local_video_player").play();
 }
-async function play_media(media_id, playlist_id=null) {
+
+async function play_media(content_id, parent_container_id=null) {
     var url = "/play_media";
     let data = {
-        "media_id": media_id,
-        "playlist_id": playlist_id
+        "content_id": content_id,
+        "parent_container_id": parent_container_id
     };
     // Send POST request
     let response = await fetch(url, {

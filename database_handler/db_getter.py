@@ -20,10 +20,64 @@ class DatabaseHandlerV2(DBConnection):
         return f"INNER JOIN user_tags_content ON {table_name}.id = user_tags_content.{table_name}_id INNER JOIN user_tags ON user_tags_content.user_tags_id = user_tags.id WHERE user_tags.tag_title IN ({placeholders}) GROUP BY {table_name}.id"
 
     def get_container_info(self, container_id):
-        return self.get_data_from_db_first_result("SELECT * FROM container WHERE id = :id;", {'id': container_id})
+        return self.get_data_from_db_first_result("SELECT * FROM container WHERE id = :id;",
+                                                  {'id': container_id})
 
     def get_content_info(self, content_id):
-        return self.get_data_from_db_first_result("SELECT * FROM content WHERE id = :id;", {'id': content_id})
+        return self.get_data_from_db_first_result(
+            "SELECT *, content_directory.content_url || '/' || content.content_src AS url FROM content INNER JOIN content_directory ON content.content_directory_id = content_directory.id WHERE content.id = :id;",
+            {'id': content_id})
+
+    def collect_all_sub_content(self, container_id, sub_content_list):
+        content_query = f"SELECT * FROM content INNER JOIN container_content ON content.id = container_content.content_id WHERE container_content.parent_container_id = :id ORDER BY content_index ASC NULLS LAST, content_title {SORT_ALPHABETICAL};"
+        sub_content_list.extend(self.get_data_from_db(content_query, {"id": container_id}))
+        container_query = f"SELECT * FROM container INNER JOIN container_container ON container.id = container_container.container_id WHERE container_container.parent_container_id = :id GROUP BY container.id ORDER BY content_index ASC NULLS LAST, container_title {SORT_ALPHABETICAL};"
+        for container in self.get_data_from_db(container_query, {"id": container_id}):
+            self.collect_all_sub_content(container.get("id"), sub_content_list)
+
+    def get_next_content_in_container(self, json_request):
+        sub_content_list = []
+        next_content_id = None
+        parent_container_id = None
+        parent_containers = self.get_top_container(json_request.get("parent_container_id"))
+        if parent_containers:
+            parent_container_id = parent_containers[0].get("id")
+            self.collect_all_sub_content(parent_container_id, sub_content_list)
+        for index, sub_content in enumerate(sub_content_list):
+            if sub_content.get("id") == json_request.get("content_id"):
+                if index == len(sub_content_list) - 1:
+                    next_content_id = sub_content_list[0].get("id")
+                else:
+                    next_content_id = sub_content_list[index + 1].get("id")
+
+        if next_content_id:
+            next_content_info = self.get_content_info(next_content_id)
+            next_content_info["parent_container_id"] = parent_container_id
+            return next_content_info
+
+    def get_previous_content_in_container(self, json_request):
+        sub_content_list = []
+        next_content_id = None
+        parent_container_id = None
+        parent_containers = self.get_top_container(json_request.get("parent_container_id"))
+        if parent_containers:
+            parent_container_id = parent_containers[0].get("id")
+            self.collect_all_sub_content(parent_container_id, sub_content_list)
+        for index, sub_content in enumerate(sub_content_list):
+            if sub_content.get("id") == json_request.get("content_id"):
+                if index == 0:
+                    next_content_id = sub_content_list[-1].get("id")
+                else:
+                    next_content_id = sub_content_list[index - 1].get("id")
+
+        if next_content_id:
+            next_content_info = self.get_content_info(next_content_id)
+            next_content_info["parent_container_id"] = parent_container_id
+            return next_content_info
+
+    def update_content_play_count(self, content_id):
+        UPDATE_MEDIA_PLAY_COUNT = f"UPDATE content SET play_count = play_count + 1 WHERE id=:id;"
+        self.add_data_to_db(UPDATE_MEDIA_PLAY_COUNT, {"id": content_id})
 
     def update_metadata(self, container_dict):
         if container_dict.get("container_id"):
@@ -34,6 +88,16 @@ class DatabaseHandlerV2(DBConnection):
             self.add_data_to_db(
                 f"UPDATE content SET {common_objects.DESCRIPTION}=:{common_objects.DESCRIPTION}, img_src=:img_src WHERE id=:content_id;",
                 container_dict)
+
+    def get_top_container(self, container_id):
+        parent_containers_query = "SELECT * FROM container LEFT JOIN container_container ON container.id = container_container.container_id WHERE container.id = :id;"
+        top_container_list = []
+        params = {'id': container_id}
+        top_container_list.append(self.get_data_from_db_first_result(parent_containers_query, params))
+        while parent_id := top_container_list[0].get("parent_container_id"):
+            top_container_list.insert(0, self.get_data_from_db_first_result(parent_containers_query,
+                                                                            {'id': parent_id}))
+        return top_container_list
 
     def query_content(
             self,
@@ -99,14 +163,10 @@ class DatabaseHandlerV2(DBConnection):
             f"SELECT * FROM content {content_join_clause} {content_where_clause} GROUP BY content.id {content_sort_order};",
             params
         )
-        parent_containers_query = "SELECT * FROM container LEFT JOIN container_container ON container.id = container_container.container_id WHERE container.id = :id;"
-        if container_dict.get("container_id"):
-            params = {'id': container_dict.get("container_id")}
-            ret_data["parent_containers"] = [self.get_data_from_db_first_result(parent_containers_query, params)]
-            while parent_id := ret_data.get("parent_containers")[0].get("parent_container_id"):
-                ret_data["parent_containers"].insert(0,
-                                                     self.get_data_from_db_first_result(parent_containers_query,
-                                                                                        {'id': parent_id}))
+
+        if container_id := container_dict.get("container_id"):
+            ret_data["parent_containers"] = self.get_top_container(container_id)
+
         return ret_data
 
 

@@ -293,15 +293,12 @@ def chromecast_command():
 @app.route(APIEndpoints.PLAY_MEDIA.value, methods=['POST'])
 def play_media():
     data = {}
-    content_type = ContentType.MEDIA
     if json_request := request.get_json():
-        if json_request.get(common_objects.MEDIA_ID_COLUMN, None):
-            if not backend_handler.play_media_on_chromecast(json_request, content_type):
+        if json_request.get("content_id"):
+            if not backend_handler.play_media_on_chromecast(json_request):
                 with DatabaseHandlerV2() as db_connection:
-                    media_info = db_connection.get_media_content(content_type=content_type,
-                                                                 params_dict=json_request)
-                data[
-                    "local_play_url"] = f"{media_info.get(common_objects.MEDIA_DIRECTORY_URL_COLUMN)}{media_info.get(common_objects.PATH_COLUMN)}"
+                    media_metadata = db_connection.get_content_info(json_request.get("content_id"))
+                data["local_play_url"] = media_metadata.get("url")
         else:
             print(f"Media ID not provided: {json_request}")
     return data, 200
