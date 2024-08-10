@@ -19,7 +19,6 @@ class TestChromecastHandler(TestCase):
         self.chromecast_handler = ChromecastHandler()
         __init__.patch_get_file_hash(self)
         __init__.patch_get_ffmpeg_metadata(self)
-        __init__.patch_move_media_file(self)
         __init__.patch_extract_subclip(self)
         __init__.patch_update_processed_file(self)
 
@@ -126,7 +125,6 @@ class TestMyMediaDevice(TestCase):
     def setUp(self):
         __init__.patch_get_file_hash(self)
         __init__.patch_get_ffmpeg_metadata(self)
-        __init__.patch_move_media_file(self)
         __init__.patch_extract_subclip(self)
         __init__.patch_update_processed_file(self)
 

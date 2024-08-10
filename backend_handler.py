@@ -6,6 +6,7 @@ import requests  # request img from web
 import shutil  # save img locally
 import git
 import pathlib
+import re
 
 import config_file_handler
 import database_handler.common_objects as common_objects
@@ -13,7 +14,6 @@ from chromecast_handler import ChromecastHandler
 from database_handler.db_setter import DBCreatorV2
 from database_handler.db_getter import DatabaseHandlerV2
 import mp4_splitter
-from database_handler.media_metadata_collector import extract_tv_show_file_name_content
 
 EDITOR_PROCESSED_LOG = "editor_metadata.json"
 
@@ -99,20 +99,18 @@ def download_image(json_request):
 
 
 def build_tv_show_output_path(file_name_str):
-    media_metadata = {}
-    file_name = pathlib.Path(file_name_str)
     with DBCreatorV2() as db_connection:
-        media_folder_path = db_connection.get_all_content_directory_info()[0]
-    if not media_folder_path:
+        content_directory_info = db_connection.get_all_content_directory_info()[0]
+    if not content_directory_info:
         raise ValueError({"message": "Error media directory table missing paths"})
 
-    extract_tv_show_file_name_content(media_metadata, file_name.stem)
-    output_path = pathlib.Path(
-        f"{media_folder_path.get('content_src')}/tv_shows/{media_metadata[common_objects.PLAYLIST_TITLE]}/{file_name}").resolve()
-    if output_path.exists():
-        raise FileExistsError({"message": "File already exists", "file_name": str(file_name_str)})
-    # output_path.parent.mkdir(parents=True, exist_ok=True)
-    return output_path
+    if match := re.search(r"^([\w\W]+) - s(\d+)e(\d+)\.mp4$", file_name_str):
+        output_path = pathlib.Path(
+            f"{content_directory_info.get('content_src')}/tv_shows/{match[1]}/{file_name_str}").absolute()
+        if output_path.exists():
+            raise FileExistsError({"message": "File already exists", "file_name": file_name_str})
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        return output_path.as_posix()
 
 
 class BackEndHandler:
@@ -183,6 +181,8 @@ class BackEndHandler:
             mp4_output_parent_path = pathlib.Path(f"{media_folder_path.get('content_src')}/movies").resolve()
         elif media_type == common_objects.ContentType.TV_SHOW.value:
             mp4_output_parent_path = pathlib.Path(f"{media_folder_path.get('content_src')}/tv_shows").resolve()
+        elif media_type == common_objects.ContentType.BOOK.value:
+            mp4_output_parent_path = pathlib.Path(f"{media_folder_path.get('content_src')}/books").resolve()
         else:
             return
         error_log = mp4_splitter.editor_process_txt_file(editor_metadata, media_type, mp4_output_parent_path,

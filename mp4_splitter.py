@@ -12,17 +12,16 @@ import config_file_handler
 from database_handler.common_objects import ContentType
 from database_handler.media_metadata_collector import mp4_file_ext
 
-ASK_QUESTION = True
 """
 Convert to .exe
 
 venv/Scripts/activate
 pyinstaller mp4_splitter.py
-pyinstaller --onefile --paths .\venv\Lib\site-packages mp4_splitter.py
-scp .\dist\mp4_splitter.exe willow@192.168.1.200:/home/willow/workspace/mp4_splitter/
+pyinstaller --onefile --paths .\\venv\\Lib\\site-packages mp4_splitter.py
+scp .\\dist\\mp4_splitter.exe willow@192.168.1.200:/home/willow/workspace/mp4_splitter/
 
 On GAIA:
-scp willow@192.168.1.200:/home/willow/workspace/mp4_splitter/mp4_splitter.exe .\Desktop\
+scp willow@192.168.1.200:/home/willow/workspace/mp4_splitter/mp4_splitter.exe .\\Desktop\\
 """
 
 ALPHANUMERIC_INDEX_A = 97
@@ -135,13 +134,15 @@ class SubclipMetadata:
 
 
 class MovieSubclipMetadata(SubclipMetadata):
+    year = None
 
     def __init__(self, subclip_metadata, source_file_path, destination_file_path, media_title):
         subclip_metadata = subclip_metadata.strip()
         super().__init__(subclip_metadata)
-        if len(self.subclip_metadata_list) == 3:
+        if len(self.subclip_metadata_list) == 4:
             self.extract_media_title(self.subclip_metadata_list[0])
-            self.extract_start_end_times(self.subclip_metadata_list[1], self.subclip_metadata_list[2])
+            self.year = self.extract_int(self.subclip_metadata_list[1], "year")
+            self.extract_start_end_times(self.subclip_metadata_list[2], self.subclip_metadata_list[3])
         else:
             self.error_log.append({"message": "Missing content", "value": subclip_metadata})
 
@@ -156,7 +157,43 @@ class MovieSubclipMetadata(SubclipMetadata):
             destination_file_path = source_file_path.parent
 
         if self.media_title:
-            destination_file_path = destination_file_path / f"{self.media_title}.mp4"
+            destination_file_path = destination_file_path / f"{self.media_title} ({self.year}).mp4"
+
+        if destination_file_path.exists():
+            self.error_log.append({"message": "File already exists", "value": destination_file_path.name})
+        else:
+            if not self.media_title:
+                self.media_title = media_title
+            self.file_name = source_file_path.stem.strip()
+            self.source_file_path = str(source_file_path.as_posix()).strip()
+            self.destination_file_path = str(destination_file_path.as_posix()).strip()
+
+
+class BookSubclipMetadata(SubclipMetadata):
+    author = ""
+
+    def __init__(self, subclip_metadata, source_file_path, destination_file_path, media_title):
+        subclip_metadata = subclip_metadata.strip()
+        super().__init__(subclip_metadata)
+        if len(self.subclip_metadata_list) == 4:
+            self.extract_media_title(self.subclip_metadata_list[0])
+            self.author = self.extract_str(self.subclip_metadata_list[1], "author")
+            self.extract_start_end_times(self.subclip_metadata_list[2], self.subclip_metadata_list[3])
+        else:
+            self.error_log.append({"message": "Missing content", "value": subclip_metadata})
+
+        if source_file_path and destination_file_path and media_title:
+            self.set_cmd_metadata(source_file_path, destination_file_path, media_title)
+
+        if self.error_log:
+            self.error_log.append({"message": f"Errors occurred while parsing line", "value": subclip_metadata})
+
+    def set_cmd_metadata(self, source_file_path, destination_file_path, media_title):
+        if not destination_file_path or not self.media_title:
+            destination_file_path = source_file_path.parent
+
+        if self.media_title:
+            destination_file_path = destination_file_path / f"{self.media_title} - {self.author}.mp4"
 
         if destination_file_path.exists():
             self.error_log.append({"message": "File already exists", "value": destination_file_path.name})
@@ -235,12 +272,13 @@ class TvShowSubclipMetadata(SubclipMetadata):
             self.error_log.append({"message": "Missing episode index"})
 
 
-def convert_txt_to_sub_clip(txt_line, media_type, error_log, source_file_path, destination_file_path,
-                            media_title):
+def convert_txt_to_sub_clip(txt_line, media_type, error_log, source_file_path, destination_file_path, media_title):
     if media_type == ContentType.TV.value:
         return TvShowSubclipMetadata(txt_line, source_file_path, destination_file_path, media_title)
     elif media_type == ContentType.MOVIE.value:
         return MovieSubclipMetadata(txt_line, source_file_path, destination_file_path, media_title)
+    elif media_type == ContentType.BOOK.value:
+        return BookSubclipMetadata(txt_line, source_file_path, destination_file_path, media_title)
     else:
         error_log.append({"message": "Unsupported content type", "value": media_type})
 

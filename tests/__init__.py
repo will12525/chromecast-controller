@@ -55,12 +55,6 @@ def patch_get_ffmpeg_metadata(test_class):
     test_class.addCleanup(patcher.stop)
 
 
-def patch_move_media_file(test_class):
-    patcher = patch('database_handler.media_metadata_collector.move_media_file')
-    test_class.move_media_file = patcher.start()
-    test_class.addCleanup(patcher.stop)
-
-
 def patch_extract_subclip(test_class):
     patcher = patch('mp4_splitter.extract_subclip')
     test_class.extract_subclip = patcher.start()

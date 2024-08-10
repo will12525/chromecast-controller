@@ -10,6 +10,9 @@ from database_handler import common_objects
 
 DELETE = False
 MOVE_FILE = True
+MOVIE_PATTERN = r".*/([\w\W]+) \((\d{4})\)\.mp4$"
+TV_PATTERN = r".*\/([\w\W]+) - s(\d+)e(\d+)\.mp4$"
+BOOK_PATTERN = r".*\/([\w\W]+) - ([\w\W]+).mp4$"
 
 tv_show_media_episode_index_identifier = 'e'
 mp4_index_content_index_search_string = ' - s'
@@ -58,27 +61,6 @@ def get_playlist_list_index(season_index, episode_index):
     return (1000 * season_index) + episode_index
 
 
-def convert_to_tv_show_path(media_directory_info, path_to_convert, file_name):
-    tv_show_title, season = get_season_name_show_title(pathlib.Path(path_to_convert))
-    season = season.replace(season_marker, season_marker_replacement)
-    return pathlib.Path(media_directory_info.get(common_objects.MEDIA_DIRECTORY_PATH_COLUMN), tv_show_title, season,
-                        file_name)
-
-
-def move_txt_file(source_file_name, destination_file_name):
-    destination_file_name.resolve().parent.mkdir(parents=True, exist_ok=True)
-    if DELETE:
-        source_file_name.replace(destination_file_name)
-    else:
-        shutil.copy(source_file_name, destination_file_name)
-
-
-def move_media_file(media_folder_mp4, mp4_output_file_name, media_title):
-    if MOVE_FILE:
-        ffmpeg.input(str(media_folder_mp4)).output(str(mp4_output_file_name), metadata=f'title={media_title}', map=0,
-                                                   c='copy').overwrite_output().run()
-
-
 def get_file_hash(extra_metadata):
     with open(extra_metadata.get("full_file_path"), 'rb') as f:
         file_hash = hashlib.md5()
@@ -104,35 +86,6 @@ def get_ffmpeg_metadata(path, content_data):
         print(f"ERROR: FFMPEG: {path}")
         print(e.stderr)
         pass
-
-
-def get_extra_metadata(media_metadata, title=False):
-    get_ffmpeg_metadata_thread = None
-
-    get_file_hash_thread = threading.Thread(target=get_file_hash, args=(media_metadata,), daemon=True)
-    get_file_hash_thread.start()
-
-    if title:
-        get_ffmpeg_metadata_thread = threading.Thread(target=get_ffmpeg_metadata, args=(media_metadata,), daemon=True)
-        get_ffmpeg_metadata_thread.start()
-
-    if get_file_hash_thread:
-        get_file_hash_thread.join()
-    if get_ffmpeg_metadata_thread:
-        get_ffmpeg_metadata_thread.join()
-
-
-def extract_tv_show_file_name_content(media_metadata, mp4_file_name):
-    mp4_index_content_index = mp4_file_name.rindex(mp4_index_content_index_search_string)
-    mp4_index_content = mp4_file_name[mp4_index_content_index + len(mp4_index_content_index_search_string):]
-    mp4_episode_start_index = mp4_index_content.index(tv_show_media_episode_index_identifier)
-
-    media_metadata[common_objects.PLAYLIST_TITLE] = mp4_file_name[:mp4_index_content_index]
-    media_metadata['episode_index'] = int(mp4_index_content[mp4_episode_start_index + 1:])
-    media_metadata[common_objects.SEASON_INDEX_COLUMN] = int(mp4_index_content[:mp4_episode_start_index])
-
-    media_metadata[common_objects.LIST_INDEX_COLUMN] = get_playlist_list_index(
-        media_metadata[common_objects.SEASON_INDEX_COLUMN], media_metadata['episode_index'])
 
 
 default_content_data = {
@@ -176,10 +129,21 @@ def build_movie(content_src, mp4_file_path, match, content_data):
     movie_title, movie_year = match.groups()
 
     content_data["content_title"] = movie_title
+    content_data["description"] = movie_year
     content_data["tags"] = [{"tag_title": "movie"}]
     if img_src := file_exists_with_extensions(parent_folder, mp4_file_path.name):
-        content_data['img_src'] = img_src.as_posix().replace(
-            content_src, '')
+        content_data['img_src'] = img_src.as_posix().replace(content_src, '')
+
+
+def build_book(content_src, mp4_file_path, match, content_data):
+    parent_folder = mp4_file_path.parent
+    book_title, book_author = match.groups()
+
+    content_data["content_title"] = book_title
+    content_data["description"] = book_author
+    content_data["tags"] = [{"tag_title": "book"}]
+    if img_src := file_exists_with_extensions(parent_folder, mp4_file_path.name):
+        content_data['img_src'] = img_src.as_posix().replace(content_src, '')
 
 
 def build_tv_show(content_src, mp4_file_path, match, content_data):
@@ -192,10 +156,9 @@ def build_tv_show(content_src, mp4_file_path, match, content_data):
     content_data["content_index"] = episode_index
     content_data["tags"] = [{"tag_title": "episode"}]
     if img_src := file_exists_with_extensions(parent_folder, mp4_file_path.name):
-        content_data['img_src'] = img_src.as_posix().replace(
-            content_src, '')
-
-    get_ffmpeg_metadata(mp4_file_path, content_data)
+        content_data['img_src'] = img_src.as_posix().replace(content_src, '')
+    if mp4_file_path.exists():
+        get_ffmpeg_metadata(mp4_file_path, content_data)
 
     if not content_data.get("content_title"):
         content_data["content_title"] = f"Episode {episode_index}"
@@ -207,8 +170,7 @@ def build_tv_show(content_src, mp4_file_path, match, content_data):
     season_container_content["container_content"] = [content_data]
     season_container_content["container_path"] = container_path
     if img_src := file_exists_with_extensions(parent_folder, season_container_content["container_title"]):
-        season_container_content['img_src'] = img_src.as_posix().replace(
-            content_src, '')
+        season_container_content['img_src'] = img_src.as_posix().replace(content_src, '')
 
     tv_container_content = default_container_data.copy()
     tv_container_content["container_title"] = tv_show_title
@@ -216,29 +178,28 @@ def build_tv_show(content_src, mp4_file_path, match, content_data):
     tv_container_content["container_content"] = [season_container_content]
     tv_container_content["container_path"] = container_path
     if img_src := file_exists_with_extensions(parent_folder, tv_show_title):
-        tv_container_content['img_src'] = img_src.as_posix().replace(
-            content_src, '')
+        tv_container_content['img_src'] = img_src.as_posix().replace(content_src, '')
     elif img_src := file_exists_with_extensions(parent_folder, "cover"):
-        tv_container_content['img_src'] = img_src.as_posix().replace(
-            content_src, '')
+        tv_container_content['img_src'] = img_src.as_posix().replace(content_src, '')
 
     return tv_container_content
 
 
 def collect_mp4_files(content_directory_info):
-    movie_pattern = r".*/([\w\W]+) \((\d{4})\)\.mp4$"
-    tv_pattern = r".*\/([\w\W]+) - s(\d+)e(\d+)\.mp4$"
     content_directory_src = pathlib.Path(content_directory_info.get("content_src"))
+    content_directory_src_posix = content_directory_src.as_posix()
     for mp4_file_path in list(content_directory_src.rglob(mp4_file_ext)):
+        mp4_file_path_posix = mp4_file_path.as_posix()
         container_data = None
         content_data = default_content_data.copy()
         content_data['content_directory_id'] = content_directory_info['id']
-        content_data['content_src'] = mp4_file_path.as_posix().replace(content_directory_info.get("content_src"), '')
-        if match := re.search(tv_pattern, str(mp4_file_path.as_posix())):
-            container_data = build_tv_show(content_directory_info.get("content_src"), mp4_file_path, match,
-                                           content_data)
-        elif match := re.search(movie_pattern, str(mp4_file_path.as_posix())):
-            build_movie(content_directory_info.get("content_src"), mp4_file_path, match, content_data)
+        content_data['content_src'] = mp4_file_path_posix.replace(content_directory_src_posix, '')
+        if match := re.search(TV_PATTERN, mp4_file_path_posix):
+            container_data = build_tv_show(content_directory_src_posix, mp4_file_path, match, content_data)
+        elif match := re.search(MOVIE_PATTERN, mp4_file_path_posix):
+            build_movie(content_directory_src_posix, mp4_file_path, match, content_data)
+        elif match := re.search(BOOK_PATTERN, mp4_file_path_posix):
+            build_book(content_directory_src_posix, mp4_file_path, match, content_data)
         else:
             # print(media_folder_mp4.as_posix())
             # print(f"Unknown media type: {mp4_file_path}")

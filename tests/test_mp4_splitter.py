@@ -170,8 +170,8 @@ class Test(TestMp4Splitter):
         }
         media_type = ContentType.TV.value
 
-        with DatabaseHandler() as db_connection:
-            media_folder_path = db_connection.get_media_folder_path_from_type(media_type)
+        with DBCreatorV2() as db_connection:
+            media_folder_path = db_connection.get_all_content_directory_info()[0].get("content_src")
         output_path = pathlib.Path(media_folder_path).resolve()
         txt_file = f"{self.raw_folder}{editor_metadata.get('txt_file_name')}"
         mp4_file = txt_file.replace('.txt', '.mp4')
@@ -945,6 +945,41 @@ class TestProcessSubclipFile(TestMp4Splitter):
         assert sub_clips[1].start_time == 3763
         assert sub_clips[1].end_time == 4813
         assert sub_clips[1].media_title == "This is a movie"
+
+    def test_valid_book_full_content_txt_file(self):
+        error_log = []
+        sub_clips = []
+        txt_file_name = "book"
+        media_type = ContentType.BOOK.value
+
+        txt_file = f"{self.raw_folder}{txt_file_name}.txt"
+        mp4_file = txt_file.replace('.txt', '.mp4')
+        txt_file_path = pathlib.Path(txt_file).resolve()
+        mp4_file_path = pathlib.Path(mp4_file).resolve()
+
+        mp4_splitter.get_sub_clips_from_txt_file(media_type, txt_file_path, pathlib.Path(self.raw_folder).resolve(),
+                                                 sub_clips, error_log)
+        print(json.dumps(error_log, indent=4))
+        assert len(error_log) == 0
+        for sub_clip in sub_clips:
+            assert txt_file_name in sub_clip.source_file_path
+            assert self.raw_folder in sub_clip.source_file_path
+            assert type(int(sub_clip.start_time)) is int
+            assert type(int(sub_clip.end_time)) is int
+            assert int(sub_clip.start_time) >= 0
+            assert int(sub_clip.end_time) >= 0
+        assert len(sub_clips) == 2
+        assert sub_clips[
+                   0].source_file_path == f"{self.raw_folder}book.mp4"
+        assert sub_clips[0].start_time == 2846
+        assert sub_clips[0].end_time == 3730
+        assert sub_clips[0].media_title == "This is a book title"
+        print(sub_clips[0].destination_file_path)
+        assert sub_clips[
+                   1].source_file_path == f"{self.raw_folder}book.mp4"
+        assert sub_clips[1].start_time == 3763
+        assert sub_clips[1].end_time == 4813
+        assert sub_clips[1].media_title == "Dinosaur Rawr"
 
     def test_valid_timing_txt_file(self):
         error_log = []

@@ -50,6 +50,7 @@ class ContentType(Enum):
     TV = auto()
     PLAYLIST = auto()
     PLAYLISTS = auto()
+    BOOK = auto()
 
     def get_next(self):
         if self == self.PLAYLISTS:

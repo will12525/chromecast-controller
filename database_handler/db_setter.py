@@ -168,8 +168,8 @@ class DBCreatorV2(DBConnection):
         else:
             self.insert_content(container_content)
 
-    def collect_directory_content(self, content_directory_list):
-        for container_content in collect_mp4_files(content_directory_list):
+    def collect_directory_content(self, content_directory_info):
+        for container_content in collect_mp4_files(content_directory_info):
             self.insert_container_content(container_content)
 
     def scan_content_directories(self):

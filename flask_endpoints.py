@@ -72,7 +72,8 @@ media_controller_button_dict = {
 }
 media_types = {
     ContentType.TV.name: ContentType.TV.value,
-    ContentType.MOVIE.name: ContentType.MOVIE.value
+    ContentType.MOVIE.name: ContentType.MOVIE.value,
+    ContentType.BOOK.name: ContentType.BOOK.value
 }
 
 backend_handler = bh.BackEndHandler()
@@ -96,7 +97,7 @@ def build_main_content(request_args):
     else:
         pass
 
-    system_data = backend_handler.get_system_data()
+    # system_data = backend_handler.get_system_data()
     with DatabaseHandlerV2() as db_getter_connection:
         tag_list = db_getter_connection.get_all_tags()
 
@@ -437,28 +438,29 @@ def allowed_file(filename):
 @app.route(APIEndpoints.MEDIA_UPLOAD.value, methods=['GET', 'POST'])
 def upload_file():
     data = {}
+    error_code = 400
     if request.method == 'POST':
         print(request.files)
         # check if the post request has the file part
         if 'file' not in request.files:
             data["message"] = "No file provided"
-            return data, 200
-        file = request.files['file']
-        if file.filename == '':
-            data["message"] = "No selected file"
-            data["filename"] = f"{file.filename}"
-            return data, 200
-        if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename).replace('_', ' ')
-            try:
-                output_path = bh.build_tv_show_output_path(filename)
-                print(output_path)
-                file.save(output_path)
-                data["message"] = "File saved"
-            except (ValueError, FileExistsError) as e:
-                data["error"] = e.args[0]
+        else:
+            file = request.files['file']
+            if file.filename == '':
+                data["message"] = "No selected file"
+                data["filename"] = f"{file.filename}"
+            elif file and allowed_file(file.filename):
+                filename = secure_filename(file.filename).replace('_', ' ')
+                try:
+                    output_path = bh.build_tv_show_output_path(filename)
+                    file.save(output_path)
+                    data["message"] = "File saved"
+                    data["filename"] = f"{file.filename}"
+                    error_code = 200
+                except (ValueError, FileExistsError) as e:
+                    data["error"] = e.args[0]
     print(data)
-    return data, 200
+    return data, error_code
 
 
 if __name__ == "__main__":
