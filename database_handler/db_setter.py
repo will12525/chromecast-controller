@@ -45,7 +45,8 @@ CREATE_CONTAINER_CONTENT_INFO_TABLE = f'''CREATE TABLE IF NOT EXISTS container_c
                                              content_id integer,
                                              content_index integer NOT NULL,
                                              FOREIGN KEY (parent_container_id) REFERENCES container (id),
-                                             FOREIGN KEY (content_id) REFERENCES content (id)
+                                             FOREIGN KEY (content_id) REFERENCES content (id),
+                                             UNIQUE (parent_container_id, content_index, content_index)
                                          );'''
 SET_CONTAINER_CONTENT_INFO_TABLE = f'{INSERT_IGNORE} container_content (parent_container_id, content_id, content_index) VALUES (:parent_container_id, :content_id, :content_index);'
 
@@ -55,7 +56,8 @@ CREATE_CONTAINER_CONTAINER_INFO_TABLE = f'''CREATE TABLE IF NOT EXISTS container
                                              container_id integer,
                                              content_index integer NOT NULL,
                                              FOREIGN KEY (parent_container_id) REFERENCES container (id),
-                                             FOREIGN KEY (container_id) REFERENCES container (id)
+                                             FOREIGN KEY (container_id) REFERENCES container (id),
+                                             UNIQUE (parent_container_id, container_id, content_index)
                                          );'''
 
 SET_CONTAINER_CONTAINER_INFO_TABLE = f'{INSERT_IGNORE} container_container (parent_container_id, container_id, content_index) VALUES (:parent_container_id, :container_id, :content_index);'
@@ -103,8 +105,10 @@ class DBCreatorV2(DBConnection):
     def add_content_directory_info(self, content_directory_info):
         if media_directory_id := self.add_data_to_db(SET_CONTENT_DIRECTORY_INFO_TABLE, content_directory_info):
             content_directory_info["id"] = media_directory_id
+            return True
         else:
             content_directory_info["id"] = self.get_row_id(GET_CONTENT_DIRECTORY_INFO_ID, content_directory_info)
+            return False
 
     def get_all_content_directory_info(self):
         return self.get_data_from_db(GET_CONTENT_DIRECTORY_INFO)
@@ -142,23 +146,26 @@ class DBCreatorV2(DBConnection):
 
         for tag in container.get("tags"):
             self.insert_tag(tag)
-            self.add_tag_to_container({"user_tags_id": tag["id"], "container_id": container["id"]})
+            self.add_tag_to_container({"user_tags_id": tag.get("id"), "container_id": container.get("id")})
         for container_content in container.get("container_content", []):
             if "container_content" in container_content:
                 self.add_data_to_db(SET_CONTAINER_CONTAINER_INFO_TABLE,
-                                    {"parent_container_id": container["id"], "container_id": container_content["id"],
-                                     "content_index": container_content["content_index"]})
+                                    {"parent_container_id": container.get("id"),
+                                     "container_id": container_content.get("id"),
+                                     "content_index": container_content.get("content_index")})
             else:
                 self.add_data_to_db(SET_CONTAINER_CONTENT_INFO_TABLE,
-                                    {"parent_container_id": container["id"], "content_id": container_content["id"],
-                                     "content_index": container_content["content_index"]})
+                                    {"parent_container_id": container.get("id"),
+                                     "content_id": container_content.get("id"),
+                                     "content_index": container_content.get("content_index")})
         # print(container)
 
     def insert_content(self, content):
-        content["id"] = self.add_data_to_db(SET_CONTENT_INFO_TABLE, content)
-        for tag in content.get("tags"):
-            self.insert_tag(tag)
-            self.add_tag_to_content({"user_tags_id": tag["id"], "content_id": content["id"]})
+        if content_id := self.add_data_to_db(SET_CONTENT_INFO_TABLE, content):
+            content["id"] = content_id
+            for tag in content.get("tags"):
+                self.insert_tag(tag)
+                self.add_tag_to_content({"user_tags_id": tag.get("id"), "content_id": content.get("id")})
 
     def insert_container_content(self, container_content):
         if "container_content" in container_content:
@@ -174,15 +181,16 @@ class DBCreatorV2(DBConnection):
 
     def scan_content_directories(self):
         if content_directory_list := self.get_all_content_directory_info():
-            print(content_directory_list)
+            print(f"Scanning: {content_directory_list}")
             for content_directory_info in content_directory_list:
                 self.collect_directory_content(content_directory_info)
         print("Scan Complete")
 
     def setup_content_directory(self, content_directory_info):
-        if not self.get_row_id(GET_CONTENT_DIRECTORY_INFO_ID, content_directory_info):
-            self.add_content_directory_info(content_directory_info)
+        if self.add_content_directory_info(content_directory_info):
             self.collect_directory_content(content_directory_info)
+        else:
+            print(f"Content directory already added: {content_directory_info}")
         print("Setup Complete")
 
 

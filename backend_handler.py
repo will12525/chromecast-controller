@@ -1,6 +1,7 @@
 import json
 import subprocess
 import threading
+import traceback
 
 import requests  # request img from web
 import shutil  # save img locally
@@ -159,11 +160,20 @@ class BackEndHandler:
         return self.chromecast_handler.play_from_sql(content_data)
 
     def scan_media_directories(self):
-        if not self.media_scan_in_progress:
-            self.media_scan_in_progress = True
-            with DBCreatorV2() as db_connection:
-                db_connection.scan_content_directories()
-        self.media_scan_in_progress = False
+        try:
+            if not self.media_scan_in_progress:
+                self.media_scan_in_progress = True
+                with DBCreatorV2() as db_connection:
+                    db_connection.scan_content_directories()
+                self.media_scan_in_progress = False
+            else:
+                print("Scan in progress")
+        except Exception as e:
+            print("Exception class: ", e.__class__)
+            print(f"ERROR: {e}")
+            print(traceback.print_exc())
+        finally:
+            self.media_scan_in_progress = False
 
     def get_editor_metadata(self, selected_txt_file=None):
         config_file = config_file_handler.load_json_file_content()
@@ -179,7 +189,7 @@ class BackEndHandler:
             media_folder_path = db_connection.get_all_content_directory_info()[0]
         if media_type == common_objects.ContentType.MOVIE.value:
             mp4_output_parent_path = pathlib.Path(f"{media_folder_path.get('content_src')}/movies").resolve()
-        elif media_type == common_objects.ContentType.TV_SHOW.value:
+        elif media_type == common_objects.ContentType.TV.value:
             mp4_output_parent_path = pathlib.Path(f"{media_folder_path.get('content_src')}/tv_shows").resolve()
         elif media_type == common_objects.ContentType.BOOK.value:
             mp4_output_parent_path = pathlib.Path(f"{media_folder_path.get('content_src')}/books").resolve()

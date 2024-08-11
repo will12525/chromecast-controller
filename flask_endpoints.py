@@ -83,20 +83,6 @@ error_log = queue.Queue()
 
 
 def build_main_content(request_args):
-    content_type = request_args.get(key="content_type", default=ContentType.TV.value, type=int)
-    content_id = request_args.get(key=common_objects.MEDIA_ID_COLUMN, default=None, type=int)
-    # When run using flask, the default type of ContentType isn't applied
-    if len(ContentType) > content_type:
-        content_type = ContentType(content_type)
-
-    data = {}
-    if content_type == ContentType.TV_SHOW:
-        data[common_objects.TV_SHOW_ID_COLUMN] = content_id
-    elif content_type == ContentType.SEASON:
-        data[common_objects.SEASON_ID_COLUMN] = content_id
-    else:
-        pass
-
     # system_data = backend_handler.get_system_data()
     with DatabaseHandlerV2() as db_getter_connection:
         tag_list = db_getter_connection.get_all_tags()
@@ -186,7 +172,8 @@ def editor_process_txt_file():
                 errors = backend_handler.editor_process_txt_file(json_request, common_objects.ContentType[
                     json_request.get('media_type')].value)
                 data = backend_handler.editor_get_process_metadata()
-                data["process_log"].extend(errors)
+                if errors:
+                    data["process_log"].extend(errors)
                 if not errors:
                     data["process_log"].append({"message": "Success!"})
             except Exception as e:

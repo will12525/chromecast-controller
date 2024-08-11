@@ -673,12 +673,20 @@ document.addEventListener("DOMContentLoaded", function(event){
         local_play_button.addEventListener("click", connect_local_player.bind(null));
     }
 
-    const listGroup = document.getElementById('tag_list_group');
-    listGroup.addEventListener('change', (event) => {
-        if (event.target.type === 'checkbox') {
-            query_db_get_all_filters(event)
-        }
-    });
+    var listGroup = document.getElementById('tag_list_group');
+    if (listGroup !== null)
+    {
+        listGroup.addEventListener('change', (event) => {
+            if (event.target.type === 'checkbox') {
+                query_db_get_all_filters(event)
+            }
+        });
+    }
+    var modal_metadata_save = document.getElementById("modal_metadata_save");
+    if (modal_metadata_save !== null)
+    {
+        modal_metadata_save.addEventListener('click', clickHandler);
+    }
 
     setInterval(updateSeekSelector, 1000);
     setInterval(updateEditorMetadata, 5000);
@@ -686,10 +694,11 @@ document.addEventListener("DOMContentLoaded", function(event){
     setNavbarLinks();
     setMediaControlButtons();
 
-    document.getElementById("modal_metadata_save").addEventListener('click', clickHandler);
-
-    load_tv_shows()
-
+    var main_media_content = document.getElementById("mediaContentSelectDiv");
+    if (main_media_content !== null)
+    {
+        load_tv_shows()
+    }
 });
 
 

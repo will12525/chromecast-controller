@@ -9,12 +9,12 @@ from .common_objects import DBType
 
 def print_db_traceback(error, message):
     # return
-    print("-------SQLite error: %s-------" % (" ".join(error.args)))
-    print("Exception class is: ", error.__class__)
-    print("SQLite traceback: ")
-    exc_type, exc_value, exc_tb = sys.exc_info()
-    print(traceback.format_exception(exc_type, exc_value, exc_tb))
+    print("----------  SQLite error  ----------")
+    print(" ".join(error.args))
     print(message)
+    print(error.__class__)
+    exc_type, exc_value, exc_tb = sys.exc_info()
+    print(" ".join(traceback.format_exception(exc_type, exc_value, exc_tb)))
 
 
 def get_last_row_id(cursor) -> int:
@@ -82,7 +82,7 @@ class DBConnection:
                     self.connection.commit()
                     return return_func(cursor)
                 except sqlite3.Error as error:
-                    print_db_traceback(error, f"Error: Query: {query} Params: {params}")
+                    print_db_traceback(error, f"Query: {query}\nParams: {params}")
                     return []
 
     def create_tables(self, db_table_creation_script):

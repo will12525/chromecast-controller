@@ -73,8 +73,8 @@ def get_ffmpeg_metadata(path, content_data):
     try:
         if ffmpeg_probe_result := ffmpeg.probe(path):
             if ffmpeg_probe_result_format := ffmpeg_probe_result.get('format'):
-                runtime = ffmpeg_probe_result_format.get('duration')
-                content_data["content_duration"] = round(float(runtime) / 60)
+                # runtime = ffmpeg_probe_result_format.get('duration')
+                # content_data["content_duration"] = round(float(runtime) / 60)
                 # print(json.dumps(ffmpeg_probe_result_format, indent=4))
                 if tags := ffmpeg_probe_result_format.get('tags'):
                     content_data["content_title"] = tags.get('title', '')
@@ -202,7 +202,7 @@ def collect_mp4_files(content_directory_info):
             build_book(content_directory_src_posix, mp4_file_path, match, content_data)
         else:
             # print(media_folder_mp4.as_posix())
-            # print(f"Unknown media type: {mp4_file_path}")
+            print(f"Unknown media type: {mp4_file_path}")
             # print(mp4_file_path.as_posix())
             continue
 
