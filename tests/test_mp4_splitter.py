@@ -911,6 +911,62 @@ class TestProcessSubclipFile(TestMp4Splitter):
         assert sub_clips[4].end_time == 4813
         assert sub_clips[4].media_title == "episode 1"
 
+    def test_valid_full_content_txt_file_zero(self):
+        error_log = []
+        sub_clips = []
+        txt_file_name = "2024-01-31_16-32-36_zero"
+        media_type = ContentType.TV.value
+
+        txt_file = f"{self.raw_folder}{txt_file_name}.txt"
+        mp4_file = txt_file.replace('.txt', '.mp4')
+        txt_file_path = pathlib.Path(txt_file).resolve()
+        mp4_file_path = pathlib.Path(mp4_file).resolve()
+
+        mp4_splitter.get_sub_clips_from_txt_file(media_type, txt_file_path, pathlib.Path(self.raw_folder).resolve(),
+                                                 sub_clips, error_log)
+        # assert type(cmd_list) is list
+        # assert len(cmd_list) == 5
+        assert len(error_log) == 0
+        for sub_clip in sub_clips:
+            assert txt_file_name in sub_clip.source_file_path
+            assert self.raw_folder in sub_clip.source_file_path
+            assert type(int(sub_clip.start_time)) is int
+            assert type(int(sub_clip.end_time)) is int
+            assert int(sub_clip.start_time) >= 0
+            assert int(sub_clip.end_time) >= 0
+
+        assert sub_clips[
+                   0].source_file_path == f"{self.raw_folder}{txt_file_name}.mp4"
+        assert sub_clips[0].start_time == 7
+        assert sub_clips[0].end_time == 823
+        assert sub_clips[0].media_title == "episode name"
+        print(sub_clips[0].destination_file_path)
+        assert "editor_raw_files/Hilda/Hilda - s2e0.mp4" in sub_clips[
+            0].destination_file_path
+        assert sub_clips[
+                   1].source_file_path == f"{self.raw_folder}{txt_file_name}.mp4"
+        assert sub_clips[1].start_time == 829
+        assert sub_clips[1].end_time == 1773
+        assert sub_clips[1].media_title == "episode another name"
+        assert "editor_raw_files/Hilda/Hilda - s2e2.mp4" in sub_clips[
+            1].destination_file_path
+        print(sub_clips[1].destination_file_path)
+        assert sub_clips[
+                   2].source_file_path == f"{self.raw_folder}{txt_file_name}.mp4"
+        assert sub_clips[2].start_time == 1803
+        assert sub_clips[2].end_time == 2792
+        assert sub_clips[2].media_title == "episode name"
+        assert sub_clips[
+                   3].source_file_path == f"{self.raw_folder}{txt_file_name}.mp4"
+        assert sub_clips[3].start_time == 2846
+        assert sub_clips[3].end_time == 3730
+        assert sub_clips[3].media_title == "episode 2"
+        assert sub_clips[
+                   4].source_file_path == f"{self.raw_folder}{txt_file_name}.mp4"
+        assert sub_clips[4].start_time == 3763
+        assert sub_clips[4].end_time == 4813
+        assert sub_clips[4].media_title == "episode 1"
+
     def test_valid_movie_full_content_txt_file(self):
         error_log = []
         sub_clips = []

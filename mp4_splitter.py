@@ -237,7 +237,7 @@ class TvShowSubclipMetadata(SubclipMetadata):
         if self.playlist_title:
             destination_file_path = destination_file_path / self.playlist_title
 
-        if self.episode_index:
+        if self.episode_index is not None and self.episode_index >= 0:
             destination_file_path = destination_file_path / f'{self.playlist_title} - s{self.season_index}e{self.episode_index}.mp4'
         else:
             destination_file_path = destination_file_path / f'{media_title}_{source_file_path.stem}.mp4'
