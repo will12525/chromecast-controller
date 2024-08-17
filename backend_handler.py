@@ -45,19 +45,26 @@ def get_free_disk_space_percent(editor_folder):
     return get_free_disk_space(ret=4, raw_folder=editor_folder)
 
 
-def editor_validate_txt_file(txt_file_name, media_type):
+def editor_validate_txt_file(json_request):
     mp4_output_parent_path = None
     with DBCreatorV2() as db_connection:
         media_folder_path = db_connection.get_all_content_directory_info()[0]
-    if media_type == common_objects.ContentType.TV.name:
-        mp4_output_parent_path = pathlib.Path(media_folder_path.get("content_src/tv_shows/")).resolve()
-    elif media_type == common_objects.ContentType.MOVIE.name:
-        mp4_output_parent_path = pathlib.Path(media_folder_path.get("content_src/movies/")).resolve()
-    return mp4_splitter.editor_validate_txt_file(txt_file_name, media_type, mp4_output_parent_path)
+    if json_request.get('media_type') == common_objects.ContentType.MOVIE.name:
+        mp4_output_parent_path = pathlib.Path(f"{media_folder_path.get('content_src')}/movies").resolve()
+    elif json_request.get('media_type') == common_objects.ContentType.TV.name:
+        mp4_output_parent_path = pathlib.Path(f"{media_folder_path.get('content_src')}/tv_shows").resolve()
+    elif json_request.get('media_type') == common_objects.ContentType.BOOK.name:
+        mp4_output_parent_path = pathlib.Path(f"{media_folder_path.get('content_src')}/books").resolve()
+    else:
+        print("Unknown media type")
+    return mp4_splitter.editor_validate_txt_file(json_request.get('file_name'), json_request.get('media_type'),
+                                                 mp4_output_parent_path)
 
 
-def editor_save_txt_file(txt_file, txt_file_content):
-    mp4_splitter.editor_save_txt_file(txt_file, txt_file_content)
+def editor_save_file(file_name, json_request):
+    raw_folder = config_file_handler.load_json_file_content().get('editor_raw_folder')
+    file_path = pathlib.Path(f"{raw_folder}{file_name}").resolve()
+    mp4_splitter.editor_save_file(file_path, json_request)
 
 
 def download_image(json_request):
@@ -180,26 +187,24 @@ class BackEndHandler:
         raw_folder = config_file.get('editor_raw_folder')
         raw_folder_url = config_file.get('editor_raw_url')
         return mp4_splitter.get_editor_metadata(raw_folder, self.editor_processor,
-                                                selected_txt_file=selected_txt_file, raw_url=raw_folder_url,
+                                                selected_editor_file=selected_txt_file, raw_url=raw_folder_url,
                                                 process_file=EDITOR_PROCESSED_LOG)
 
-    def editor_process_txt_file(self, editor_metadata, media_type):
+    def editor_process_txt_file(self, json_request):
         mp4_output_parent_path = None
         with DBCreatorV2() as db_connection:
             media_folder_path = db_connection.get_all_content_directory_info()[0]
-        if media_type == common_objects.ContentType.MOVIE.value:
+        if json_request.get('media_type') == common_objects.ContentType.MOVIE.name:
             mp4_output_parent_path = pathlib.Path(f"{media_folder_path.get('content_src')}/movies").resolve()
-        elif media_type == common_objects.ContentType.TV.value:
+        elif json_request.get('media_type') == common_objects.ContentType.TV.name:
             mp4_output_parent_path = pathlib.Path(f"{media_folder_path.get('content_src')}/tv_shows").resolve()
-        elif media_type == common_objects.ContentType.BOOK.value:
+        elif json_request.get('media_type') == common_objects.ContentType.BOOK.name:
             mp4_output_parent_path = pathlib.Path(f"{media_folder_path.get('content_src')}/books").resolve()
         else:
-            return
-        error_log = mp4_splitter.editor_process_txt_file(editor_metadata, media_type, mp4_output_parent_path,
-                                                         self.editor_processor)
+            print("Unknown media type")
+        error_log = mp4_splitter.editor_process_txt_file(json_request, mp4_output_parent_path, self.editor_processor)
         if not error_log:
-            mp4_splitter.update_processed_file(editor_metadata.get('txt_file_name'), EDITOR_PROCESSED_LOG)
-
+            mp4_splitter.update_processed_file(json_request.get('file_name'), EDITOR_PROCESSED_LOG)
         return error_log
 
     def editor_get_process_metadata(self):

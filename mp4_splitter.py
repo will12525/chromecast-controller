@@ -1,3 +1,4 @@
+import json
 import queue
 import pathlib
 import subprocess
@@ -36,7 +37,6 @@ class EmptyTextFile(ValueError):
 
 
 def check_valid_file(file_path, ext):
-    print(file_path)
     if not file_path.exists() or not file_path.is_file() or not file_path.suffix == ext:
         return {"message": "Missing file", "value": str(file_path.name)}
 
@@ -75,7 +75,7 @@ def convert_timestamp(timestamp_str, error_list):
 
 
 class SubclipMetadata:
-    subclip_metadata_list = None
+    subclip_metadata = None
     media_title = None
     start_time = None
     end_time = None
@@ -86,7 +86,7 @@ class SubclipMetadata:
 
     def __init__(self, subclip_metadata):
         self.error_log = []
-        self.subclip_metadata_list = subclip_metadata.split(',')
+        self.subclip_metadata = subclip_metadata
 
     def extract_int(self, extraction_int, extraction_err_msg):
         extracted_int = None
@@ -137,12 +137,11 @@ class MovieSubclipMetadata(SubclipMetadata):
     year = None
 
     def __init__(self, subclip_metadata, source_file_path, destination_file_path, media_title):
-        subclip_metadata = subclip_metadata.strip()
         super().__init__(subclip_metadata)
-        if len(self.subclip_metadata_list) == 4:
-            self.extract_media_title(self.subclip_metadata_list[0])
-            self.year = self.extract_int(self.subclip_metadata_list[1], "year")
-            self.extract_start_end_times(self.subclip_metadata_list[2], self.subclip_metadata_list[3])
+        if len(self.subclip_metadata) == 4:
+            self.extract_media_title(self.subclip_metadata.get("media_title"))
+            self.year = self.extract_int(self.subclip_metadata.get("year"), "year")
+            self.extract_start_end_times(self.subclip_metadata.get("start_time"), self.subclip_metadata.get("end_time"))
         else:
             self.error_log.append({"message": "Missing content", "value": subclip_metadata})
 
@@ -173,12 +172,11 @@ class BookSubclipMetadata(SubclipMetadata):
     author = ""
 
     def __init__(self, subclip_metadata, source_file_path, destination_file_path, media_title):
-        subclip_metadata = subclip_metadata.strip()
         super().__init__(subclip_metadata)
-        if len(self.subclip_metadata_list) == 4:
-            self.extract_media_title(self.subclip_metadata_list[0])
-            self.author = self.extract_str(self.subclip_metadata_list[1], "author")
-            self.extract_start_end_times(self.subclip_metadata_list[2], self.subclip_metadata_list[3])
+        if len(self.subclip_metadata) == 4:
+            self.extract_media_title(self.subclip_metadata.get("media_title"))
+            self.author = self.extract_str(self.subclip_metadata.get("author"), "author")
+            self.extract_start_end_times(self.subclip_metadata.get("start_time"), self.subclip_metadata.get("end_time"))
         else:
             self.error_log.append({"message": "Missing content", "value": subclip_metadata})
 
@@ -211,17 +209,15 @@ class TvShowSubclipMetadata(SubclipMetadata):
     episode_index = None
 
     def __init__(self, subclip_metadata, source_file_path, destination_file_path, media_title):
-        subclip_metadata = subclip_metadata.strip()
         super().__init__(subclip_metadata)
-
-        if len(self.subclip_metadata_list) == 2:
-            self.extract_start_end_times(self.subclip_metadata_list[0], self.subclip_metadata_list[1])
-        elif len(self.subclip_metadata_list) == 6:
-            self.extract_playlist_title(self.subclip_metadata_list[0])
-            self.extract_media_title(self.subclip_metadata_list[1])
-            self.extract_season_index(self.subclip_metadata_list[2])
-            self.extract_episode_index(self.subclip_metadata_list[3])
-            self.extract_start_end_times(self.subclip_metadata_list[4], self.subclip_metadata_list[5])
+        if len(self.subclip_metadata) == 2:
+            self.extract_start_end_times(self.subclip_metadata.get("start_time"), self.subclip_metadata.get("end_time"))
+        elif len(self.subclip_metadata) == 6:
+            self.extract_playlist_title(self.subclip_metadata.get("playlist_title"))
+            self.extract_media_title(self.subclip_metadata.get("media_title"))
+            self.extract_season_index(self.subclip_metadata.get("season_index"))
+            self.extract_episode_index(self.subclip_metadata.get("episode_index"))
+            self.extract_start_end_times(self.subclip_metadata.get("start_time"), self.subclip_metadata.get("end_time"))
         else:
             self.error_log.append({"message": "Missing content", "value": subclip_metadata})
         if source_file_path and destination_file_path and media_title:
@@ -273,51 +269,57 @@ class TvShowSubclipMetadata(SubclipMetadata):
 
 
 def convert_txt_to_sub_clip(txt_line, media_type, error_log, source_file_path, destination_file_path, media_title):
-    if media_type == ContentType.TV.value:
+    if media_type in [ContentType.TV.name, ContentType.RAW.name]:
         return TvShowSubclipMetadata(txt_line, source_file_path, destination_file_path, media_title)
-    elif media_type == ContentType.MOVIE.value:
+    elif media_type == ContentType.MOVIE.name:
         return MovieSubclipMetadata(txt_line, source_file_path, destination_file_path, media_title)
-    elif media_type == ContentType.BOOK.value:
+    elif media_type == ContentType.BOOK.name:
         return BookSubclipMetadata(txt_line, source_file_path, destination_file_path, media_title)
     else:
         error_log.append({"message": "Unsupported content type", "value": media_type})
 
 
-def get_sub_clips_from_txt_file(media_type, txt_file_path, mp4_output_parent_path, sub_clips, error_log):
-    txt_file_content = []
-    mp4_file_path = txt_file_path.with_suffix(".mp4")
+def get_sub_clips_from_txt_file(media_type, file_path, mp4_output_parent_path, sub_clips, error_log):
+    file_content = {}
+    mp4_file_path = file_path.with_suffix(".mp4")
 
-    if error := check_valid_file(txt_file_path, ".txt"):
+    if error := check_valid_file(file_path, ".json"):
         error_log.append(error)
     else:
-        txt_file_content = config_file_handler.load_txt_file_content(txt_file_path)
+        file_content = config_file_handler.load_json_file_content(file_path)
 
     if error := check_valid_file(mp4_file_path, ".mp4"):
         error_log.append(error)
 
-    if txt_file_content:
-        for index, file_content_line in enumerate(txt_file_content):
-            if sub_clip := convert_txt_to_sub_clip(file_content_line, media_type, error_log, mp4_file_path,
+    if file_content:
+        for index, splitter_content in enumerate(file_content.get("splitter_content")):
+            splitter_content["playlist_title"] = file_content.get("playlist_title", "")
+            if sub_clip := convert_txt_to_sub_clip(splitter_content, media_type, error_log, mp4_file_path,
                                                    mp4_output_parent_path, chr(ALPHANUMERIC_INDEX_A + index)):
                 if sub_clip.error_log:
                     sub_clip.error_log.append({"message": "Failing line index", "value": index})
                 sub_clips.append(sub_clip)
     else:
-        error_log.append({"message": "Text file empty", "value": txt_file_path.name})
+        error_log.append({"message": "Text file empty", "value": file_path.name})
 
 
-def editor_process_txt_file(editor_metadata, media_type, mp4_output_parent_path, editor_processor):
+def editor_save_file(file_path, file_content):
+    config_file_handler.save_json_file_content(file_path, file_content)
+
+
+def editor_process_txt_file(json_request, mp4_output_parent_path, editor_processor):
     error_log = []
     sub_clips = []
     raw_folder = config_file_handler.load_json_file_content().get('editor_raw_folder')
 
-    txt_file = f"{raw_folder}{editor_metadata.get('txt_file_name')}"
+    txt_file = f"{raw_folder}{json_request.get('file_name')}"
     txt_file_path = pathlib.Path(txt_file).resolve()
 
-    if editor_metadata.get('txt_file_content'):
-        config_file_handler.save_txt_file_content(txt_file_path, editor_metadata.get('txt_file_content'))
+    if json_request.get('splitter_content'):
+        editor_save_file(txt_file_path, json_request)
 
-    get_sub_clips_from_txt_file(media_type, txt_file_path, mp4_output_parent_path, sub_clips, error_log)
+    get_sub_clips_from_txt_file(json_request.get('media_type'), txt_file_path, mp4_output_parent_path, sub_clips,
+                                error_log)
 
     if not error_log and editor_processor:
         editor_processor.add_cmds_to_queue(sub_clips, error_log)
@@ -327,15 +329,9 @@ def editor_process_txt_file(editor_metadata, media_type, mp4_output_parent_path,
 
     if error_log:
         error_log.append(
-            {"message": "Errors occurred while processing file", "value": editor_metadata.get('txt_file_name')})
+            {"message": "Errors occurred while processing file", "value": json_request.get('file_name')})
 
     return error_log
-
-
-def editor_save_txt_file(txt_file, txt_file_content):
-    raw_folder = config_file_handler.load_json_file_content().get('editor_raw_folder')
-    txt_file_path = pathlib.Path(f"{raw_folder}{txt_file}").resolve()
-    config_file_handler.save_txt_file_content(txt_file_path, txt_file_content)
 
 
 def update_processed_file(txt_file_name, editor_processed_log):
@@ -354,74 +350,73 @@ def update_processed_file(txt_file_name, editor_processed_log):
     config_file_handler.save_json_file_content(editor_metadata_file_path, editor_metadata_content)
 
 
-def editor_validate_txt_file(txt_file_name, media_type, mp4_output_parent_path):
+def editor_validate_txt_file(file_name, media_type, mp4_output_parent_path):
     error_log = []
     sub_clips = []
     raw_folder = config_file_handler.load_json_file_content().get('editor_raw_folder')
-    txt_file = f"{raw_folder}{txt_file_name}"
-    txt_file_path = pathlib.Path(txt_file).resolve()
+    file_sub_path = f"{raw_folder}{file_name}"
+    file_path = pathlib.Path(file_sub_path).resolve()
 
-    get_sub_clips_from_txt_file(media_type, txt_file_path, mp4_output_parent_path, sub_clips, error_log)
+    get_sub_clips_from_txt_file(media_type, file_path, mp4_output_parent_path, sub_clips, error_log)
     for sub_clip in sub_clips:
         error_log.extend(sub_clip.error_log)
     return error_log
 
 
-def get_editor_txt_files(editor_raw_folder):
+def get_editor_files(editor_raw_folder):
     raw_path = pathlib.Path(editor_raw_folder).resolve()
-    editor_txt_files = []
+    editor_files = []
     for editor_mp4_file in list(sorted(raw_path.rglob(mp4_file_ext))):
         if "old" not in editor_mp4_file.parts:
-            editor_txt_file_path = pathlib.Path(str(editor_mp4_file).replace("mp4", "txt")).resolve()
+            editor_file_path = pathlib.Path(str(editor_mp4_file).replace("mp4", "json")).resolve()
             try:
-                editor_txt_file_path.touch()
-                editor_txt_files.append(editor_txt_file_path)
-            except PermissionError as e:
-                print(f"ERROR: Failed to create text file: {editor_txt_file_path}")
+                editor_file_path.touch()
+                editor_files.append(editor_file_path)
+            except PermissionError:
+                print(f"ERROR: Failed to create text file: {editor_file_path}")
+    return editor_files
 
-    return editor_txt_files
 
-
-def check_editor_txt_file_processed(editor_metadata_file, editor_txt_file_names):
+def check_editor_file_processed(editor_metadata_file, editor_file_names):
     editor_txt_file_processed = []
     metadata_file = pathlib.Path(editor_metadata_file).resolve()
     metadata_file_content = config_file_handler.load_json_file_content(metadata_file)
-    for editor_txt_file in editor_txt_file_names:
-        if editor_txt_file in metadata_file_content:
+    for editor_file in editor_file_names:
+        if editor_file in metadata_file_content:
             editor_txt_file_processed.append({
-                "file_name": editor_txt_file,
-                "processed": metadata_file_content.get(editor_txt_file).get("processed")
+                "file_name": editor_file,
+                "processed": metadata_file_content.get(editor_file).get("processed")
             })
         else:
             editor_txt_file_processed.append({
-                "file_name": editor_txt_file,
+                "file_name": editor_file,
                 "processed": False
             })
     return editor_txt_file_processed
 
 
-def get_editor_metadata(editor_raw_folder, editor_processor, selected_txt_file=None, raw_url=None, process_file=None):
+def get_editor_metadata(editor_raw_folder, editor_processor, selected_editor_file=None, raw_url=None,
+                        process_file=None):
     selected_index = 0
     editor_metadata = {}
     local_play_url = ""
-    editor_txt_files = get_editor_txt_files(editor_raw_folder)
-    editor_txt_file_names = [editor_txt_file.as_posix().replace(editor_raw_folder, "") for editor_txt_file in
-                             editor_txt_files]
+    editor_file_names = [editor_file.as_posix().replace(editor_raw_folder, "") for editor_file in
+                         get_editor_files(editor_raw_folder)]
 
-    if editor_txt_file_names:
-        if not selected_txt_file or selected_txt_file not in editor_txt_file_names:
-            selected_txt_file = editor_txt_file_names[selected_index]
+    if editor_file_names:
+        if not selected_editor_file or selected_editor_file not in editor_file_names:
+            selected_editor_file = editor_file_names[selected_index]
 
-        selected_txt_file_path = pathlib.Path(f"{editor_raw_folder}{selected_txt_file}").resolve()
+        selected_file_path = pathlib.Path(f"{editor_raw_folder}{selected_editor_file}").resolve()
 
         if raw_url:
-            local_play_url = f"{raw_url}{selected_txt_file.replace('.txt', '.mp4')}"
+            local_play_url = f"{raw_url}{selected_editor_file.replace('.json', '.mp4')}"
 
         editor_metadata = {
-            "txt_file_list": check_editor_txt_file_processed(f"{editor_raw_folder}{process_file}",
-                                                             editor_txt_file_names),
-            "selected_txt_file_title": selected_txt_file,
-            "selected_txt_file_content": ''.join(config_file_handler.load_txt_file_content(selected_txt_file_path)),
+            "txt_file_list": check_editor_file_processed(f"{editor_raw_folder}{process_file}",
+                                                         editor_file_names),
+            "selected_txt_file_title": selected_editor_file,
+            "selected_editor_file_content": config_file_handler.load_json_file_content(selected_file_path),
             "editor_process_metadata": editor_processor.get_metadata(),
             "local_play_url": local_play_url
         }

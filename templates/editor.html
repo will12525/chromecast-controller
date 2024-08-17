@@ -3,23 +3,101 @@
 <head><title>Media Stream</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="{{ url_for('static',filename='style.css') | safe }}">
     <link rel="stylesheet"
           href="{{ url_for('static', filename='node_modules/bootstrap-icons/font/bootstrap-icons.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='node_modules/bootstrap/dist/css/bootstrap.min.css') }}">
-    <script src="{{ url_for('static', filename='app.js') }}" type="text/javascript" language="javascript"></script>
+    <link rel="stylesheet" href="{{ url_for('static',filename='style.css') | safe }}">
     <script src="{{ url_for('static', filename='node_modules/jquery/dist/jquery.min.js') }}" type="text/javascript"
             language="javascript"></script>
     <script src="{{ url_for('static', filename='node_modules/@popperjs/core/dist/umd/popper.min.js') }}"
             type="text/javascript" language="javascript"></script>
     <script src="{{ url_for('static', filename='node_modules/bootstrap/dist/js/bootstrap.bundle.min.js') }}"
             type="text/javascript" language="javascript"></script>
-
+    <script src="{{ url_for('static', filename='app.js') }}" type="text/javascript" language="javascript"></script>
     <link rel="shortcut icon" href="#">
 </head>
-<body style="background-color:aquamarine;">
+<body>
+<template id="book_editor_template">
+    <div class="col-md-12">
+        <div class="input-group content_input_group">
+            <input type="text" placeholder="Title" class="form-control" name="media_title">
+            <input type="text" placeholder="Author" class="form-control" name="author">
+            <input type="text" placeholder="Start Time" aria-label="Start time" class="form-control"
+                   data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-title="HH:MM:SS"
+                   name="start_time">
+            <input type="text" placeholder="End Time" aria-label="End time" class="form-control"
+                   data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-title="HH:MM:SS"
+                   name="end_time">
+        </div>
+    </div>
+</template>
+<template id="movie_editor_template">
+    <div class="col-md-12">
+        <div class="input-group content_input_group">
+            <input type="text" placeholder="Title" class="form-control" name="media_title">
+            <input type="number" placeholder="Year" class="form-control" min="1900" name="year">
+            <input type="text" placeholder="Start Time" aria-label="Start time" class="form-control"
+                   data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-title="HH:MM:SS"
+                   name="start_time">
+            <input type="text" placeholder="End Time" aria-label="End time" class="form-control"
+                   data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-title="HH:MM:SS"
+                   name="end_time">
+        </div>
+    </div>
+</template>
+<template id="tv_editor_template">
+    <div class="col-md-2">
+        <input id="playlist_title" type="text" placeholder="TV Show Title" class="form-control" name="playlist_title">
+    </div>
+    <div class="col-md-10">
+        <div class="input-group content_input_group">
+            <input type="text" placeholder="Episode Title" class="form-control" name="media_title">
+            <input type="number" placeholder="Season Index" class="form-control" min="0"
+                   name="season_index">
+            <input type="number" placeholder="Episode Index" class="form-control" min="0"
+                   name="episode_index">
+            <input type="text" placeholder="Start Time" aria-label="Start time" class="form-control"
+                   data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-title="HH:MM:SS"
+                   name="start_time">
+            <input type="text" placeholder="End Time" aria-label="End time" class="form-control"
+                   data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-title="HH:MM:SS"
+                   name="end_time">
+        </div>
+    </div>
+    <div class="col-md-2">
+        <button name="add_row_button" type="button" class="btn btn-primary">+</button>
+    </div>
+    <div id="base_tv_group" class="col-md-10">
+        <div class="input-group content_input_group">
+            <input type="text" placeholder="Episode Title" class="form-control" name="media_title">
+            <input type="number" placeholder="Season Index" class="form-control" min="0"
+                   name="season_index">
+            <input type="number" placeholder="Episode Index" class="form-control" min="0"
+                   name="episode_index">
+            <input type="text" placeholder="Start Time" aria-label="Start time" class="form-control"
+                   name="start_time">
+            <input type="text" placeholder="End Time" aria-label="End time" class="form-control"
+                   name="end_time">
+        </div>
+    </div>
+</template>
+<template id="raw_editor_template">
+    <div class="col-md-2">
+        <button name="add_row_button" type="button" class="btn btn-primary">+</button>
+    </div>
+    <div id="base_raw_group" class="col-md-10">
+        <div class="input-group content_input_group">
+            <input type="text" placeholder="Start Time" aria-label="Start time" class="form-control"
+                   data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-title="HH:MM:SS"
+                   name="start_time">
+            <input type="text" placeholder="End Time" aria-label="End time" class="form-control"
+                   data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-title="HH:MM:SS"
+                   name="end_time">
+        </div>
+    </div>
+</template>
 {% include 'top_navbar.html' %}
-<div class="main-content-container container-fluid text-left">
+<div id="editor_content_input" class="main-content-container container-fluid text-left">
     <div class="row gx-2 gy-2">
         {% if 'local_play_url' %}
         <div class="col-lg-12">
@@ -30,24 +108,6 @@
         {% endif %}
     </div>
     <div class="row row-cols-auto gx-2 gy-2">
-        <div class="col-sm-auto">
-            <div class="d-grid gap-2 d-md-block">
-                <button type="button" class="btn btn-success" onclick="javascript:validate_txt_file()">Validate</button>
-                <button type="button" class="btn btn-success" onclick="javascript:save_txt_file()">Save</button>
-                <button type="button" class="btn btn-primary" onclick="javascript:process_txt_file()">Run</button>
-                <div class="btn-group">
-                    <button type="button" class="btn btn-danger dropdown-toggle" id="media_type_dropdown"
-                            data-bs-toggle="dropdown" aria-expanded="false">TV
-                    </button>
-                    <ul class="dropdown-menu">
-                        {% for media_type in media_types: %}
-                        <li><a class="dropdown-item" onclick="javascript:update_selected_media_type(this)">{{ media_type
-                            }}</a></li>
-                        {% endfor %}
-                    </ul>
-                </div>
-            </div>
-        </div>
         <div class="col-sm-1">
             <div class="form-check form-switch">
                 <input class="form-check-input" type="checkbox" role="switch" id="load_media_for_local_play">
@@ -68,33 +128,46 @@
     </div>
     <div class="row row-cols-12 gx-2 gy-2">
         <div class="col-lg-4">
-            {% if 'txt_file_list' in editor_metadata %}
-            <div class="list-group overflow-auto" style="min-height: 100%; height: 200px;">
+            <div id="editor_file_list" class="list-group overflow-auto" style="min-height: 100%; height: 200px;">
+                {% if 'txt_file_list' in editor_metadata %}
                 {% for editor_txt_file in editor_metadata['txt_file_list']: %}
                 {% if editor_txt_file['processed'] %}
-                <a style="background-color:MediumSeaGreen;" onclick="javascript:load_txt_file(this)"
+                <a style="background-color:MediumSeaGreen;"
                    class="list-group-item list-group-item-action">{{ editor_txt_file['file_name'] }}</a>
                 {% else %}
-                <a style="background-color:Tomato;" onclick="javascript:load_txt_file(this)"
+                <a style="background-color:Tomato;"
                    class="list-group-item list-group-item-action">{{ editor_txt_file['file_name'] }}</a>
                 {% endif %}
                 {% endfor %}
+                {% endif %}
             </div>
-            {% endif %}
         </div>
         <div class="col-lg-8">
-            <label for="editor_txt_file_content" class="form-label">File name: <span
-                    id="editor_txt_file_name">{{ editor_metadata['selected_txt_file_title'] }}</span></label>
-            <textarea class="form-control" id="editor_txt_file_content" rows="15"
-                      style="white-space: nowrap;overflow: auto;">{{ editor_metadata['selected_txt_file_content'] }}</textarea>
-            <p>Examples:<br/>show name, episode name, season index, episode index, start time, end time<br/>Hilda,
-                Hildas a Troll!, 2, 1, 7:02, 13:43
+            <p class="form-label">File name: <span id="editor_txt_file_name">{{ editor_metadata['selected_txt_file_title'] }}</span>
             </p>
+            <form id="splitter_form_container" class="row g-3">
+                <div class="col-12">
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-danger dropdown-toggle" id="media_type_dropdown"
+                                data-bs-toggle="dropdown" aria-expanded="false">{{ media_types[0] }}
+                        </button>
+                        <ul id="media_type_btn_group" class="dropdown-menu">
+                            {% for media_type in media_types: %}
+                            <li><a class="dropdown-item">{{ media_type }}</a></li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    <button id="validate_button" type="submit" class="btn btn-success">Validate</button>
+                    <button id="save_button" type="submit" class="btn btn-success">Save</button>
+                    <button id="run_button" type="submit" class="btn btn-primary">Run</button>
+                </div>
+                <div id="form_editor_page" class="col-lg-12 row g-3 my_form">
+                </div>
+            </form>
         </div>
         <div class="col-lg-4">
-            <!--                <label for="editor_process_queue" class="form-label">Process queue</label>-->
-            <div class="list-group overflow-auto" id="editor_process_queue"
-                 style="min-height: 100%; height: 200px;">
+            <div id="editor_process_queue" class="list-group overflow-auto"
+                 style="min-height: 100%; height: 400px;">
             </div>
         </div>
         <div class="col-lg-8">

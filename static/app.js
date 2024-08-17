@@ -15,6 +15,26 @@ String.prototype.toHHMMSS = function () {
     if (seconds < 10) {seconds = "0"+seconds;}
     return hours+":"+minutes+":"+seconds;
 };
+async function fetchAndSetData(url, data) {
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    let response_data = await response.json();
+    return response_data;
+  } catch (error) {
+    console.error('Error fetching data:', error);
+    // Handle errors (display message, retry, etc.)
+  }
+
+}
 
 async function connectChromecast(chromecast_id) {
     var url = "/connect_chromecast";
@@ -259,7 +279,6 @@ async function update_media_container(response_data) {
     });
 }
 
-
 async function queryDB(data) {
     document.getElementById("rainbow_loading_bar").hidden = false
     const url = "/query_db";
@@ -274,14 +293,14 @@ async function queryDB(data) {
         .catch(error => console.error(error));
 }
 
-function getSelectedCheckboxes(listGroup) {
+function get_selected_checkboxes(listGroup) {
   const checkboxes = listGroup.querySelectorAll('input[type="checkbox"]:checked');
   return Array.from(checkboxes).map(checkbox => checkbox.value);
 }
 
 async function query_db_get_all_filters(event) {
     let data = {
-        "tag_list": getSelectedCheckboxes(document.getElementById("tag_list_group")),
+        "tag_list": get_selected_checkboxes(document.getElementById("tag_list_group")),
         "container_dict": {}
     };
     queryDB(data)
@@ -322,85 +341,272 @@ async function play_media(content_id, parent_container_id=null) {
 }
 
 async function update_editor_log(response_data) {
-        editor_txt_file_log = document.getElementById("editor_txt_file_log");
-        prepend_text = "";
-        console.log(response_data)
+    editor_txt_file_log = document.getElementById("editor_txt_file_log");
+    prepend_text = "";
 
-        if (response_data["message"] !== undefined) {
-            prepend_text += response_data["message"];
+    if (response_data["message"] !== undefined) {
+        prepend_text += response_data["message"];
+    }
+    if (response_data["file_name"] !== undefined) {
+        prepend_text += ": " + response_data["file_name"];
+    }
+    if (response_data["expected_path"] !== undefined) {
+        prepend_text += ": " + response_data["expected_path"];
+    }
+    if (response_data["value"] !== undefined) {
+        prepend_text += ": " + response_data["value"];
+    }
+    editor_txt_file_log.value = prepend_text + "\n" + editor_txt_file_log.value;
+}
+
+async function populate_splitter_form(response_data) {
+
+    const form_editor_page = document.getElementById("form_editor_page");
+    if (response_data["playlist_title"] !== undefined) {
+        var playlist_title = form_editor_page.querySelector("#playlist_title");
+        if (playlist_title) {
+            playlist_title.value = response_data["playlist_title"];
         }
-        if (response_data["file_name"] !== undefined) {
-            prepend_text += ": " + response_data["file_name"];
+    }
+    if (response_data["splitter_content"] !== undefined && response_data["splitter_content"].length) {
+        var form_input_groups = form_editor_page.querySelectorAll(".content_input_group");
+        var form_need_difference = response_data["splitter_content"].length - form_input_groups.length
+        if (form_need_difference > 0) {
+            var add_row_button = form_editor_page.querySelector('button[name="add_row_button"]');
+            if(add_row_button) {
+                for (let i = 0; i < form_need_difference; i++) {
+                    add_row_button.click()
+                }
+            }
         }
-        if (response_data["expected_path"] !== undefined) {
-            prepend_text += ": " + response_data["expected_path"];
+        form_input_groups = form_editor_page.querySelectorAll(".content_input_group");
+        for (let i = 0; i < response_data["splitter_content"].length; i++) {
+            splitter_content_data = response_data["splitter_content"][i];
+            if (form_input_groups[i] !== undefined) {
+                var form_inputs = form_input_groups[i].querySelectorAll('input');
+                form_inputs.forEach(form_input => {
+                    if (form_input.name in splitter_content_data) {
+                        form_input.value = splitter_content_data[form_input.name]
+                    }
+                });
+            }
         }
-        if (response_data["value"] !== undefined) {
-            prepend_text += ": " + response_data["value"];
-        }
-        editor_txt_file_log.value = prepend_text + "\n" + editor_txt_file_log.value;
+    }
+}
+
+async function populate_splitter_process_queue(response_data) {
+    const process_queue_list = []
+
+    const queue_item_li = document.createElement("li");
+    queue_item_li.classList.add("list-group-item")
+
+    const queue_item_text = document.createElement("h5");
+    queue_item_text.classList.add("mb-1");
+    queue_item_text.appendChild(document.createTextNode(response_data["process_name"]));
+    queue_item_li.appendChild(queue_item_text);
+
+    if (response_data["process_name"] != "Split queue empty") {
+        const queue_item_progress = document.createElement("div");
+        queue_item_progress.classList.add("progress")
+        queue_item_progress.setAttribute("role", "progressbar");
+        queue_item_progress.setAttribute("aria-valuemin", "0");
+        queue_item_progress.setAttribute("aria-valuemax", "100");
+        queue_item_progress.setAttribute("aria-valuenow", response_data["percent_complete"]);
+        const queue_item_progress_bar = document.createElement("div");
+        queue_item_progress_bar.classList.add("progress-bar-striped")
+        queue_item_progress_bar.classList.add("bg-info")
+        queue_item_progress_bar.setAttribute("style", 'width: '.concat(response_data["percent_complete"], "%"));
+
+        queue_item_progress.appendChild(queue_item_progress_bar);
+        queue_item_li.appendChild(queue_item_progress);
+    }
+    process_queue_list.push(queue_item_li)
+
+    for (const queue_item of response_data["process_queue"]) {
+        const queue_item_li = document.createElement("li");
+        queue_item_li.classList.add("list-group-item")
+        const queue_item_text = document.createTextNode(queue_item);
+        queue_item_li.appendChild(queue_item_text);
+        process_queue_list.push(queue_item_li)
+
+    }
+    document.getElementById("editor_process_metadata_end_time").innerText = response_data["process_end_time"];
+    document.getElementById("editor_process_metadata_queue_size").innerText = response_data["process_queue_size"];
+    document.getElementById("editor_process_queue").replaceChildren(...process_queue_list)
 }
 
 async function update_editor_webpage(response_data) {
     if (response_data["selected_txt_file_title"] !== undefined) {
         document.getElementById("editor_txt_file_name").innerHTML = response_data["selected_txt_file_title"];
     }
-    if (response_data["selected_txt_file_content"] !== undefined) {
-        document.getElementById("editor_txt_file_content").value = response_data["selected_txt_file_content"];
+    if (response_data["selected_editor_file_content"] !== undefined && response_data["selected_editor_file_content"]["media_type"] !== undefined) {
+        update_selected_media_type(response_data["selected_editor_file_content"]["media_type"])
+        populate_splitter_form(response_data["selected_editor_file_content"])
+    } else {
+        update_selected_media_type("RAW")
+
     }
     if (response_data["error"] !== undefined) {
           update_editor_log(response_data?.error)
     }
+}
+
+async function update_editor_process_queue(response_data) {
     if (response_data["process_log"] !== undefined) {
         response_data?.process_log.forEach((element) => update_editor_log(element));
     }
 
     if (response_data["process_queue"] !== undefined && response_data["process_name"] !== undefined && response_data["process_end_time"] !== undefined && response_data["process_queue_size"] !== undefined) {
-        const process_queue_list = []
-
-        const queue_item_li = document.createElement("li");
-        queue_item_li.classList.add("list-group-item")
-
-        const queue_item_text = document.createElement("h5");
-        queue_item_text.classList.add("mb-1");
-        queue_item_text.appendChild(document.createTextNode(response_data["process_name"]));
-        queue_item_li.appendChild(queue_item_text);
-
-        if (response_data["process_name"] != "Split queue empty") {
-            const queue_item_progress = document.createElement("div");
-            queue_item_progress.classList.add("progress")
-            queue_item_progress.setAttribute("role", "progressbar");
-            queue_item_progress.setAttribute("aria-valuemin", "0");
-            queue_item_progress.setAttribute("aria-valuemax", "100");
-            queue_item_progress.setAttribute("aria-valuenow", response_data["percent_complete"]);
-            const queue_item_progress_bar = document.createElement("div");
-            queue_item_progress_bar.classList.add("progress-bar-striped")
-            queue_item_progress_bar.classList.add("bg-info")
-            queue_item_progress_bar.setAttribute("style", 'width: '.concat(response_data["percent_complete"], "%"));
-
-            queue_item_progress.appendChild(queue_item_progress_bar);
-            queue_item_li.appendChild(queue_item_progress);
-        }
-        process_queue_list.push(queue_item_li)
-
-        for (const queue_item of response_data["process_queue"]) {
-            const queue_item_li = document.createElement("li");
-            queue_item_li.classList.add("list-group-item")
-            const queue_item_text = document.createTextNode(queue_item);
-            queue_item_li.appendChild(queue_item_text);
-            process_queue_list.push(queue_item_li)
-
-        }
-//        document.getElementById("editor_process_metadata_name").innerText = response_data["process_name"];
-        document.getElementById("editor_process_metadata_end_time").innerText = response_data["process_end_time"];
-        document.getElementById("editor_process_metadata_queue_size").innerText = response_data["process_queue_size"];
-        document.getElementById("editor_process_queue").replaceChildren(...process_queue_list)
+        populate_splitter_process_queue(response_data)
     }
 }
 
 async function clear_editor_log() {
     document.getElementById("editor_txt_file_log").value = "";
 }
+
+async function load_txt_file(file_name) {
+    fetchAndSetData('/load_txt_file', {"editor_txt_file_name": file_name}).then(response_data => {
+        update_editor_webpage(response_data);
+        if (document.getElementById("load_media_for_local_play").checked && response_data["local_play_url"] !== undefined) {
+            update_local_media_player(response_data["local_play_url"])
+        }
+        update_editor_process_queue(response_data);
+    }).catch(error => {
+        console.error('Error:', error);
+    });
+}
+
+async function save_txt_file(content_data) {
+    fetchAndSetData('/save_txt_file', content_data).then(response_data => {
+        update_editor_process_queue(response_data);
+    }).catch(error => {
+        console.error('Error:', error);
+    });
+}
+
+async function validate_txt_file(content_data) {
+    fetchAndSetData('/validate_txt_file', content_data).then(response_data => {
+        update_editor_process_queue(response_data);
+    }).catch(error => {
+        console.error('Error:', error);
+    });
+}
+
+async function process_txt_file(content_data) {
+    fetchAndSetData('/process_txt_file', content_data).then(response_data => {
+        update_editor_process_queue(response_data);
+    }).catch(error => {
+        console.error('Error:', error);
+    });
+}
+
+async function updateEditorMetadata() {
+    if (document.getElementById("editor_process_queue"))
+    {
+        fetchAndSetData('/process_metadata', {}).then(response_data => {
+            update_editor_process_queue(response_data); // Do something with the data
+        }).catch(error => {
+            console.error('Error:', error);
+        });
+    }
+}
+
+async function update_selected_media_type(selected_content) {
+    var media_type_template_str = "raw_editor_template";
+    var append_row_val = ""
+
+    document.getElementById("media_type_dropdown").innerHTML = selected_content;
+    if (selected_content == "RAW") {
+        media_type_template_str = "raw_editor_template"
+        append_row_val = "base_raw_group"
+    } else if (selected_content == "TV") {
+        media_type_template_str = "tv_editor_template"
+        append_row_val = "base_tv_group"
+    } else if (selected_content == "MOVIE") {
+        media_type_template_str = "movie_editor_template"
+    } else if (selected_content == "BOOK") {
+        media_type_template_str = "book_editor_template"
+    } else {
+        console.log("Unknown")
+    }
+    const templateElement = document.getElementById(media_type_template_str);
+    const templateContent = templateElement.innerHTML;
+    const targetElement = document.getElementById("form_editor_page");
+    targetElement.innerHTML = templateContent;
+    if (append_row_val)
+    {
+        var add_row_button = document.querySelector('button[name="add_row_button"]');
+        add_row_button.addEventListener('click', () => {
+            add_content_row(append_row_val)
+        });
+    }
+}
+
+async function add_content_row(template_id) {
+    var form_editor_page = document.getElementById("form_editor_page")
+    var empty_div = document.createElement("div");
+    empty_div.classList.add("col-md-2")
+    form_editor_page.appendChild(empty_div);
+    var cloned_element = document.getElementById(template_id).cloneNode(true)
+    const form_inputs = cloned_element.querySelectorAll('input'); // Select visible inputs
+    form_inputs.forEach(input => {
+        input.value = null
+    });
+    form_editor_page.appendChild(cloned_element)
+}
+
+function extract_form_data() {
+    const form_editor_page = document.getElementById("form_editor_page");
+
+    var media_type = document.getElementById("media_type_dropdown").innerHTML.trim()
+    let form_data = {
+        "splitter_content":[],
+        "media_type": media_type,
+        "file_name": document.getElementById("editor_txt_file_name").textContent
+    }
+    var playlist_title = form_editor_page.querySelector("#playlist_title");
+    if (playlist_title)
+    {
+        form_data["playlist_title"] = playlist_title.value
+    }
+    var form_input_groups = form_editor_page.querySelectorAll('.content_input_group'); // Select visible inputs
+    if (form_input_groups.length > 0) { // Check if there are any groups
+        form_input_groups.forEach(form_input_group => {
+            const form_inputs = form_input_group.querySelectorAll('input');
+
+            if (form_inputs.length > 0) { // Check if there are any inputs in the group
+                let data = {};
+                form_inputs.forEach(input => {
+                    data[input.name] = input.value;
+                });
+                const allValuesFilled = Object.values(data).every(value => value !== ''); // Check values of data object
+                if (allValuesFilled) {
+                    form_data["splitter_content"].push(data);
+                }
+            }
+        });
+    }
+    return form_data
+}
+
+async function handle_splitter_form_container_submit(event) {
+    event.preventDefault(); // Prevent default form submission
+    const clickedButton = event.submitter; // Get the clicked button
+    // RAW: start_time, end_time
+    // TV: Show title, media_title, season_index, episode_index, start_time, end_time
+    // MOVIE: media_title, year, start_time, end_time
+    // BOOK: media_title, author, start_time, end_time
+    let form_data = extract_form_data();
+    if (clickedButton.id === 'validate_button') {
+        validate_txt_file(form_data)
+    } else if (clickedButton.id === 'save_button') {
+        save_txt_file(form_data)
+    } else if (clickedButton.id === 'run_button') {
+        process_txt_file(form_data)
+    }
+}
+
 async function edit_metadata_modal_save(container_id, content_id, reference_item) {
     var url = "/update_media_metadata";
     let data = {
@@ -441,110 +647,6 @@ async function edit_metadata_modal_open(container_id, content_id, title, img_src
     save_button.addEventListener('click', clickHandler);
 }
 
-async function load_txt_file(element) {
-    var url = "/load_txt_file";
-    var editor_txt_file_name = element.textContent;
-    let data = {
-        "editor_txt_file_name": editor_txt_file_name
-    };
-    console.log(data)
-    let response = await fetch(url, {
-        "method": "POST",
-        "headers": {"Content-Type": "application/json"},
-        "body": JSON.stringify(data),
-    });
-    // Send POST request
-    if (!response.ok) {
-        throw new Error("HTTP ERROR FAILED: " + response.status);
-    } else {
-        response_data = await response.json()
-        update_editor_webpage(response_data);
-        if (document.getElementById("load_media_for_local_play").checked) {
-            if (response_data["local_play_url"] !== undefined) {
-                update_local_media_player(response_data["local_play_url"])
-            }
-        }
-    }
-}
-
-async function save_txt_file() {
-    var url = "/save_txt_file";
-    const editor_txt_file_name = document.getElementById("editor_txt_file_name");
-    const editor_txt_file_content = document.getElementById("editor_txt_file_content");
-    let data = {
-        "txt_file_name": editor_txt_file_name.textContent,
-        "txt_file_content": editor_txt_file_content.value
-    };
-    // Send POST request
-    let response = await fetch(url, {
-        "method": "POST",
-        "headers": {"Content-Type": "application/json"},
-        "body": JSON.stringify(data),
-    });
-    if (!response.ok) {
-        throw new Error("HTTP ERROR FAILED: " + response.status);
-    } else {
-        update_editor_webpage(await response.json());
-    }
-}
-
-async function validate_txt_file() {
-    var url = "/validate_txt_file";
-    const editor_txt_file_name = document.getElementById("editor_txt_file_name");
-    const editor_txt_file_content = document.getElementById("editor_txt_file_content");
-    const media_type_dropdown = document.getElementById("media_type_dropdown");
-    let data = {
-        "txt_file_name": editor_txt_file_name.textContent,
-        "txt_file_content": editor_txt_file_content.value,
-        "media_type": media_type_dropdown.innerText.trim()
-    };
-    // Send POST request
-    let response = await fetch(url, {
-        "method": "POST",
-        "headers": {"Content-Type": "application/json"},
-        "body": JSON.stringify(data),
-    });
-    if (!response.ok) {
-        throw new Error("HTTP ERROR FAILED: " + response.status);
-    } else {
-        update_editor_webpage(await response.json());
-    }
-}
-
-async function process_txt_file() {
-    var url = "/process_txt_file";
-    const editor_txt_file_name = document.getElementById("editor_txt_file_name");
-    const editor_txt_file_content = document.getElementById("editor_txt_file_content");
-    const media_type_dropdown = document.getElementById("media_type_dropdown");
-    let data = {
-        "txt_file_name": editor_txt_file_name.textContent,
-        "txt_file_content": editor_txt_file_content.value,
-        "media_type": media_type_dropdown.innerText.trim()
-
-    };
-    let response = await fetch(url, {
-        "method": "POST",
-        "headers": {"Content-Type": "application/json"},
-        "body": JSON.stringify(data),
-    });
-    if (!response.ok) {
-        throw new Error("HTTP ERROR FAILED: " + response.status);
-    } else {
-        update_editor_webpage(await response.json());
-    }
-}
-
-async function updateEditorMetadata() {
-    if (document.getElementById("editor_process_queue"))
-    {
-        var url = "/process_metadata";
-        let response = await fetch(url);
-        if (response.ok) {
-            update_editor_webpage(await response.json())
-        }
-    }
-}
-
 async function scan_media_directories() {
     var url = "/scan_media_directories";
     let data = {};
@@ -560,10 +662,6 @@ async function scan_media_directories() {
         "body": JSON.stringify(data),
     });
     button_element.classList.remove(disable_class);
-}
-
-async function update_selected_media_type(selected_li) {
-    document.getElementById("media_type_dropdown").innerHTML = selected_li.innerText;
 }
 
 async function updateSeekSelector() {
@@ -648,35 +746,52 @@ async function load_tv_shows() {
     queryDB(data)
 }
 
-async function load_movies() {
-    let data = {
-        "tag_list": ["movie"],
-        "container_dict": {}
-    };
-    queryDB(data)
+
+function setup_editor_page() {
+    const media_type_btn_group = document.getElementById('media_type_btn_group');
+    if (media_type_btn_group !== null)
+    {
+        media_type_btn_group.addEventListener('click', (event) => {
+            if (event.target.tagName === 'A') {
+                form_data = extract_form_data();
+                update_selected_media_type(event.target.textContent)
+
+                fetchAndSetData('/load_txt_file', {"editor_txt_file_name": form_data["file_name"]}).then(response_data => {
+                    if (response_data["selected_editor_file_content"] !== undefined) {
+                        populate_splitter_form(response_data["selected_editor_file_content"])
+                    }
+                }).catch(error => {
+                    console.error('Error:', error);
+                });
+            }
+        });
+    }
+
+    var editor_file_list = document.getElementById('editor_file_list');
+    if (editor_file_list !== null)
+    {
+        editor_file_list.addEventListener('click', (event) => {
+            if (event.target.tagName === 'A') {
+                load_txt_file(event.target.textContent)
+            }
+        });
+        const first_file_element = editor_file_list.querySelector('a');
+        if (first_file_element) {
+            load_txt_file(first_file_element.textContent)
+        }
+    }
+
+    const form = document.getElementById('splitter_form_container');
+    form.addEventListener('submit', handle_splitter_form_container_submit);
+    setInterval(updateEditorMetadata, 5000);
+
 }
 
-document.addEventListener("DOMContentLoaded", function(event){
-    var chromecast_menu = document.getElementById("chromecast_menu");
-    if (chromecast_menu !== null)
+function setup_media_page() {
+    var tag_list_group = document.getElementById('tag_list_group');
+    if (tag_list_group !== null)
     {
-        chromecast_menu.addEventListener("click", getChromecastList.bind(null));
-    }
-    var chromecast_disconnect_button = document.getElementById("chromecast_disconnect_button");
-    if (chromecast_disconnect_button !== null)
-    {
-        chromecast_disconnect_button.addEventListener("click", disconnectChromecast.bind(null));
-    }
-    var local_play_button = document.getElementById("local_play_button");
-    if (local_play_button !== null)
-    {
-        local_play_button.addEventListener("click", connect_local_player.bind(null));
-    }
-
-    var listGroup = document.getElementById('tag_list_group');
-    if (listGroup !== null)
-    {
-        listGroup.addEventListener('change', (event) => {
+        tag_list_group.addEventListener('change', (event) => {
             if (event.target.type === 'checkbox') {
                 query_db_get_all_filters(event)
             }
@@ -687,18 +802,49 @@ document.addEventListener("DOMContentLoaded", function(event){
     {
         modal_metadata_save.addEventListener('click', clickHandler);
     }
+    load_tv_shows()
+}
 
-    setInterval(updateSeekSelector, 1000);
-    setInterval(updateEditorMetadata, 5000);
+function setup_nav_bars() {
+    var chromecast_menu = document.getElementById("chromecast_menu");
+    if (chromecast_menu !== null)
+    {
+        chromecast_menu.addEventListener("click", getChromecastList);
+    }
+    var chromecast_disconnect_button = document.getElementById("chromecast_disconnect_button");
+    if (chromecast_disconnect_button !== null)
+    {
+        chromecast_disconnect_button.addEventListener("click", disconnectChromecast);
+    }
+    var local_play_button = document.getElementById("local_play_button");
+    if (local_play_button !== null)
+    {
+        local_play_button.addEventListener("click", connect_local_player);
+    }
     getChromecastList();
     setNavbarLinks();
     setMediaControlButtons();
+    setInterval(updateSeekSelector, 1000);
+}
+
+document.addEventListener("DOMContentLoaded", function(event){
+
+    setup_nav_bars()
 
     var main_media_content = document.getElementById("mediaContentSelectDiv");
     if (main_media_content !== null)
     {
-        load_tv_shows()
+        setup_media_page()
     }
+
+    var editor_content_input = document.getElementById("editor_content_input");
+    if (editor_content_input !== null)
+    {
+        setup_editor_page()
+    }
+
+    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
+    const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl))
 });
 
 

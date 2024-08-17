@@ -16,19 +16,38 @@ from werkzeug.utils import secure_filename
 from database_handler.db_setter import DBCreatorV2
 
 
-# TODO: Update media grid to dynamically update rather than page reload
-# TODO: Update all js function references to event listeners on js side
-# TODO: Add monitoring of storage space
-# TODO: Prevent media additions if space is low
-# TODO: Add notification when media scan completes
-# TODO: Prevent additional scans from occurring while scan in progress
-# TODO: Update chromecast menu auto populate to remove missing chromecasts
-# TODO: Convert chromecast name strings to id values and use ID values to refer to chromecasts
-# TODO: Make local media player: https://www.tutorialspoint.com/opencv_python/opencv_python_play_video_file.htm
+# TODO: UI
+# TODO: Notify user when media scan completes
+# TODO: All content containers shall be playable
+# TODO: The user shall have the ability to quickly play a random content
 
-# TODO: Add play button to all media content
-# TODO: Add random play button
-# TODO:
+# TODO: Application split
+# TODO: Create server client connections
+# TODO: Enable db content sharing
+# TODO: Enable media_content distribution
+# TODO: Isolate editor from player
+# TODO: Remove editor from client
+
+# TODO: PLAYER
+# TODO: Make local media player: https://www.tutorialspoint.com/opencv_python/opencv_python_play_video_file.htm
+# TODO: Prevent additional scans from occurring while scan in progress
+
+# TODO: EDITOR
+# TODO: Enable user to view remaining storage space
+# TODO: UI: Enable data persistence between media type swap
+# TODO: Integrate json formatted editor content with splitter
+# TODO: Prevent media additions if space is low
+
+# TODO: TAGS
+# TODO: UI: Enable user to submit new tags
+# TODO: UI: DB: Enable user to search by tag
+# TODO: UI: DB: Enable user to search by media_title
+
+# TODO: Cleanup
+# TODO: Convert all js functions calls embedded in html to event listeners in app.js
+# TODO: Convert chromecast name strings to IDs and use IDs to refer to chromecasts
+# TODO: The chromecast select menu shall never contain chromecasts that no longer exist
+
 
 class APIEndpoints(Enum):
     MAIN = "/"
@@ -70,11 +89,12 @@ media_controller_button_dict = {
     "skip": {"icon": "bi-fast-forward-fill", "id": f"{CommandList.CMD_SKIP.name}_media_button"},
     "stop": {"icon": "bi-stop-fill", "id": f"{CommandList.CMD_STOP.name}_media_button"}
 }
-media_types = {
-    ContentType.TV.name: ContentType.TV.value,
-    ContentType.MOVIE.name: ContentType.MOVIE.value,
-    ContentType.BOOK.name: ContentType.BOOK.value
-}
+media_types = [
+    ContentType.RAW.name,
+    ContentType.TV.name,
+    ContentType.MOVIE.name,
+    ContentType.BOOK.name
+]
 
 backend_handler = bh.BackEndHandler()
 setup_thread = backend_handler.start()
@@ -121,16 +141,15 @@ def editor():
 def editor_validate_txt_file():
     data = {"error": {"message": "File valid"}}
     if json_request := request.get_json():
-        try:
-            errors = bh.editor_validate_txt_file(json_request.get('txt_file_name'),
-                                                 common_objects.ContentType[json_request.get('media_type')].value)
-            if errors:
-                data = {"process_log": errors}
-        except Exception as e:
-            print("Exception class: ", e.__class__)
-            print(f"ERROR: {e}")
-            print(traceback.print_exc())
-            print(json.dumps(json_request, indent=4))
+        if json_request.get("file_name") and json_request.get("media_type") and json_request.get("splitter_content"):
+            try:
+                if errors := bh.editor_validate_txt_file(json_request):
+                    data = {"process_log": errors}
+            except Exception as e:
+                print("Exception class: ", e.__class__)
+                print(f"ERROR: {e}")
+                print(traceback.print_exc())
+                print(json.dumps(json_request, indent=4))
     return data, 200
 
 
@@ -138,13 +157,14 @@ def editor_validate_txt_file():
 def editor_save_txt_file():
     data = {"error": {"message": "File saved"}}
     if json_request := request.get_json():
-        try:
-            bh.editor_save_txt_file(json_request.get('txt_file_name'), json_request.get('txt_file_content'))
-        except Exception as e:
-            print("Exception class: ", e.__class__)
-            print(f"ERROR: {e}")
-            print(traceback.print_exc())
-            print(json.dumps(json_request, indent=4))
+        if json_request.get("file_name") and json_request.get("media_type") and json_request.get("splitter_content"):
+            try:
+                bh.editor_save_file(json_request.get('file_name'), json_request)
+            except Exception as e:
+                print("Exception class: ", e.__class__)
+                print(f"ERROR: {e}")
+                print(traceback.print_exc())
+                print(json.dumps(json_request, indent=4))
     return data, 200
 
 
@@ -169,8 +189,7 @@ def editor_process_txt_file():
     if json_request := request.get_json():
         if json_request.get("media_type"):
             try:
-                errors = backend_handler.editor_process_txt_file(json_request, common_objects.ContentType[
-                    json_request.get('media_type')].value)
+                errors = backend_handler.editor_process_txt_file(json_request)
                 data = backend_handler.editor_get_process_metadata()
                 if errors:
                     data["process_log"].extend(errors)
@@ -185,7 +204,7 @@ def editor_process_txt_file():
     return data, 200
 
 
-@app.route(APIEndpoints.EDITOR_PROCESSOR_METADATA.value, methods=['GET'])
+@app.route(APIEndpoints.EDITOR_PROCESSOR_METADATA.value, methods=['POST'])
 def editor_processor_get_metadata():
     data = {}
     try:

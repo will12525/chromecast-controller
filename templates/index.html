@@ -3,20 +3,20 @@
 <head><title>Media Stream</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="{{ url_for('static',filename='style.css') | safe }}">
     <link rel="stylesheet"
           href="{{ url_for('static', filename='node_modules/bootstrap-icons/font/bootstrap-icons.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='node_modules/bootstrap/dist/css/bootstrap.min.css') }}">
-    <script src="{{ url_for('static', filename='app.js') }}" type="text/javascript" language="javascript"></script>
+    <link rel="stylesheet" href="{{ url_for('static',filename='style.css') | safe }}">
     <script src="{{ url_for('static', filename='node_modules/jquery/dist/jquery.min.js') }}" type="text/javascript"
             language="javascript"></script>
     <script src="{{ url_for('static', filename='node_modules/@popperjs/core/dist/umd/popper.min.js') }}"
             type="text/javascript" language="javascript"></script>
     <script src="{{ url_for('static', filename='node_modules/bootstrap/dist/js/bootstrap.bundle.min.js') }}"
             type="text/javascript" language="javascript"></script>
+    <script src="{{ url_for('static', filename='app.js') }}" type="text/javascript" language="javascript"></script>
     <link rel="shortcut icon" href="#">
 </head>
-<body style="background-color:aquamarine;">
+<body>
 {% include 'top_navbar.html' %}
 <div class="main-content-container container-fluid">
     <div class="row gx-2 gy-2">

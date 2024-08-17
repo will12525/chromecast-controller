@@ -34,7 +34,7 @@ def extract_subclip(sub_clip):
     destination_file = pathlib.Path(sub_clip.destination_file_path).resolve()
     # output_dir = pathlib.Path(sub_clip.destination_file_path).resolve().parent
     print(full_cmd)
-    print(sub_clip.subclip_metadata_list)
+    print(sub_clip.subclip_metadata)
     print(destination_file.stem)
     # time.sleep(sub_clip.start_time + sub_clip.end_time)
     time.sleep(1)
