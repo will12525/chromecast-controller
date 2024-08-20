@@ -1,7 +1,8 @@
 default_image_array = ['10.jpg', '11.jpg', '12.png', '13.png', '14.png', '15.png', '16.png', '1.webp', '2.webp', '3.jpg', '4.jpg', '5.jpg', '6.jpg', '7.jpg', '8.jpg', '9.jpg']
 
-let clickHandler = (event) => {
-    // ... event handler logic
+let modal_metadata_save_click_handler = (event) => {
+}
+let modal_metadata_select_tag_click_handler = (event) => {
 };
 
 String.prototype.toHHMMSS = function () {
@@ -175,18 +176,23 @@ async function generate_media_container(content_data, media_card_template, fragm
     const template = document.createElement("div");
     template.className = "col-sm-4 my-class";
     template.innerHTML = media_card_template;
-
-    if ('container_id' in content_data) {
-        template.querySelector("#content_container").dataset.containerId = content_data["container_id"];
-    }
-    if ('content_id' in content_data) {
-        template.querySelector("#content_container").dataset.contentId = content_data["content_id"];
-    }
     if ('container_title' in content_data) {
+        if (content_data["container_id"])
+        {
+            template.querySelector("#content_container").dataset.containerId = content_data["container_id"];
+        } else {
+            template.querySelector("#content_container").dataset.containerId = content_data["id"];
+        }
         template.querySelector("#content_navigator").textContent = content_data["container_title"]
         template.querySelector("#content_navigator").setAttribute('href', "javascript:load_container(" + content_data["id"] + ")")
     }
     else if ('content_title' in content_data) {
+        if (content_data["content_id"])
+        {
+            template.querySelector("#content_container").dataset.contentId = content_data["content_id"];
+        } else {
+            template.querySelector("#content_container").dataset.contentId = content_data["id"];
+        }
         template.querySelector("#content_navigator").textContent = content_data["content_title"]
         template.querySelector("#content_navigator").setAttribute('href', "javascript:play_media(" + content_data["id"] + ", " + content_data["parent_container_id"] + ")")
     }
@@ -199,12 +205,12 @@ async function generate_media_container(content_data, media_card_template, fragm
         }
     }
     if ('user_tags' in content_data) {
-        template.querySelector("#card_tags").textContent = "Tags:" + content_data["user_tags"]
+        template.querySelector("#card_tags").textContent = "Tags: " + content_data["user_tags"]
     }
-//    if ('content_index' in content_data) {
-//        template.querySelector("#content_index").hidden = false
-//        template.querySelector("#content_index").textContent = "Index: " + content_data["content_index"]
-//    }
+    if ('content_index' in content_data) {
+        template.querySelector("#content_index").hidden = false
+        template.querySelector("#content_index").textContent = "Index: " + content_data["content_index"]
+    }
     template.querySelector("#card_description").textContent = content_data["description"]
     template.querySelector("#content_img").src = "http://192.168.1.175:8000/" + content_data['img_src'];
     template.querySelector("#content_img").dataset.img_src = content_data['img_src'];
@@ -238,12 +244,20 @@ async function update_media_container(response_data) {
             nav_item_container.appendChild(nav_item)
         }
 
-        template.querySelector("#content_container").dataset.containerId = parent_container["container_id"];
+        if (parent_container["container_id"]) {
+            template.querySelector("#content_container").dataset.containerId = parent_container["container_id"];
+        } else {
+            template.querySelector("#content_container").dataset.containerId = parent_container["id"];
+        }
+        if ('content_index' in parent_container) {
+            template.querySelector("#content_index").hidden = false
+            template.querySelector("#content_index").textContent = "Index: " + parent_container["content_index"]
+        }
         template.querySelector("#card_description").textContent = parent_container["description"];
         template.querySelector("#content_img").src = "http://192.168.1.175:8000/" + parent_container['img_src'];
         template.querySelector("#content_img").dataset.img_src = parent_container['img_src'];
         if ('user_tags' in parent_container) {
-            template.querySelector("#card_tags").textContent = "Tags:" + parent_container["user_tags"]
+            template.querySelector("#card_tags").textContent = "Tags: " + parent_container["user_tags"]
         }
         fragment.appendChild(template)
     }
@@ -262,12 +276,29 @@ async function update_media_container(response_data) {
         editor.addEventListener('click', (event) => {
             const cardElement = event.target.closest('.card');
             if (cardElement) {
+                let data = {
+                    "tag_list": []
+                };
                 const container_id = cardElement?.dataset.containerId;
                 const content_id = cardElement?.dataset.contentId;
-                const img_src = cardElement.querySelector('#content_img')?.dataset.img_src;
-                const description = cardElement.querySelector("#card_description")?.textContent
-                const content_title = cardElement.querySelector("#content_navigator")?.textContent
-                edit_metadata_modal_open(container_id, content_id, content_title, img_src, description, cardElement.querySelector('#content_img'));
+                if (container_id != null) {
+                    data["container_dict"] = {"container_id": container_id}
+                    queryDBLocal(data).then(response_data => {
+                        if (response_data["parent_containers"][0] !== undefined) {
+                            const content_data = response_data["parent_containers"][response_data["parent_containers"].length - 1];
+                            edit_metadata_modal_open({"container_id": container_id}, content_data["container_title"], content_data["img_src"], content_data["description"], content_data["user_tags"], cardElement);
+                        }
+                    });
+                }
+                if (content_id != null) {
+                    data["container_dict"] = {"content_id": content_id}
+                    queryDBLocal(data).then(response_data => {
+                        if (response_data["content"][0] !== undefined) {
+                            content_data = response_data["content"][0]
+                            edit_metadata_modal_open({"content_id": content_id}, content_data["content_title"], content_data["img_src"], content_data["description"], content_data["user_tags"], cardElement);
+                        }
+                    });
+                }
             }
         });
     });
@@ -292,6 +323,83 @@ async function queryDB(data) {
         })
         .catch(error => console.error(error));
 }
+async function queryDBLocal(data) {
+    var url = "/query_db";
+    // Send POST request
+    let response = await fetch(url, {
+        "method": "POST",
+        "headers": {"Content-Type": "application/json"},
+        "body": JSON.stringify(data),
+    });
+    if (!response.ok) {
+        throw new Error("HTTP status connect_local_player: " + response.status);
+    } else {
+        return await response.json();
+    }
+}
+
+function generate_tag_list_element(tag_title) {
+    // Create the checkbox input element
+    const checkbox = document.createElement('input');
+    checkbox.className = 'form-check-input me-1';
+    checkbox.type = 'checkbox';
+    checkbox.value = tag_title;
+    checkbox.id = `tag_checkbox_${tag_title}`;
+
+    // Create the label element
+    const label = document.createElement('label');
+    label.className = 'form-check-label stretched-link';
+    label.htmlFor = `tag_checkbox_${tag_title}`;
+    label.textContent = tag_title;
+
+    const tag_group_item = document.createElement('li');
+    tag_group_item.className = 'list-group-item';
+    tag_group_item.appendChild(checkbox);
+    tag_group_item.appendChild(label);
+
+    return tag_group_item;
+}
+function createTagElements(tagTitles) {
+    const container = document.getElementById('tag_list_group'); // Replace with your container ID
+    container.innerHTML = '';
+    tagTitles.forEach(tagTitle => {
+        container.appendChild(generate_tag_list_element(tagTitle));
+    });
+}
+async function add_new_tag(element) {
+    const url = "/add_new_tag";
+    const input = element.previousElementSibling;
+    let data = {
+        "tag_title": input.value
+    };
+    let response = await fetch(url, {
+        "method": "POST",
+        "headers": {"Content-Type": "application/json"},
+        "body": JSON.stringify(data),
+    }).then(response => response.json()).then(response_data => {
+        if (response_data["tag_list"] !== undefined) {
+            const tagTitles = response_data["tag_list"].map(tag => tag.tag_title);
+            createTagElements(tagTitles)
+        }
+    })
+    .catch(error => console.error(error));
+};
+async function get_tag_list(element) {
+    var url = "/get_tag_list";
+    let response = await fetch(url, {
+        "method": "POST",
+        "headers": {"Content-Type": "application/json"}
+    });
+    if (!response.ok) {
+        throw new Error("HTTP status connect_local_player: " + response.status);
+    } else {
+        let response_data = await response.json();
+        if (response_data["tag_list"] !== undefined) {
+            return response_data["tag_list"].map(tag => tag.tag_title);
+        }
+    }
+};
+
 
 function get_selected_checkboxes(listGroup) {
   const checkboxes = listGroup.querySelectorAll('input[type="checkbox"]:checked');
@@ -607,44 +715,113 @@ async function handle_splitter_form_container_submit(event) {
     }
 }
 
-async function edit_metadata_modal_save(container_id, content_id, reference_item) {
-    var url = "/update_media_metadata";
-    let data = {
-        "img_src": document.getElementById("modal_text_area_image_url").value,
-        "description": document.getElementById("modal_text_area_description").value
-    };
-
-    if (container_id != "null") {
-        data["container_id"] = container_id
-    }
-    if (content_id != "null") {
-        data["content_id"] = content_id
-    }
-    let response = await fetch(url, {
-        "method": "POST",
-        "headers": {"Content-Type": "application/json"},
-        "body": JSON.stringify(data),
+function edit_metadata_modal_save(content_data) {
+    content_data["img_src"] = document.getElementById("modal_text_area_image_url").value
+    content_data["description"] = document.getElementById("modal_text_area_description").value
+    fetchAndSetData('/update_media_metadata', content_data).then(response_data => {
+        if (response_data["img_src"] !== undefined) {
+            reference_item.querySelector('#content_img').src = "http://192.168.1.175:8000/" + response_data["img_src"];
+            reference_item.querySelector('#content_img').dataset.img_src = response_data["img_src"];
+        }
+    }).catch(error => {
+        console.error('Error:', error);
     });
-    if (!response.ok) {
-        throw new Error("HTTP ERROR FAILED: " + response.status);
-    } else {
-        response_data = await response.json()
-        reference_item.src = "http://192.168.1.175:8000/" + response_data["img_src"];
-        reference_item.dataset.img_src = response_data["img_src"];
-    }
 }
 
-async function edit_metadata_modal_open(container_id, content_id, title, img_src, description, reference_item) {
+function update_tag_content(url, content_data) {
+    fetchAndSetData(url, content_data).then(response_data => {
+        if (response_data["user_tags"] !== undefined) {
+            const tagTitles = response_data["user_tags"].split(',');
+            createTagButtons(tagTitles, content_data)
+        }
+    }).catch(error => {
+        console.error('Error:', error);
+    });
+}
+
+function add_tag_to_content(content_data) {
+    update_tag_content('/add_tag_to_content', content_data)
+}
+
+function remove_tag_from_content(content_data) {
+    update_tag_content('/remove_tag_from_content', content_data)
+}
+
+function create_tag_button_element(text, data) {
+    const btnGroup = document.createElement('div');
+    btnGroup.classList.add('btn-group', 'role', 'group', 'aria-label');
+
+    const disabledButton = document.createElement('button');
+    disabledButton.type = 'button';
+    disabledButton.classList.add('btn', 'btn-primary', 'disabled');
+    disabledButton.textContent = text;
+
+    const deleteButton = document.createElement('button');
+    deleteButton.type = 'button';
+    deleteButton.classList.add('btn', 'btn-danger');
+
+    const deleteIcon = document.createElement('i');
+    deleteIcon.classList.add('bi', 'bi-trash');
+    deleteButton.appendChild(deleteIcon);
+    deleteIcon.addEventListener("click", function() {
+        var copy = {...data};
+        copy["tag_title"] = text
+        remove_tag_from_content(copy)
+    });
+
+    btnGroup.appendChild(disabledButton);
+    btnGroup.appendChild(deleteButton);
+
+    return btnGroup;
+}
+function createTagButtons(tagTitles, data) {
+    const container = document.getElementById('modal_user_tags'); // Replace with your container ID
+    container.innerHTML = '';
+    tagTitles.forEach(tagTitle => {
+        const tag_group_item = create_tag_button_element(tagTitle, data);
+        container.appendChild(tag_group_item);
+    });
+}
+
+function populate_modal_tag_select_list(tagTitles) {
+    user_tag_select = document.getElementById("user_tag_select")
+    user_tag_select.innerHTML = ''
+    tagTitles.forEach(tagTitle => {
+        const tag_select_item = document.createElement('option');
+        tag_select_item.value = tagTitle
+        tag_select_item.innerHTML = tagTitle
+        user_tag_select.appendChild(tag_select_item);
+    });
+}
+
+function edit_metadata_modal_open(data, title, img_src, description, tags, reference_item) {
     document.getElementById("modal_title").innerHTML = title;
     document.getElementById("modal_text_area_image_url").value = img_src;
     document.getElementById("modal_text_area_description").value = description;
-    save_button = document.getElementById("modal_metadata_save")
 
-    save_button.removeEventListener('click', clickHandler);
-    clickHandler = (event) => {
-        edit_metadata_modal_save(container_id, content_id, reference_item);
+    const tagTitles = tags.split(',');
+    createTagButtons(tagTitles, data)
+
+    get_tag_list().then(tagTitles => {
+        populate_modal_tag_select_list(tagTitles)
+    });
+    user_tag_select_button = document.getElementById("user_tag_select_button")
+    user_tag_select_button.removeEventListener('click', modal_metadata_select_tag_click_handler);
+    modal_metadata_select_tag_click_handler = (event) => {
+        const selectElement = document.getElementById('user_tag_select');
+        const selectedOption = selectElement.options[selectElement.selectedIndex];
+        var copy = {...data};
+        copy["tag_title"] = selectedOption.value;
+        add_tag_to_content(copy)
     };
-    save_button.addEventListener('click', clickHandler);
+    user_tag_select_button.addEventListener('click', modal_metadata_select_tag_click_handler);
+
+    save_button = document.getElementById("modal_metadata_save")
+    save_button.removeEventListener('click', modal_metadata_save_click_handler);
+    modal_metadata_save_click_handler = (event) => {
+        edit_metadata_modal_save(data, reference_item);
+    };
+    save_button.addEventListener('click', modal_metadata_save_click_handler);
 }
 
 async function scan_media_directories() {
@@ -800,9 +977,12 @@ function setup_media_page() {
     var modal_metadata_save = document.getElementById("modal_metadata_save");
     if (modal_metadata_save !== null)
     {
-        modal_metadata_save.addEventListener('click', clickHandler);
+        modal_metadata_save.addEventListener('click', modal_metadata_save_click_handler);
     }
     load_tv_shows()
+    get_tag_list().then(tagTitles => {
+        createTagElements(tagTitles)
+    });
 }
 
 function setup_nav_bars() {

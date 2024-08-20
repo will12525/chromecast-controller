@@ -90,33 +90,19 @@
                         <!--                        </div>-->
                         <!--                        <ul class="list-group list-group-flush">-->
                         <!--                        </ul>-->
-                        <div id="metadata_card_body" class="card-body">
-                            <h5 class="card-title" id="primary_card_set_title"></h5>
-                            <ul class="list-group" id="tag_list_group">
-                                {% for tag_data in tag_list: %}
-                                <li class="list-group-item">
-                                    <input class="form-check-input me-1" type="checkbox"
-                                           value="{{ tag_data['tag_title'] }}"
-                                           id="tag_checkbox_{{ tag_data['tag_title'] }}">
-                                    <label class="form-check-label stretched-link"
-                                           for="tag_checkbox_{{ tag_data['tag_title'] }}">{{ tag_data['tag_title']
-                                        }}</label>
-                                </li>
-                                {% endfor %}
-                            </ul>
-
+                        <div class="card-body">
+                            <h5 class="card-title">Tags</h5>
+                            <ul class="list-group" id="tag_list_group"></ul>
+                            <h5 class="card-title">Add new tag</h5>
+                            <div class="input-group mb-3">
+                                <input type="text" class="form-control" placeholder="New Tag" aria-label="New Tag"
+                                       aria-describedby="add_new_tag_button">
+                                <button class="btn btn-outline-secondary" type="button" id="add_new_tag_button"
+                                        onclick="javascript:add_new_tag(this)"><i class="bi bi-plus"></i></button>
+                            </div>
                         </div>
-                        <!--                        <ul class="list-group list-group-flush">-->
-                        <!--                        </ul>-->
-                        <!--                        <div class="card-body">-->
-                        <!--                            <h5 class="card-title">Search Cards</h5>-->
-                        <!--                            <div class="input-group mb-3">-->
-                        <!--                                <input type="text" class="form-control" placeholder="Mudkip"-->
-                        <!--                                       aria-label="Search card names" aria-describedby="button-addon2"-->
-                        <!--                                       id="card_name_search_query_text_field" onclick="javascript:this.select()"-->
-                        <!--                                       oninput="javascript:applySearchTerm()">-->
-                        <!--                            </div>-->
-                        <!--                        </div>-->
+                        <ul class="list-group list-group-flush">
+                        </ul>
                         <!--                        <ul class="list-group list-group-flush">-->
                         <!--                        </ul>-->
                         <!--                        <div class="card-body">-->
@@ -159,33 +145,7 @@
     </div>
 </div>
 <!-- Modal -->
-<div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h1 class="modal-title fs-5" id="modal_title"></h1>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form>
-                    <div class="mb-3">
-                        <label for="modal_text_area_image_url" class="col-form-label">Image Name:</label>
-                        <input type="text" class="form-control" id="modal_text_area_image_url">
-                    </div>
-                    <div class="mb-3">
-                        <label for="modal_text_area_description" class="col-form-label">Description:</label>
-                        <textarea class="form-control" id="modal_text_area_description"></textarea>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" id="modal_metadata_save" class="btn btn-primary" data-bs-dismiss="modal">Save
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
+{% include 'media_edit_modal.html' %}
 {% if button_dict is defined %}
 {% include 'bottom_navbar.html' %}
 {% endif %}

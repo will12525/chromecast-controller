@@ -240,11 +240,8 @@ def query_media_db():
 @app.route("/get_tag_list", methods=["POST"])
 def get_tag_list():
     media_metadata = {}
-    if json_request := request.get_json():
-        print(json_request)
-        with DatabaseHandlerV2() as db_getter_connection:
-            media_metadata["tag_list"] = db_getter_connection.get_all_tags()
-    # print(json.dumps(media_metadata, indent=4))
+    with DatabaseHandlerV2() as db_getter_connection:
+        media_metadata["tag_list"] = db_getter_connection.get_all_tags()
     return media_metadata, 200
 
 
@@ -252,7 +249,6 @@ def get_tag_list():
 def add_new_tag():
     media_metadata = {}
     if json_request := request.get_json():
-        print(json_request)
         if json_request.get("tag_title"):
             with DBCreatorV2() as db_connection:
                 db_connection.insert_tag(json_request)
@@ -265,11 +261,19 @@ def add_new_tag():
 def add_tag_to_content():
     media_metadata = {}
     if json_request := request.get_json():
-        print(json_request)
         if json_request.get("tag_title") and json_request.get("content_id"):
             with DBCreatorV2() as db_connection:
                 json_request["user_tags_id"] = db_connection.get_tag_id(json_request)
                 db_connection.add_tag_to_content(json_request)
+            with DatabaseHandlerV2() as db_connection:
+                media_metadata.update(db_connection.query_content_tags(json_request.get("content_id")))
+            media_metadata["tag_title"] = json_request.get("tag_title")
+        elif json_request.get("tag_title") and json_request.get("container_id"):
+            with DBCreatorV2() as db_connection:
+                json_request["user_tags_id"] = db_connection.get_tag_id(json_request)
+                db_connection.add_tag_to_container(json_request)
+            with DatabaseHandlerV2() as db_connection:
+                media_metadata.update(db_connection.query_container_tags(json_request.get("container_id")))
             media_metadata["tag_title"] = json_request.get("tag_title")
     return media_metadata, 200
 
@@ -278,37 +282,19 @@ def add_tag_to_content():
 def remove_tag_from_content():
     media_metadata = {}
     if json_request := request.get_json():
-        print(json_request)
         if json_request.get("tag_title") and json_request.get("content_id"):
             with DBCreatorV2() as db_connection:
                 json_request["user_tags_id"] = db_connection.get_tag_id(json_request)
                 db_connection.remove_tag_from_content(json_request)
+            with DatabaseHandlerV2() as db_connection:
+                media_metadata.update(db_connection.query_content_tags(json_request.get("content_id")))
             media_metadata["tag_title"] = json_request.get("tag_title")
-    return media_metadata, 200
-
-
-@app.route("/add_tag_to_container", methods=["POST"])
-def add_tag_to_container():
-    media_metadata = {}
-    if json_request := request.get_json():
-        print(json_request)
-        if json_request.get("tag_title") and json_request.get("container_id"):
-            with DBCreatorV2() as db_connection:
-                json_request["user_tags_id"] = db_connection.get_tag_id(json_request)
-                db_connection.add_tag_to_container(json_request)
-            media_metadata["tag_title"] = json_request.get("tag_title")
-    return media_metadata, 200
-
-
-@app.route("/remove_tag_from_container", methods=["POST"])
-def remove_tag_from_container():
-    media_metadata = {}
-    if json_request := request.get_json():
-        print(json_request)
-        if json_request.get("tag_title") and json_request.get("container_id"):
+        elif json_request.get("tag_title") and json_request.get("container_id"):
             with DBCreatorV2() as db_connection:
                 json_request["user_tags_id"] = db_connection.get_tag_id(json_request)
                 db_connection.remove_tag_from_container(json_request)
+            with DatabaseHandlerV2() as db_connection:
+                media_metadata.update(db_connection.query_container_tags(json_request.get("container_id")))
             media_metadata["tag_title"] = json_request.get("tag_title")
     return media_metadata, 200
 
