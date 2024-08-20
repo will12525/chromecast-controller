@@ -715,7 +715,7 @@ async function handle_splitter_form_container_submit(event) {
     }
 }
 
-function edit_metadata_modal_save(content_data) {
+function edit_metadata_modal_save(content_data, reference_item) {
     content_data["img_src"] = document.getElementById("modal_text_area_image_url").value
     content_data["description"] = document.getElementById("modal_text_area_description").value
     fetchAndSetData('/update_media_metadata', content_data).then(response_data => {
