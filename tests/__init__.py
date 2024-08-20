@@ -3,6 +3,7 @@ import time
 import random
 import pathlib
 from unittest.mock import patch
+import os
 
 import config_file_handler
 from database_handler import common_objects
@@ -14,9 +15,10 @@ def get_file_hash(extra_metadata):
     extra_metadata[common_objects.MD5SUM_COLUMN] = time_hash.hexdigest()
 
 
-def get_ffmpeg_metadata(extra_metadata):
-    extra_metadata[common_objects.DURATION_COLUMN] = 22
-    extra_metadata[common_objects.MEDIA_TITLE_COLUMN] = ""
+def get_ffmpeg_metadata(path, extra_metadata):
+    assert os.path.exists(path)
+    extra_metadata["content_duration"] = 22
+    extra_metadata["content_title"] = "Test Tile"
 
 
 def extract_subclip(sub_clip):
@@ -32,7 +34,7 @@ def extract_subclip(sub_clip):
     destination_file = pathlib.Path(sub_clip.destination_file_path).resolve()
     # output_dir = pathlib.Path(sub_clip.destination_file_path).resolve().parent
     print(full_cmd)
-    print(sub_clip.subclip_metadata_list)
+    print(sub_clip.subclip_metadata)
     print(destination_file.stem)
     # time.sleep(sub_clip.start_time + sub_clip.end_time)
     time.sleep(1)
@@ -53,36 +55,10 @@ def patch_get_ffmpeg_metadata(test_class):
     test_class.addCleanup(patcher.stop)
 
 
-def patch_move_media_file(test_class):
-    patcher = patch('database_handler.media_metadata_collector.move_media_file')
-    test_class.move_media_file = patcher.start()
-    test_class.addCleanup(patcher.stop)
-
-
 def patch_extract_subclip(test_class):
     patcher = patch('mp4_splitter.extract_subclip')
     test_class.extract_subclip = patcher.start()
     test_class.extract_subclip.side_effect = extract_subclip
-    test_class.addCleanup(patcher.stop)
-
-
-def patch_collect_tv_shows(test_class):
-    json_file_path = pathlib.Path("collect_tv_shows_metadata.json").resolve()
-    collect_tv_shows_metadata = config_file_handler.load_json_file_content(json_file_path)
-
-    patcher = patch('database_handler.media_metadata_collector.collect_tv_shows')
-    test_class.collect_tv_shows = patcher.start()
-    test_class.collect_tv_shows.return_value = collect_tv_shows_metadata
-    test_class.addCleanup(patcher.stop)
-
-
-def patch_collect_movies(test_class):
-    json_file_path = pathlib.Path("collect_movies_metadata.json").resolve()
-    collect_movies_metadata = config_file_handler.load_json_file_content(json_file_path)
-
-    patcher = patch('database_handler.media_metadata_collector.collect_movies')
-    test_class.collect_movies = patcher.start()
-    test_class.collect_movies.return_value = collect_movies_metadata
     test_class.addCleanup(patcher.stop)
 
 

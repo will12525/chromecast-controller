@@ -8,7 +8,7 @@ import config_file_handler
 from chromecast_handler import ChromecastHandler
 from database_handler import common_objects
 from database_handler.common_objects import ContentType
-from database_handler.create_database import DBCreator
+from database_handler.db_setter import DBCreatorV2
 import __init__
 
 
@@ -19,7 +19,6 @@ class TestChromecastHandler(TestCase):
         self.chromecast_handler = ChromecastHandler()
         __init__.patch_get_file_hash(self)
         __init__.patch_get_ffmpeg_metadata(self)
-        __init__.patch_move_media_file(self)
         __init__.patch_extract_subclip(self)
         __init__.patch_update_processed_file(self)
 
@@ -27,10 +26,10 @@ class TestChromecastHandler(TestCase):
         assert self.media_paths
         assert isinstance(self.media_paths, list)
         assert len(self.media_paths) == 3
-        with DBCreator() as db_connection:
+        with DBCreatorV2() as db_connection:
             db_connection.create_db()
-            for media_path in self.media_paths:
-                db_connection.setup_media_directory(media_path)
+            for media_folder_info in self.media_paths:
+                db_connection.setup_content_directory(media_folder_info)
 
 
 class TestChromecastScanning(TestChromecastHandler):
@@ -118,7 +117,7 @@ class TestChromecastConnection(TestChromecastHandler):
 
 class TestMyMediaDevice(TestCase):
     DB_PATH = "media_metadata.db"
-    CHROMECAST_ID = "Test Cast"
+    CHROMECAST_ID = "Bedroom"
 
     chromecast_handler = None
     media_controller = None
@@ -126,9 +125,6 @@ class TestMyMediaDevice(TestCase):
     def setUp(self):
         __init__.patch_get_file_hash(self)
         __init__.patch_get_ffmpeg_metadata(self)
-        __init__.patch_move_media_file(self)
-        __init__.patch_collect_tv_shows(self)
-        __init__.patch_collect_movies(self)
         __init__.patch_extract_subclip(self)
         __init__.patch_update_processed_file(self)
 
@@ -138,11 +134,11 @@ class TestMyMediaDevice(TestCase):
         self.media_paths = config_file_handler.load_json_file_content().get("media_folders")
         assert self.media_paths
         assert isinstance(self.media_paths, list)
-        assert len(self.media_paths) == 3
-        with DBCreator() as db_connection:
+        assert len(self.media_paths) == 1
+        with DBCreatorV2() as db_connection:
             db_connection.create_db()
-            for media_path in self.media_paths:
-                db_connection.setup_media_directory(media_path)
+            for media_folder_info in self.media_paths:
+                db_connection.setup_content_directory(media_folder_info)
 
         self.chromecast_handler = ChromecastHandler()
         self.chromecast_handler.connect_chromecast(self.CHROMECAST_ID)
@@ -161,30 +157,19 @@ class TestMediaPlayer(TestMyMediaDevice):
 
     def test_play_episode_from_sql(self):
         compare_value = {
-            "id": 1,
-            "tv_show_id": 1,
-            "season_id": 1,
-            "media_directory_id": 1,
-            "media_title": "",
-            "path": "\\Vampire\\Vampire - s01e001.mp4",
-            "duration": 22,
-            "media_type": 5,
-            "media_directory_path": "../media_folder_sample",
-            "new_media_directory_path": None,
-            "media_directory_url": "http://192.168.1.175:8000/tv_shows/",
-            "playlist_id": 1,
-            "playlist_title": "Vampire",
-            "media_id": 1,
-            "list_index": 1,
-            "season_index": 1,
-            "season_title": "Season 1",
-            "tv_show_title": "Vampire",
-            "title": "Vampire Season 1 ",
-            "metadataType": 0
+            "id": 17,
+            "content_directory_id": 1,
+            "content_title": "Test Tile",
+            "content_src": "media_folder_sample/Vampire/Vampire - s01e001.mp4",
+            "description": "",
+            "img_src": "media_folder_sample/Vampire/Vampire - s01e001.mp4.jpg",
+            "content_url": "http://192.168.1.175:8000",
+            "url": "http://192.168.1.175:8000/media_folder_sample/Vampire/Vampire - s01e001.mp4",
+            "parent_container_id": 430
         }
+        json_request = {'content_id': 17, 'parent_container_id': 430}
 
-        media_metadata = self.media_controller.play_episode_from_sql({common_objects.MEDIA_ID_COLUMN: 1},
-                                                                     ContentType.MEDIA)
+        media_metadata = self.media_controller.play_episode_from_sql(json_request)
         print(json.dumps(media_metadata, indent=4))
         for key in compare_value:
             print(key)

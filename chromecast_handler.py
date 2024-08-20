@@ -6,9 +6,7 @@ import os
 from enum import Enum, auto
 import pychromecast
 
-from database_handler import common_objects
-from database_handler.database_handler import DatabaseHandler
-from database_handler.common_objects import ContentType
+from database_handler.db_getter import DatabaseHandlerV2
 
 
 class CommandList(Enum):
@@ -49,26 +47,22 @@ class MyMediaDevice:
     def __del__(self):
         self.media_controller = None
 
-    def play_episode_from_sql(self, media_request_ids, content_type):
-        with DatabaseHandler() as db_connection:
-            print(json.dumps(media_request_ids, indent=4))
-            print(media_request_ids.get(common_objects.MEDIA_ID_COLUMN))
-            media_info = db_connection.get_media_content(content_type=content_type, params_dict=media_request_ids)
+    def play_episode_from_sql(self, content_data):
+        with DatabaseHandlerV2() as db_connection:
+            media_metadata = db_connection.get_content_info(content_data.get("content_id"))
+        media_metadata["parent_container_id"] = content_data["parent_container_id"]
 
-        if media_info:
-            self.play_media_info(media_info)
-            return media_info
+        if media_metadata:
+            self.play_media_info(media_metadata)
+            return media_metadata
 
     def play_next_episode(self):
         media_info = None
         if self.status and (media_metadata := self.status.media_metadata):
-            current_media_data = {common_objects.MEDIA_ID_COLUMN: media_metadata.get(common_objects.ID_COLUMN),
-                                  common_objects.PLAYLIST_ID_COLUMN: media_metadata.get(
-                                      common_objects.PLAYLIST_ID_COLUMN)}
-
-            with DatabaseHandler() as db_connection:
-                media_info = db_connection.get_next_in_playlist_media_metadata(current_media_data)
-
+            current_media_data = {"content_id": media_metadata.get("id"),
+                                  "parent_container_id": media_metadata.get("parent_container_id")}
+            with DatabaseHandlerV2() as db_connection:
+                media_info = db_connection.get_next_content_in_container(current_media_data)
         if media_info:
             self.play_media_info(media_info)
             return media_info
@@ -76,29 +70,23 @@ class MyMediaDevice:
     def play_previous_episode(self):
         media_info = None
         if self.status and (media_metadata := self.status.media_metadata):
-            current_media_data = {common_objects.MEDIA_ID_COLUMN: media_metadata.get(common_objects.ID_COLUMN),
-                                  common_objects.PLAYLIST_ID_COLUMN: media_metadata.get(
-                                      common_objects.PLAYLIST_ID_COLUMN)}
-
-            with DatabaseHandler() as db_connection:
-                media_info = db_connection.get_previous_in_playlist_media_metadata(current_media_data)
+            current_media_data = {"content_id": media_metadata.get("id"),
+                                  "parent_container_id": media_metadata.get("parent_container_id")}
+            with DatabaseHandlerV2() as db_connection:
+                media_info = db_connection.get_previous_content_in_container(current_media_data)
         if media_info:
             self.play_media_info(media_info)
             return media_info
 
-    def play_media_info(self, media_info):
-        if media_info:
-            media_url = f"{media_info.get(common_objects.MEDIA_DIRECTORY_URL_COLUMN)}{media_info.get(common_objects.PATH_COLUMN)}"
-            media_title = media_info.get(common_objects.MEDIA_TITLE_COLUMN)
-            if season_title := media_info.get('season_title'):
-                media_title = f"{season_title} {media_title}"
-            if tv_show_title := media_info.get('tv_show_title'):
-                media_title = f"{tv_show_title} {media_title}"
-            self.media_controller.play_media(media_url, self.DEFAULT_MEDIA_TYPE, title=media_title, metadata=media_info)
+    def play_media_info(self, media_metadata):
+        if media_metadata:
+            self.media_controller.play_media(media_metadata.get("url"), self.DEFAULT_MEDIA_TYPE,
+                                             title=media_metadata.get("content_src"),
+                                             metadata=media_metadata)
             self.media_controller.block_until_active()
 
-            with DatabaseHandler() as db_connection:
-                db_connection.update_play_count(media_info)
+            with DatabaseHandlerV2() as db_connection:
+                db_connection.update_content_play_count(media_metadata.get("id"))
 
     def get_media_controller_metadata(self):
         if self.status:
@@ -135,7 +123,6 @@ class MyMediaDevice:
 
     def new_media_status(self, status):
         self.status = status
-
         if self.media_controller.status.player_state == "IDLE" and self.media_controller.status.idle_reason == "FINISHED":
             self.play_next_episode()
 
@@ -206,9 +193,9 @@ class ChromecastHandler(threading.Thread):
         if self.media_controller:
             self.media_controller.seek(media_time)
 
-    def play_from_sql(self, media_request_ids, content_type):
+    def play_from_sql(self, content_data):
         if self.media_controller:
-            self.media_controller.play_episode_from_sql(media_request_ids, content_type)
+            self.media_controller.play_episode_from_sql(content_data)
             return True
         return False
 

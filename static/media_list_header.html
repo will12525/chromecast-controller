@@ -1,0 +1,25 @@
+<div class="card mb-3" id="content_container" style="background-color:Linen;">
+    <div class="card-header">
+        <ul id="nav_item_container" class="nav nav-pills">
+        </ul>
+    </div>
+    <div id="metadata_card_body" class="card-body">
+        <div class="row">
+            <div class="col-md-4">
+                <img id="content_img" src="" loading="lazy" class="img-fluid" onerror="apply_default_image(this)">
+            </div>
+            <div class="col-md-8">
+                <p id="card_description" class="card-text card_description"></p>
+                <p id="card_tags" class="card-text card_tags"></p>
+                <p id="content_index" class="card-text card_index" hidden></p>
+            </div>
+        </div>
+    </div>
+    <div class="card-footer">
+        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+            <button id="content_editor" class="btn btn-primary me-md-2" type="button" data-bs-toggle="modal"
+                    data-bs-target="#exampleModal"><i class="bi-pencil-fill"></i>
+            </button>
+        </div>
+    </div>
+</div>

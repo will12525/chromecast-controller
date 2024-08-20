@@ -77,8 +77,17 @@
     height: 10%;
 }
 
+.boxed-text {
+  border: 1px solid #ccc; /* Adjust border style, color, and width as needed */
+  padding: 5px; /* Add padding for spacing */
+  background-color: #f0f0f0; /* Optional background color */
+}
+
 .mycustom-styling {
     width: 100%;
     height: 100%;
 }
-body { padding-top: 40px; }
+body {
+    background-color: aquamarine;
+    padding-top: 40px;
+}

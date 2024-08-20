@@ -1,0 +1,37 @@
+<div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h1 class="modal-title fs-5" id="modal_title"></h1>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="mb-3">
+                        <label for="modal_text_area_image_url" class="col-form-label">Image Name:</label>
+                        <input type="text" class="form-control" id="modal_text_area_image_url">
+                    </div>
+                    <div class="mb-3">
+                        <label for="modal_text_area_description" class="col-form-label">Description:</label>
+                        <textarea class="form-control" id="modal_text_area_description"></textarea>
+                    </div>
+                    <div id="modal_user_tags" class="input-group mb-3">
+                    </div>
+                    <div class="mb-3">
+                        <div class="input-group">
+                            <select class="form-select" id="user_tag_select" aria-label="User tag select"></select>
+                            <button class="btn btn-outline-secondary" id="user_tag_select_button" type="button">
+                                Add Tag
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" id="modal_metadata_save" class="btn btn-primary" data-bs-dismiss="modal">Save
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

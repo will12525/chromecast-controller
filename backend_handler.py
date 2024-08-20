@@ -1,28 +1,29 @@
 import json
 import subprocess
 import threading
+import traceback
 
 import requests  # request img from web
 import shutil  # save img locally
 import git
 import pathlib
+import re
 
 import config_file_handler
 import database_handler.common_objects as common_objects
 from chromecast_handler import ChromecastHandler
-from database_handler.create_database import DBCreator
-from database_handler.database_handler import DatabaseHandler
+from database_handler.db_setter import DBCreatorV2
+from database_handler.db_getter import DatabaseHandlerV2
 import mp4_splitter
-from database_handler.media_metadata_collector import extract_tv_show_file_name_content
 
 EDITOR_PROCESSED_LOG = "editor_metadata.json"
 
 
 def setup_db():
-    with DBCreator() as db_connection:
+    with DBCreatorV2() as db_connection:
         db_connection.create_db()
         for media_folder_info in config_file_handler.load_json_file_content().get("media_folders", []):
-            db_connection.setup_media_directory(media_folder_info)
+            db_connection.setup_content_directory(media_folder_info)
 
 
 def get_free_disk_space(size=None, ret=3, raw_folder=None):
@@ -44,91 +45,57 @@ def get_free_disk_space_percent(editor_folder):
     return get_free_disk_space(ret=4, raw_folder=editor_folder)
 
 
+def editor_validate_txt_file(json_request):
+    mp4_output_parent_path = None
+    with DBCreatorV2() as db_connection:
+        media_folder_path = db_connection.get_all_content_directory_info()[0]
+    if json_request.get('media_type') == common_objects.ContentType.MOVIE.name:
+        mp4_output_parent_path = pathlib.Path(f"{media_folder_path.get('content_src')}/movies").resolve()
+    elif json_request.get('media_type') == common_objects.ContentType.TV.name:
+        mp4_output_parent_path = pathlib.Path(f"{media_folder_path.get('content_src')}/tv_shows").resolve()
+    elif json_request.get('media_type') == common_objects.ContentType.BOOK.name:
+        mp4_output_parent_path = pathlib.Path(f"{media_folder_path.get('content_src')}/books").resolve()
+    else:
+        print("Unknown media type")
+    return mp4_splitter.editor_validate_txt_file(json_request.get('file_name'), json_request.get('media_type'),
+                                                 mp4_output_parent_path)
+
+
+def editor_save_file(file_name, json_request):
+    raw_folder = config_file_handler.load_json_file_content().get('editor_raw_folder')
+    file_path = pathlib.Path(f"{raw_folder}{file_name}").resolve()
+    mp4_splitter.editor_save_file(file_path, json_request)
+
+
 def download_image(json_request):
-    if (not json_request.get(common_objects.IMAGE_URL)
-            or len(json_request.get(common_objects.IMAGE_URL)) < 5
-            or not json_request.get('content_type')
-            or not json_request.get(common_objects.ID_COLUMN)
-            or json_request.get(common_objects.IMAGE_URL)[-4:] not in ['.jpg', '.png', '.webp']):
-        print({"message": "Image url must be .jpg or .png"})
+    if (not json_request.get("img_src")
+            or len(json_request.get("img_src")) < 5
+            or not (json_request.get("container_id") or json_request.get("content_id"))
+            or json_request.get("img_src")[-4:] not in ['.jpg', '.png', '.webp']):
         raise ValueError({{"message": "Image url must be .jpg or .png"}})
 
-    file_name = f"{json_request.get('content_type')}_{json_request.get(common_objects.ID_COLUMN)}{json_request.get(common_objects.IMAGE_URL)[-4:]}"
+    with DBCreatorV2() as db_connection:
+        media_folder_path = db_connection.get_all_content_directory_info()[0]
 
-    with DatabaseHandler() as db_connection:
-        media_folder_path = db_connection.get_media_folder_path(1)
-        content_type = common_objects.ContentType(json_request.get('content_type'))
-        params_dict = {}
-        if content_type == common_objects.ContentType.MEDIA:
-            params_dict[common_objects.MEDIA_ID_COLUMN] = json_request.get(common_objects.ID_COLUMN)
-        elif content_type == common_objects.ContentType.SEASON:
-            params_dict[common_objects.SEASON_ID_COLUMN] = json_request.get(common_objects.ID_COLUMN)
-        elif content_type == common_objects.ContentType.TV_SHOW:
-            params_dict[common_objects.TV_SHOW_ID_COLUMN] = json_request.get(common_objects.ID_COLUMN)
-        elif content_type == common_objects.ContentType.PLAYLIST:
-            params_dict[common_objects.PLAYLIST_ID_COLUMN] = json_request.get(common_objects.ID_COLUMN)
-        else:
-            print({"message": 'Unknown content type provided', 'value': json_request.get('content_type')})
-            raise ValueError(
-                {"message": 'Unknown content type provided', 'value': json_request.get('content_type')})
-        media_metadata = db_connection.get_media_content(content_type, params_dict=params_dict)
+    with DatabaseHandlerV2() as db_connection:
+        if container_id := json_request.get("container_id"):
+            media_metadata = db_connection.get_container_info(container_id)
+            file_path = f"{media_metadata.get('container_path')}/{media_metadata.get('container_title')}{pathlib.Path(json_request['img_src']).suffix}"
+        elif content_id := json_request.get("content_id"):
+            media_metadata = db_connection.get_content_info(content_id)
+            file_path = f"{media_metadata.get('content_src')}{pathlib.Path(json_request['img_src']).suffix}"
 
-    if json_request.get(common_objects.IMAGE_URL) == media_metadata.get(common_objects.IMAGE_URL):
-        json_request[common_objects.IMAGE_URL] = file_name
+    if json_request.get("img_src") == media_metadata.get("img_src"):
         return
 
-    if not media_folder_path:
-        print({"message": "Error media directory table missing paths"})
-        raise ValueError({"message": "Error media directory table missing paths"})
-
-    file_name = ""
-    file_parent = ""
-    file_path = ""
-    # print(json.dumps(media_metadata, indent=4))
-    if content_type == common_objects.ContentType.MEDIA:
-        file_path = pathlib.Path(media_metadata.get(common_objects.PATH_COLUMN))
-        file_parent = file_path.parent
-        file_name = f"{file_path.name}{pathlib.Path(json_request[common_objects.IMAGE_URL]).suffix}"
-        file_path = f"{media_metadata.get(common_objects.PLAYLIST_TITLE)}/{file_path.name}{pathlib.Path(json_request[common_objects.IMAGE_URL]).suffix}"
-    elif content_type == common_objects.ContentType.SEASON:
-        file_path = pathlib.Path(
-            f"{media_metadata.get(common_objects.PLAYLIST_TITLE)}/{media_metadata.get('season_title')}")
-        file_parent = file_path.parent
-        file_name = f"{file_path.name}{pathlib.Path(json_request[common_objects.IMAGE_URL]).suffix}"
-        file_path = f"{file_path}{pathlib.Path(json_request[common_objects.IMAGE_URL]).suffix}"
-    elif content_type in [common_objects.ContentType.TV_SHOW, common_objects.ContentType.PLAYLIST]:
-        file_path = pathlib.Path(
-            f"{media_metadata.get(common_objects.PLAYLIST_TITLE)}/cover")
-        file_parent = file_path.parent
-        file_name = f"{file_path.name}{pathlib.Path(json_request[common_objects.IMAGE_URL]).suffix}"
-        file_path = f"{file_path}{pathlib.Path(json_request[common_objects.IMAGE_URL]).suffix}"
-    else:
-        print({"message": 'Unknown content type provided', 'value': json_request.get('content_type')})
-        raise ValueError(
-            {"message": 'Unknown content type provided', 'value': json_request.get('content_type')})
-
-    print(media_folder_path)
-    output_path = pathlib.Path(
-        f"{media_folder_path.get(common_objects.MEDIA_DIRECTORY_PATH_COLUMN)}/{file_parent}").resolve().absolute()
-    output_path.mkdir(parents=True, exist_ok=True)
-    output_file = output_path / file_name
-
-    print(output_file)
-    print(file_path)
-    # if pathlib.Path(output_file).resolve().exists():
-    #     json_request[common_objects.IMAGE_URL] = file_name
-    #     print({"message": "Image url already exists, assigning existing image",
-    #            "file_name": json_request.get(common_objects.IMAGE_URL), "string": f"{file_name}"})
-    #     raise ValueError({"message": "Image url already exists, assigning existing image",
-    #                       "file_name": json_request.get(common_objects.IMAGE_URL), "string": f"{file_name}"})
-
-    res = requests.get(json_request.get(common_objects.IMAGE_URL), stream=True)
+    res = requests.get(json_request.get('img_src'), stream=True)
 
     if res.status_code == 200:
-        with open(output_file, 'wb') as f:
+        output_path = pathlib.Path(f"{media_folder_path.get('content_src')}/{file_path}").resolve().absolute()
+        with open(output_path, 'wb') as f:
             shutil.copyfileobj(res.raw, f)
-        print('Image successfully Downloaded: ', output_file)
-        json_request[common_objects.IMAGE_URL] = str(file_path)
+        print('Image successfully Downloaded: ', output_path)
+        json_request["img_src"] = str(file_path)
     else:
         print({"message": "requests error encountered while saving image",
                "file_name": json_request.get(common_objects.IMAGE_URL),
@@ -140,20 +107,18 @@ def download_image(json_request):
 
 
 def build_tv_show_output_path(file_name_str):
-    media_metadata = {}
-    file_name = pathlib.Path(file_name_str)
-    with DatabaseHandler() as db_connection:
-        media_folder_path = db_connection.get_media_folder_path(1)
-    if not media_folder_path:
+    with DBCreatorV2() as db_connection:
+        content_directory_info = db_connection.get_all_content_directory_info()[0]
+    if not content_directory_info:
         raise ValueError({"message": "Error media directory table missing paths"})
 
-    extract_tv_show_file_name_content(media_metadata, file_name.stem)
-    output_path = pathlib.Path(
-        f"{media_folder_path.get(common_objects.MEDIA_DIRECTORY_PATH_COLUMN)}/{media_metadata[common_objects.PLAYLIST_TITLE]}/{file_name}").resolve()
-    if output_path.exists():
-        raise FileExistsError({"message": "File already exists", "file_name": str(file_name_str)})
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    return output_path
+    if match := re.search(r"^([\w\W]+) - s(\d+)e(\d+)\.mp4$", file_name_str):
+        output_path = pathlib.Path(
+            f"{content_directory_info.get('content_src')}/tv_shows/{match[1]}/{file_name_str}").absolute()
+        if output_path.exists():
+            raise FileExistsError({"message": "File already exists", "file_name": file_name_str})
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        return output_path.as_posix()
 
 
 class BackEndHandler:
@@ -198,45 +163,60 @@ class BackEndHandler:
     def get_chromecast_media_controller_metadata(self):
         return self.chromecast_handler.get_media_controller_metadata()
 
-    def play_media_on_chromecast(self, media_request_ids, content_type):
-        return self.chromecast_handler.play_from_sql(media_request_ids, content_type)
+    def play_media_on_chromecast(self, content_data):
+        return self.chromecast_handler.play_from_sql(content_data)
 
     def scan_media_directories(self):
-        if not self.media_scan_in_progress:
-            self.media_scan_in_progress = True
-            with DBCreator() as db_connection:
-                db_connection.scan_all_media_directories()
-        self.media_scan_in_progress = False
+        try:
+            if not self.media_scan_in_progress:
+                self.media_scan_in_progress = True
+                with DBCreatorV2() as db_connection:
+                    db_connection.scan_content_directories()
+                self.media_scan_in_progress = False
+            else:
+                print("Scan in progress")
+        except Exception as e:
+            print("Exception class: ", e.__class__)
+            print(f"ERROR: {e}")
+            print(traceback.print_exc())
+        finally:
+            self.media_scan_in_progress = False
 
     def get_editor_metadata(self, selected_txt_file=None):
         config_file = config_file_handler.load_json_file_content()
         raw_folder = config_file.get('editor_raw_folder')
         raw_folder_url = config_file.get('editor_raw_url')
         return mp4_splitter.get_editor_metadata(raw_folder, self.editor_processor,
-                                                selected_txt_file=selected_txt_file, raw_url=raw_folder_url,
+                                                selected_editor_file=selected_txt_file, raw_url=raw_folder_url,
                                                 process_file=EDITOR_PROCESSED_LOG)
 
-    def editor_process_txt_file(self, editor_metadata, media_type):
-        with DatabaseHandler() as db_connection:
-            media_folder_path = db_connection.get_media_folder_path_from_type(media_type)
-        mp4_output_parent_path = pathlib.Path(media_folder_path).resolve()
-        error_log = mp4_splitter.editor_process_txt_file(editor_metadata, media_type, mp4_output_parent_path,
-                                                         self.editor_processor)
+    def editor_process_txt_file(self, json_request):
+        mp4_output_parent_path = None
+        with DBCreatorV2() as db_connection:
+            media_folder_path = db_connection.get_all_content_directory_info()[0]
+        if json_request.get('media_type') == common_objects.ContentType.MOVIE.name:
+            mp4_output_parent_path = pathlib.Path(f"{media_folder_path.get('content_src')}/movies").resolve()
+        elif json_request.get('media_type') == common_objects.ContentType.TV.name:
+            mp4_output_parent_path = pathlib.Path(f"{media_folder_path.get('content_src')}/tv_shows").resolve()
+        elif json_request.get('media_type') == common_objects.ContentType.BOOK.name:
+            mp4_output_parent_path = pathlib.Path(f"{media_folder_path.get('content_src')}/books").resolve()
+        else:
+            print("Unknown media type")
+        error_log = mp4_splitter.editor_process_txt_file(json_request, mp4_output_parent_path, self.editor_processor)
         if not error_log:
-            mp4_splitter.update_processed_file(editor_metadata.get('txt_file_name'), EDITOR_PROCESSED_LOG)
-
+            mp4_splitter.update_processed_file(json_request.get('file_name'), EDITOR_PROCESSED_LOG)
         return error_log
 
     def editor_get_process_metadata(self):
         return self.editor_processor.get_metadata()
 
     def get_system_data(self):
-        with DBCreator() as db_connection:
-            media_directory_info = db_connection.get_all_media_directory_info()
+        with DBCreatorV2() as db_connection:
+            media_directory_info = db_connection.get_all_content_directory_info()
 
         media_directory_disk_space = []
         for media_directory in media_directory_info:
-            media_directory_path_str = media_directory.get(common_objects.MEDIA_DIRECTORY_PATH_COLUMN)
+            media_directory_path_str = media_directory.get("content_src")
             media_directory_disk_space.append({"free_disk_space": get_free_disk_space("G"),
                                                "free_disk_percent": get_free_disk_space_percent(
                                                    media_directory_path_str),
@@ -244,5 +224,4 @@ class BackEndHandler:
 
         return {
             "disk_space": media_directory_disk_space
-
         }
