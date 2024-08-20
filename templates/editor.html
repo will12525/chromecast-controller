@@ -127,8 +127,8 @@
         </div>
     </div>
     <div class="row row-cols-12 gx-2 gy-2">
-        <div class="col-lg-4">
-            <div id="editor_file_list" class="list-group overflow-auto" style="min-height: 100%; height: 200px;">
+        <div class="col-lg-3">
+            <div id="editor_file_list" class="list-group overflow-auto" style="min-height: 100%; height: 500px;">
                 {% if 'txt_file_list' in editor_metadata %}
                 {% for editor_txt_file in editor_metadata['txt_file_list']: %}
                 {% if editor_txt_file['processed'] %}
@@ -142,7 +142,7 @@
                 {% endif %}
             </div>
         </div>
-        <div class="col-lg-8">
+        <div class="col-lg-9">
             <p class="form-label">File name: <span id="editor_txt_file_name">{{ editor_metadata['selected_txt_file_title'] }}</span>
             </p>
             <form id="splitter_form_container" class="row g-3">
@@ -165,12 +165,12 @@
                 </div>
             </form>
         </div>
-        <div class="col-lg-4">
+        <div class="col-lg-3">
             <div id="editor_process_queue" class="list-group overflow-auto"
                  style="min-height: 100%; height: 400px;">
             </div>
         </div>
-        <div class="col-lg-8">
+        <div class="col-lg-9">
             <button type="button" class="btn btn-danger" onclick="javascript:clear_editor_log()">Clear</button>
             <label for="editor_txt_file_log" id="editor_txt_file_log_label" class="form-label">Editor logs</label>
             <textarea class="form-control" id="editor_txt_file_log" rows="10" disabled></textarea>
