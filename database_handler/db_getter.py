@@ -109,7 +109,7 @@ class DatabaseHandlerV2(DBConnection):
         return self.get_data_from_db_first_result(parent_containers_query, params)
 
     def query_content_tags(self, content_id):
-        parent_containers_query = "SELECT GROUP_CONCAT(user_tags.tag_title) AS user_tags FROM content LEFT JOIN user_tags_content ON content.id = user_tags_content.content_id LEFT JOIN user_tags ON user_tags_content.user_tags_id = user_tags.id WHERE content.id = :id ORDER BY ;"
+        parent_containers_query = "SELECT GROUP_CONCAT(user_tags.tag_title) AS user_tags FROM content LEFT JOIN user_tags_content ON content.id = user_tags_content.content_id LEFT JOIN user_tags ON user_tags_content.user_tags_id = user_tags.id WHERE content.id = :id;"
         params = {'id': content_id}
         return self.get_data_from_db_first_result(parent_containers_query, params)
 
