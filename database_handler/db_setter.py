@@ -192,14 +192,3 @@ class DBCreatorV2(DBConnection):
         else:
             print(f"Content directory already added: {content_directory_info}")
         print("Setup Complete")
-
-
-sql_create_user_info_table = f'''CREATE TABLE IF NOT EXISTS {common_objects.MEDIA_DIRECTORY_TABLE} (
-                                        {common_objects.ID_COLUMN} integer PRIMARY KEY,
-                                        {common_objects.MEDIA_TYPE_COLUMN} integer NOT NULL,
-                                        {common_objects.MEDIA_DIRECTORY_PATH_COLUMN} text NOT NULL UNIQUE,
-                                        {common_objects.NEW_MEDIA_DIRECTORY_PATH_COLUMN} text,
-                                        {common_objects.MEDIA_DIRECTORY_URL_COLUMN} text NOT NULL UNIQUE
-                                     );'''
-
-sql_insert_user_info_table = f'{INSERT_IGNORE} {common_objects.MEDIA_DIRECTORY_TABLE} VALUES(:{common_objects.ID_COLUMN}, :{common_objects.MEDIA_TYPE_COLUMN}, :{common_objects.MEDIA_DIRECTORY_PATH_COLUMN}, :{common_objects.NEW_MEDIA_DIRECTORY_PATH_COLUMN}, :{common_objects.MEDIA_DIRECTORY_URL_COLUMN});'

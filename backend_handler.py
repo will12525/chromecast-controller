@@ -49,16 +49,17 @@ def editor_validate_txt_file(json_request):
     mp4_output_parent_path = None
     with DBCreatorV2() as db_connection:
         media_folder_path = db_connection.get_all_content_directory_info()[0]
-    if json_request.get('media_type') == common_objects.ContentType.MOVIE.name:
+    if json_request.get('media_type') == common_objects.ContentType.RAW.name:
+        pass
+    elif json_request.get('media_type') == common_objects.ContentType.MOVIE.name:
         mp4_output_parent_path = pathlib.Path(f"{media_folder_path.get('content_src')}/movies").resolve()
     elif json_request.get('media_type') == common_objects.ContentType.TV.name:
         mp4_output_parent_path = pathlib.Path(f"{media_folder_path.get('content_src')}/tv_shows").resolve()
     elif json_request.get('media_type') == common_objects.ContentType.BOOK.name:
         mp4_output_parent_path = pathlib.Path(f"{media_folder_path.get('content_src')}/books").resolve()
     else:
-        print("Unknown media type")
-    return mp4_splitter.editor_validate_txt_file(json_request.get('file_name'), json_request.get('media_type'),
-                                                 mp4_output_parent_path)
+        print(f"Unknown media type: {json_request.get('media_type')}")
+    return mp4_splitter.editor_validate_txt_file(json_request.get('file_name'), mp4_output_parent_path)
 
 
 def editor_save_file(file_name, json_request):
@@ -194,7 +195,9 @@ class BackEndHandler:
         mp4_output_parent_path = None
         with DBCreatorV2() as db_connection:
             media_folder_path = db_connection.get_all_content_directory_info()[0]
-        if json_request.get('media_type') == common_objects.ContentType.MOVIE.name:
+        if json_request.get('media_type') == common_objects.ContentType.RAW.name:
+            pass
+        elif json_request.get('media_type') == common_objects.ContentType.MOVIE.name:
             mp4_output_parent_path = pathlib.Path(f"{media_folder_path.get('content_src')}/movies").resolve()
         elif json_request.get('media_type') == common_objects.ContentType.TV.name:
             mp4_output_parent_path = pathlib.Path(f"{media_folder_path.get('content_src')}/tv_shows").resolve()

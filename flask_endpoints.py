@@ -1,18 +1,16 @@
 import json
 import queue
 
-from enum import Enum
+from enum import Enum, auto
 import traceback
 from flask import Flask, request, render_template, jsonify
-
-# jsonify, redirect, current_app, render_template
-import backend_handler as bh
-from chromecast_handler import CommandList
-from database_handler import common_objects
-from database_handler.db_getter import DatabaseHandlerV2
-from database_handler.common_objects import ContentType
 from werkzeug.utils import secure_filename
 
+import backend_handler as bh
+from chromecast_handler import CommandList
+from database_handler.db_getter import DatabaseHandlerV2
+from database_handler.common_objects import ContentType
+import config_file_handler
 from database_handler.db_setter import DBCreatorV2
 
 
@@ -34,19 +32,20 @@ from database_handler.db_setter import DBCreatorV2
 
 # TODO: EDITOR
 # TODO: Enable user to view remaining storage space
-# TODO: UI: Enable data persistence between media type swap
-# TODO: Integrate json formatted editor content with splitter
 # TODO: Prevent media additions if space is low
 
 # TODO: TAGS
-# TODO: UI: Enable user to submit new tags
-# TODO: UI: DB: Enable user to search by tag
 # TODO: UI: DB: Enable user to search by media_title
 
 # TODO: Cleanup
 # TODO: Convert all js functions calls embedded in html to event listeners in app.js
 # TODO: Convert chromecast name strings to IDs and use IDs to refer to chromecasts
 # TODO: The chromecast select menu shall never contain chromecasts that no longer exist
+
+
+class SystemMode(Enum):
+    SERVER = auto()
+    CLIENT = auto()
 
 
 class APIEndpoints(Enum):
@@ -96,6 +95,11 @@ media_types = [
     ContentType.BOOK.name
 ]
 
+system_mode = SystemMode.CLIENT
+
+if config_file_handler.load_json_file_content().get("mode") == SystemMode.SERVER.name:
+    system_mode = SystemMode.SERVER
+
 backend_handler = bh.BackEndHandler()
 setup_thread = backend_handler.start()
 
@@ -141,7 +145,7 @@ def editor():
 def editor_validate_txt_file():
     data = {"error": {"message": "File valid"}}
     if json_request := request.get_json():
-        if json_request.get("file_name") and json_request.get("media_type") and json_request.get("splitter_content"):
+        if json_request.get("file_name"):
             try:
                 if errors := bh.editor_validate_txt_file(json_request):
                     data = {"process_log": errors}
@@ -187,7 +191,7 @@ def editor_load_txt_file():
 def editor_process_txt_file():
     data = {}
     if json_request := request.get_json():
-        if json_request.get("media_type"):
+        if json_request.get("file_name") and json_request.get("media_type"):
             try:
                 errors = backend_handler.editor_process_txt_file(json_request)
                 data = backend_handler.editor_get_process_metadata()
@@ -301,7 +305,9 @@ def remove_tag_from_content():
 
 @app.route(APIEndpoints.GET_MEDIA_CONTENT_TYPES.value, methods=['GET'])
 def get_media_content_types():
-    data = {i.name: i.value for i in ContentType}
+    data = {}
+    if system_mode == SystemMode.SERVER:
+        data["editor"] = APIEndpoints.EDITOR.value
     return data, 200
 
 

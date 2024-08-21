@@ -7,9 +7,7 @@ import pathlib
 
 import backend_handler as bh
 import config_file_handler
-from database_handler import common_objects
 from database_handler.common_objects import ContentType
-from database_handler.db_getter import DatabaseHandler
 from database_handler.db_setter import DBCreatorV2
 import __init__
 
@@ -245,29 +243,29 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
 
     def test_editor_validate_txt_file(self):
         editor_metadata = {
-            'txt_file_name': "2024-01-31_16-32-36.txt",
+            'file_name': "2024-01-31_16-32-36.json",
             'media_type': ContentType.TV.name
         }
-        error_log = bh.editor_validate_txt_file(editor_metadata.get('txt_file_name'),
-                                                common_objects.ContentType[editor_metadata.get('media_type')].value)
+        error_log = bh.editor_validate_txt_file(editor_metadata)
         print(json.dumps(error_log, indent=4))
         assert not error_log
 
     def test_editor_validate_broken_txt_file(self):
         editor_metadata = {
-            'txt_file_name': "2024-01-31_16-32-36_invalid.txt",
+            'file_name': "2024-01-31_16-32-36_invalid.json",
             'media_type': ContentType.TV.name
         }
-        error_log = bh.editor_validate_txt_file(editor_metadata.get('txt_file_name'),
-                                                common_objects.ContentType[editor_metadata.get('media_type')].value)
+        error_log = bh.editor_validate_txt_file(editor_metadata)
         print(json.dumps(error_log, indent=4))
         assert error_log
-        assert len(error_log) == 4
+        assert len(error_log) == 1
 
     def test_editor_validate_movie_txt_file(self):
-        txt_file_name = "movie.txt"
-        media_type = ContentType.MOVIE.value
-        error_log = bh.editor_validate_txt_file(txt_file_name, media_type)
+        editor_metadata = {
+            'file_name': "movie.json",
+            'media_type': ContentType.MOVIE.name
+        }
+        error_log = bh.editor_validate_txt_file(editor_metadata)
         print(json.dumps(error_log, indent=4))
         assert not error_log
 
@@ -276,11 +274,10 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
         __init__.patch_update_processed_file(self)
 
         json_request = {
-            'txt_file_name': "movie.txt",
-            "media_type": ContentType.MOVIE.value
+            'file_name': "movie.txt",
+            "media_type": ContentType.MOVIE.name
         }
-        print(ContentType['MOVIE'].value)
-        errors = self.backend_handler.editor_process_txt_file(json_request, json_request.get('media_type'))
+        errors = self.backend_handler.editor_process_txt_file(json_request)
         print(json.dumps(errors, indent=4))
         assert not errors
 
@@ -289,17 +286,91 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
         __init__.patch_update_processed_file(self)
 
         json_request = {
-            'txt_file_name': "2024-01-31_16-32-36.txt",
-            "media_type": ContentType.TV.value
+            'file_name': "2024-01-31_16-32-36.txt",
+            "media_type": ContentType.TV.name
         }
         raw_folder = config_file_handler.load_json_file_content().get('editor_raw_folder')
         with DBCreatorV2() as db_connection:
             media_folder_path = db_connection.get_all_content_directory_info()[0]
         output_path = pathlib.Path(media_folder_path.get("content_src")).resolve()
-        errors = self.backend_handler.editor_process_txt_file(json_request, json_request.get('media_type'))
+        errors = self.backend_handler.editor_process_txt_file(json_request)
         print(json.dumps(errors, indent=4))
         assert not errors
 
     def test_get_system_data(self):
         system_data = self.backend_handler.get_system_data()
         print(json.dumps(system_data, indent=4))
+
+
+class TestBackEndSplitter(TestBackEndHandler):
+    def test_editor_validate_tv_json_file(self):
+        editor_metadata = {
+            'file_name': "2024-01-31_16-32-32.json",
+            'media_type': ContentType.TV.name
+        }
+        error_log = bh.editor_validate_txt_file(editor_metadata)
+        print(json.dumps(error_log, indent=4))
+        assert not error_log
+
+    def test_editor_validate_movie_json_file(self):
+        editor_metadata = {
+            'file_name': "movie.json",
+            'media_type': ContentType.MOVIE.name
+        }
+        error_log = bh.editor_validate_txt_file(editor_metadata)
+        print(json.dumps(error_log, indent=4))
+        assert not error_log
+
+    def test_editor_validate_raw_json_file(self):
+        editor_metadata = {
+            'file_name': "Hilda/Hilda - s4e8.json",
+            'media_type': ContentType.RAW.name
+        }
+        error_log = bh.editor_validate_txt_file(editor_metadata)
+        print(json.dumps(error_log, indent=4))
+        assert not error_log
+
+    def test_editor_validate_book_json_file(self):
+        editor_metadata = {
+            'file_name': "book.json",
+            'media_type': ContentType.BOOK.name
+        }
+        error_log = bh.editor_validate_txt_file(editor_metadata)
+        print(json.dumps(error_log, indent=4))
+        assert not error_log
+
+    def test_editor_process_tv_json_file(self):
+        editor_metadata = {
+            'file_name': "2024-01-31_16-32-32.json",
+            'media_type': ContentType.TV.name
+        }
+        error_log = self.backend_handler.editor_process_txt_file(editor_metadata)
+        print(json.dumps(error_log, indent=4))
+        assert not error_log
+
+    def test_editor_process_movie_json_file(self):
+        editor_metadata = {
+            'file_name': "movie.json",
+            'media_type': ContentType.MOVIE.name
+        }
+        error_log = self.backend_handler.editor_process_txt_file(editor_metadata)
+        print(json.dumps(error_log, indent=4))
+        assert not error_log
+
+    def test_editor_process_raw_json_file(self):
+        editor_metadata = {
+            'file_name': "Hilda/Hilda - s4e8.json",
+            'media_type': ContentType.RAW.name
+        }
+        error_log = self.backend_handler.editor_process_txt_file(editor_metadata)
+        print(json.dumps(error_log, indent=4))
+        assert not error_log
+
+    def test_editor_process_book_json_file(self):
+        editor_metadata = {
+            'file_name': "book.json",
+            'media_type': ContentType.BOOK.name
+        }
+        error_log = self.backend_handler.editor_process_txt_file(editor_metadata)
+        print(json.dumps(error_log, indent=4))
+        assert not error_log

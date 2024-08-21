@@ -5,7 +5,7 @@ import mp4_splitter
 import config_file_handler
 import __init__
 from database_handler.common_objects import ContentType
-from database_handler.db_getter import DatabaseHandler, DatabaseHandlerV2
+from database_handler.db_getter import DatabaseHandlerV2
 from database_handler.db_setter import DBCreatorV2
 
 EDITOR_PROCESSED_LOG = "editor_metadata.json"
@@ -17,6 +17,29 @@ class TestMp4Splitter(TestCase):
     raw_url = default_config.get('editor_raw_url')
     modify_output_path = default_config.get("media_folders")[0].get("content_src")
     editor_metadata_file = f"{raw_folder}editor_metadata.json"
+
+
+class TestSplitterV2(TestMp4Splitter):
+    def test_splitter_split_raw_content(self):
+        subclip_metadata = {"start_time": '1:20:47', "end_time": '1:40:43'}
+        subclip_metadata = mp4_splitter.SubclipMetadata(subclip_metadata)
+        print(subclip_metadata.start_time)
+        print(subclip_metadata.end_time)
+        assert subclip_metadata.start_time == 4847
+        assert subclip_metadata.end_time == 6043
+
+    def test_editor_validate_error_empty_json_file(self):
+        editor_metadata = {
+            'file_name': "2024-01-31_16-32-36_empty.json",
+            'media_type': ContentType.TV.name
+        }
+        with DBCreatorV2() as db_connection:
+            media_folder_path = db_connection.get_all_content_directory_info()[0]
+        mp4_output_parent_path = pathlib.Path(f"{media_folder_path.get('content_src')}/media_folder_sample").resolve()
+
+        error_log = mp4_splitter.editor_validate_txt_file(editor_metadata.get("file_name"), mp4_output_parent_path)
+        print(json.dumps(error_log, indent=4))
+        assert not error_log
 
 
 class Test(TestMp4Splitter):
@@ -166,23 +189,19 @@ class Test(TestMp4Splitter):
         error_log = []
         sub_clips = []
         editor_metadata = {
-            'txt_file_name': "2024-01-31_16-32-36.txt"
+            'txt_file_name': "2024-01-31_16-32-36.json"
         }
-        media_type = ContentType.TV.value
 
         with DBCreatorV2() as db_connection:
             media_folder_path = db_connection.get_all_content_directory_info()[0].get("content_src")
         output_path = pathlib.Path(media_folder_path).resolve()
         txt_file = f"{self.raw_folder}{editor_metadata.get('txt_file_name')}"
-        mp4_file = txt_file.replace('.txt', '.mp4')
         txt_file_path = pathlib.Path(txt_file).resolve()
-        mp4_file_path = pathlib.Path(mp4_file).resolve()
 
-        mp4_splitter.get_sub_clips_from_txt_file(media_type, txt_file_path, output_path, sub_clips, error_log)
-
+        mp4_splitter.get_sub_clips_from_txt_file(txt_file_path, output_path, sub_clips, error_log)
         # assert cmd_list
         print(sub_clips[0])
-        assert 5 == len(sub_clips)
+        assert 1 == len(sub_clips)
         assert 0 == len(error_log)
 
         current_index = mp4_splitter.ALPHANUMERIC_INDEX_A
@@ -203,7 +222,7 @@ class Test(TestMp4Splitter):
         }
         media_type = ContentType.TV.value
 
-        with DatabaseHandler() as db_connection:
+        with DatabaseHandlerV2() as db_connection:
             media_folder_path = db_connection.get_media_folder_path_from_type(media_type)
         output_path = pathlib.Path(media_folder_path).resolve()
         txt_file = f"{self.raw_folder}{editor_metadata.get('txt_file_name')}"
@@ -813,7 +832,7 @@ class TestGetCMDList(TestMp4Splitter):
 
         media_type = ContentType.TV.value
 
-        with DatabaseHandler() as db_connection:
+        with DatabaseHandlerV2() as db_connection:
             media_folder_path = db_connection.get_media_folder_path_from_type(media_type)
         output_path = pathlib.Path(media_folder_path).resolve()
         txt_file = f"{self.raw_folder}{txt_file_name}.txt"
@@ -1090,7 +1109,7 @@ class TestProcessSubclipFile(TestMp4Splitter):
         txt_file_name = "2024-01-31_16-32-36_already_exists"
         media_type = ContentType.TV.value
 
-        with DatabaseHandler() as db_connection:
+        with DatabaseHandlerV2() as db_connection:
             media_folder_path = db_connection.get_media_folder_path_from_type(media_type)
         txt_file = f"{self.raw_folder}{txt_file_name}.txt"
         mp4_file = txt_file.replace('.txt', '.mp4')
