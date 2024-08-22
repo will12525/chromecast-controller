@@ -1,32 +1,19 @@
 #!/bin/bash
 
-
+PORT=5001
 PRODUCTION_ENV=$1
 WORKSPACE=$(pwd)
-PORT=5001
-EXIT_CODE=0
 PYTHON_VENV="${WORKSPACE}/.venv"
 
 # Check if .venv exists
 if [ ! -d "${PYTHON_VENV}" ]; then
-    echo "Creating virtual environment ${PYTHON_VENV}"
-    # Create virtual environment
-    python3 -m venv "${PYTHON_VENV}"
-    EXIT_CODE=$?
-fi
-if [ $EXIT_CODE -ne "0" ]; then
-    echo "Install Python virtual env: apt install python3-venv"
-    exit $EXIT_CODE
+    echo "Missing: ${PYTHON_VENV}"
+    exit 1
 fi
 
 # Source virtual environment
 echo "Sourcing venv"
 source "${PYTHON_VENV}/bin/activate"
-# Install requirements
-echo "Installing requirements"
-python3 -m ensurepip --upgrade
-pip install -r "${WORKSPACE}/requirements.txt"
-
 
 # Check if using test environment
 echo "Checking server type server"

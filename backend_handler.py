@@ -17,6 +17,7 @@ from database_handler.db_getter import DatabaseHandlerV2
 import mp4_splitter
 
 EDITOR_PROCESSED_LOG = "editor_metadata.json"
+DISK_SPACE_USE_LIMIT = 20
 
 
 def setup_db():
@@ -26,13 +27,11 @@ def setup_db():
             db_connection.setup_content_directory(media_folder_info)
 
 
-def get_free_disk_space(size=None, ret=3, raw_folder=None):
-    if not raw_folder:
-        raw_folder = config_file_handler.load_json_file_content().get('editor_raw_folder')
-    if raw_folder:
-        cmd = ["df", f"{raw_folder}"]
+def get_free_disk_space(size=None, ret=3, dir_path=None):
+    if dir_path:
+        cmd = ["df", f"{dir_path}"]
         if size:
-            cmd = ["df", "-B", size, f"{raw_folder}"]
+            cmd = ["df", "-B", size, f"{dir_path}"]
         df = subprocess.Popen(cmd, stdout=subprocess.PIPE)
         output = df.communicate()[0]
         # device, size, used, available, percent, mount_point
@@ -42,24 +41,86 @@ def get_free_disk_space(size=None, ret=3, raw_folder=None):
 
 
 def get_free_disk_space_percent(editor_folder):
-    return get_free_disk_space(ret=4, raw_folder=editor_folder)
+    return get_free_disk_space(ret=4, dir_path=editor_folder)
 
 
-def editor_validate_txt_file(json_request):
+def get_system_data():
+    disk_space = {
+        "disk_space": []
+    }
+    if raw_folder := config_file_handler.load_json_file_content().get('editor_raw_folder'):
+        disk_space["raw_folder"] = {
+            "free_disk_space": get_free_disk_space(size="G", dir_path=raw_folder),
+            "free_disk_percent": get_free_disk_space_percent(raw_folder),
+            "directory_path": raw_folder
+        }
+
+    with DBCreatorV2() as db_connection:
+        media_directory_info = db_connection.get_all_content_directory_info()
+
+    for media_directory in media_directory_info:
+        media_directory_path_str = media_directory.get("content_src")
+        disk_space["disk_space"].append(
+            {
+                "free_disk_space": get_free_disk_space(size="G", dir_path=media_directory_path_str),
+                "free_disk_percent": get_free_disk_space_percent(media_directory_path_str),
+                "directory_path": media_directory_path_str
+            })
+
+    return disk_space
+
+
+def path_has_space(dir_path):
+    free_disk_space_str = get_free_disk_space(size="G", dir_path=dir_path)
+    try:
+        return int(free_disk_space_str[:-1]) > DISK_SPACE_USE_LIMIT
+    except ValueError as e:
+        print(e)
+
+
+def get_free_media_drive():
+    with DBCreatorV2() as db_connection:
+        media_directory_info = db_connection.get_all_content_directory_info()
+
+    for media_directory in media_directory_info:
+        media_directory_path_str = media_directory.get("content_src")
+        if path_has_space(media_directory_path_str):
+            return media_directory_path_str
+
+
+def build_editor_output_path(media_type, error_log):
     mp4_output_parent_path = None
     with DBCreatorV2() as db_connection:
         media_folder_path = db_connection.get_all_content_directory_info()[0]
-    if json_request.get('media_type') == common_objects.ContentType.RAW.name:
+    if media_type == common_objects.ContentType.RAW.name:
         pass
-    elif json_request.get('media_type') == common_objects.ContentType.MOVIE.name:
+        if raw_folder := config_file_handler.load_json_file_content().get('editor_raw_folder'):
+            if not path_has_space(raw_folder):
+                error_log.append({"message": "Splitter folder out of space", "file_name": f"{raw_folder}",
+                                  "value": get_free_disk_space(size="G", dir_path=raw_folder)})
+        else:
+            error_log.append({"message": "Splitter folder missing from config file"})
+    elif media_type == common_objects.ContentType.MOVIE.name:
         mp4_output_parent_path = pathlib.Path(f"{media_folder_path.get('content_src')}/movies").resolve()
-    elif json_request.get('media_type') == common_objects.ContentType.TV.name:
+    elif media_type == common_objects.ContentType.TV.name:
         mp4_output_parent_path = pathlib.Path(f"{media_folder_path.get('content_src')}/tv_shows").resolve()
-    elif json_request.get('media_type') == common_objects.ContentType.BOOK.name:
+    elif media_type == common_objects.ContentType.BOOK.name:
         mp4_output_parent_path = pathlib.Path(f"{media_folder_path.get('content_src')}/books").resolve()
     else:
-        print(f"Unknown media type: {json_request.get('media_type')}")
-    return mp4_splitter.editor_validate_txt_file(json_request.get('file_name'), mp4_output_parent_path)
+        print(f"Unknown media type: {media_type}")
+
+    if mp4_output_parent_path:
+        if not path_has_space(mp4_output_parent_path):
+            error_log.append({"message": "Splitter folder out of space", "file_name": f"{mp4_output_parent_path}",
+                              "value": get_free_disk_space(size="G", dir_path=mp4_output_parent_path)})
+    return mp4_output_parent_path
+
+
+def editor_validate_txt_file(json_request):
+    error_log = []
+    if mp4_output_parent_path := build_editor_output_path(json_request.get("media_type"), error_log):
+        error_log.extend(mp4_splitter.editor_validate_txt_file(json_request.get('file_name'), mp4_output_parent_path))
+    return error_log
 
 
 def editor_save_file(file_name, json_request):
@@ -108,14 +169,9 @@ def download_image(json_request):
 
 
 def build_tv_show_output_path(file_name_str):
-    with DBCreatorV2() as db_connection:
-        content_directory_info = db_connection.get_all_content_directory_info()[0]
-    if not content_directory_info:
-        raise ValueError({"message": "Error media directory table missing paths"})
-
-    if match := re.search(r"^([\w\W]+) - s(\d+)e(\d+)\.mp4$", file_name_str):
-        output_path = pathlib.Path(
-            f"{content_directory_info.get('content_src')}/tv_shows/{match[1]}/{file_name_str}").absolute()
+    content_src = get_free_media_drive()
+    if match := re.search(r"^([\w\W]+) - s(\d+)e(\d+)\.mp4$", file_name_str) and content_src:
+        output_path = pathlib.Path(f"{content_src}/tv_shows/{match[1]}/{file_name_str}").absolute()
         if output_path.exists():
             raise FileExistsError({"message": "File already exists", "file_name": file_name_str})
         output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -192,39 +248,14 @@ class BackEndHandler:
                                                 process_file=EDITOR_PROCESSED_LOG)
 
     def editor_process_txt_file(self, json_request):
-        mp4_output_parent_path = None
-        with DBCreatorV2() as db_connection:
-            media_folder_path = db_connection.get_all_content_directory_info()[0]
-        if json_request.get('media_type') == common_objects.ContentType.RAW.name:
-            pass
-        elif json_request.get('media_type') == common_objects.ContentType.MOVIE.name:
-            mp4_output_parent_path = pathlib.Path(f"{media_folder_path.get('content_src')}/movies").resolve()
-        elif json_request.get('media_type') == common_objects.ContentType.TV.name:
-            mp4_output_parent_path = pathlib.Path(f"{media_folder_path.get('content_src')}/tv_shows").resolve()
-        elif json_request.get('media_type') == common_objects.ContentType.BOOK.name:
-            mp4_output_parent_path = pathlib.Path(f"{media_folder_path.get('content_src')}/books").resolve()
-        else:
-            print("Unknown media type")
-        error_log = mp4_splitter.editor_process_txt_file(json_request, mp4_output_parent_path, self.editor_processor)
+        error_log = []
+        mp4_output_parent_path = build_editor_output_path(json_request.get("media_type"), error_log)
+        if not error_log and mp4_output_parent_path:
+            error_log.extend(
+                mp4_splitter.editor_process_txt_file(json_request, mp4_output_parent_path, self.editor_processor))
         if not error_log:
             mp4_splitter.update_processed_file(json_request.get('file_name'), EDITOR_PROCESSED_LOG)
         return error_log
 
     def editor_get_process_metadata(self):
         return self.editor_processor.get_metadata()
-
-    def get_system_data(self):
-        with DBCreatorV2() as db_connection:
-            media_directory_info = db_connection.get_all_content_directory_info()
-
-        media_directory_disk_space = []
-        for media_directory in media_directory_info:
-            media_directory_path_str = media_directory.get("content_src")
-            media_directory_disk_space.append({"free_disk_space": get_free_disk_space("G"),
-                                               "free_disk_percent": get_free_disk_space_percent(
-                                                   media_directory_path_str),
-                                               "directory_path": pathlib.Path(media_directory_path_str).parent.stem})
-
-        return {
-            "disk_space": media_directory_disk_space
-        }

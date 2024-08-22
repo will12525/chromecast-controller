@@ -26,24 +26,25 @@ fi
 install_packages() {
     echo "Install system packages"
     apt update -y && apt install -y sqlite3 ffmpeg npm python3-venv
-    # https://nodejs.org/en/download/package-manager
-    npm install -g http-server
-#    python3 -m ensurepip --upgrade
 }
 
 setup_npm_packages() {
     echo "Installing npm packages"
-    cd "${NPM_PACKAGES_DEST}"
-    npm install
-    cd "${WORKSPACE}"
-    chown -R $SUDO_USER:$SUDO_USER "${NPM_PACKAGES_DEST}"
+    npm install -g http-server
+    cd "${NPM_PACKAGES_DEST}" && npm install
+    chown -R "${SUDO_USER}:${SUDO_USER}" "${NPM_PACKAGES_DEST}"
 }
 
 create_venv() {
     echo "Creating Python venv"
     # Create virtual environment
     python3 -m venv "${PYTHON_VENV}"
-    chown -R $SUDO_USER:$SUDO_USER "${PYTHON_VENV}"
+    source "${PYTHON_VENV}/bin/activate"
+    # Install requirements
+    echo "Installing requirements"
+    python3 -m ensurepip --upgrade
+    pip install -r "${WORKSPACE}/requirements.txt"
+    chown -R "${SUDO_USER}:${SUDO_USER}" "${PYTHON_VENV}"
 }
 
 source_config_file() {
@@ -65,8 +66,7 @@ source_config_file() {
                 echo "Config file not set, update file param ${CONFIG_FILE}: MEDIA_DIR"
             fi
             if [[ -z "${EDITOR_DIR}" ]]; then
-                EXIT_CODE=1
-                echo "Config file not set, update file param ${CONFIG_FILE}: EDITOR_DIR"
+                echo "Editor path not set, ignoring editor"
             fi
         else
             EXIT_CODE=1
@@ -91,11 +91,15 @@ install_system_services() {
     echo "Installing services"
     install_service "${WORKSPACE}" "${CAST_SERVICE}"
     install_service "${MEDIA_DIR}" "${MEDIA_DRIVE_SERVICE}"
-    install_service "${EDITOR_DIR}" "${EDITOR_DRIVE_SERVICE}"
+    if [[ -n "${EDITOR_DIR}" ]]; then
+        install_service "${EDITOR_DIR}" "${EDITOR_DRIVE_SERVICE}"
+    fi
     systemctl daemon-reload
     run_service "${CAST_CONTROLLER_SERVICE}"
     run_service "${MEDIA_DRIVE_WEBPAGE_SERVICE}"
-    run_service "${EDITOR_DRIVE_WEBPAGE_SERVICE}"
+    if [[ -n "${EDITOR_DIR}" ]]; then
+        run_service "${EDITOR_DRIVE_WEBPAGE_SERVICE}"
+    fi
 }
 
 if [ $EXIT_CODE -eq 0 ]; then
