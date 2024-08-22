@@ -14,6 +14,8 @@ tests/static/
 editor_raw_files/
 images/
 node_modules/
+**package-lock.json
 
 # media database
 *.db
+*.backup
