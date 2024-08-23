@@ -29,16 +29,25 @@ def setup_db():
 
 
 def get_free_disk_space(size=None, ret=3, dir_path=None):
-    if dir_path:
-        cmd = ["df", f"{dir_path}"]
+    path = dir_path
+    if dir_path and dir_path.is_file():
+        path = dir_path.parent
+
+    if path and path.exists():
+        print(f"Check free space of directory: {path}")
+        cmd = ["df", f"{path}"]
         if size:
-            cmd = ["df", "-B", size, f"{dir_path}"]
+            cmd = ["df", "-B", size, f"{path}"]
         df = subprocess.Popen(cmd, stdout=subprocess.PIPE)
         output = df.communicate()[0]
+        decoded_output_list = output.decode("utf-8").split("\n")
         # device, size, used, available, percent, mount_point
+        print(f"Disk space check: {decoded_output_list}")
         cmd_output_list = output.decode("utf-8").split("\n")[1].split()
         return cmd_output_list[ret]
-    return []
+    else:
+        print(f"Missing Path: {path}")
+    return ""
 
 
 def get_free_disk_space_percent(editor_folder):
@@ -73,10 +82,12 @@ def get_system_data():
 
 def path_has_space(dir_path):
     free_disk_space_str = get_free_disk_space(size="G", dir_path=dir_path)
-    try:
-        return int(free_disk_space_str[:-1]) > DISK_SPACE_USE_LIMIT
-    except ValueError as e:
-        print(e)
+    if free_disk_space_str:
+        try:
+            return int(free_disk_space_str[:-1]) > DISK_SPACE_USE_LIMIT
+        except ValueError as e:
+            print(e)
+    return False
 
 
 def get_free_media_drive():
