@@ -1,18 +1,21 @@
 import json
+import os
+import pathlib
 import queue
 
 from enum import Enum, auto
 import traceback
-from flask import Flask, request, render_template, jsonify
+
+import requests
+from flask import Flask, request, render_template, jsonify, send_file
 from werkzeug.utils import secure_filename
 
-import backend_handler as bh
+import backend_handler
 from chromecast_handler import CommandList
 from database_handler.db_getter import DatabaseHandlerV2
 from database_handler.common_objects import ContentType
 import config_file_handler
 from database_handler.db_setter import DBCreatorV2
-
 
 # TODO: UI
 # TODO: Notify user when media scan completes
@@ -41,6 +44,9 @@ from database_handler.db_setter import DBCreatorV2
 # TODO: Convert all js functions calls embedded in html to event listeners in app.js
 # TODO: Convert chromecast name strings to IDs and use IDs to refer to chromecasts
 # TODO: The chromecast select menu shall never contain chromecasts that no longer exist
+
+HANDSHAKE_SECRET = "Hello world!"
+HANDSHAKE_RESPONSE = "LEONARD IS THE COOLEST DINOSAUR"
 
 
 class SystemMode(Enum):
@@ -71,6 +77,9 @@ class APIEndpoints(Enum):
     GET_DISK_SPACE = "/get_disk_space"
     UPDATE_MEDIA_METADATA = "/update_media_metadata"
     MEDIA_UPLOAD = "/media_upload"
+    MEDIA_SHARE = "/media_share"
+    SERVER_CONNECT = "/server_connect"
+    REQUEST_CONTENT = "/request_content"
 
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', "mp4"}
@@ -78,6 +87,8 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', "mp4"}
 app = Flask(__name__)
 app.jinja_env.lstrip_blocks = True
 app.jinja_env.trim_blocks = True
+app.config['SEND_FILE_MAX_AGE'] = 0  # Disable caching to force compression
+app.config['COMPRESSOR_MIMETYPES'] = ['video/mp4']
 
 media_controller_button_dict = {
     "rewind": {"icon": "bi-rewind-fill", "id": f"{CommandList.CMD_REWIND.name}_media_button"},
@@ -100,8 +111,8 @@ system_mode = SystemMode.CLIENT
 if config_file_handler.load_json_file_content().get("mode") == SystemMode.SERVER.name:
     system_mode = SystemMode.SERVER
 
-backend_handler = bh.BackEndHandler()
-setup_thread = backend_handler.start()
+bh = backend_handler.BackEndHandler()
+setup_thread = bh.start()
 
 error_log = queue.Queue()
 
@@ -127,7 +138,7 @@ def editor():
         return render_template("editor.html",
                                homepage_url=APIEndpoints.MAIN.value,
                                button_dict=media_controller_button_dict,
-                               editor_metadata=backend_handler.get_editor_metadata(),
+                               editor_metadata=bh.get_editor_metadata(),
                                media_types=media_types)
     except Exception as e:
         error_str = str(traceback.print_exc())
@@ -147,7 +158,7 @@ def editor_validate_txt_file():
     if json_request := request.get_json():
         if json_request.get("file_name"):
             try:
-                if errors := bh.editor_validate_txt_file(json_request):
+                if errors := backend_handler.editor_validate_txt_file(json_request):
                     data = {"process_log": errors}
             except Exception as e:
                 print("Exception class: ", e.__class__)
@@ -163,7 +174,7 @@ def editor_save_txt_file():
     if json_request := request.get_json():
         if json_request.get("file_name") and json_request.get("media_type") and json_request.get("splitter_content"):
             try:
-                bh.editor_save_file(json_request.get('file_name'), json_request)
+                backend_handler.editor_save_file(json_request.get('file_name'), json_request)
             except Exception as e:
                 print("Exception class: ", e.__class__)
                 print(f"ERROR: {e}")
@@ -178,7 +189,7 @@ def editor_load_txt_file():
     if json_request := request.get_json():
         if editor_txt_file_name := json_request.get("editor_txt_file_name"):
             try:
-                data = backend_handler.get_editor_metadata(selected_txt_file=editor_txt_file_name)
+                data = bh.get_editor_metadata(selected_txt_file=editor_txt_file_name)
             except Exception as e:
                 print("Exception class: ", e.__class__)
                 print(f"ERROR: {e}")
@@ -193,8 +204,8 @@ def editor_process_txt_file():
     if json_request := request.get_json():
         if json_request.get("file_name") and json_request.get("media_type"):
             try:
-                errors = backend_handler.editor_process_txt_file(json_request)
-                data = backend_handler.editor_get_process_metadata()
+                errors = bh.editor_process_txt_file(json_request)
+                data = bh.editor_get_process_metadata()
                 if errors:
                     data["process_log"].extend(errors)
                 if not errors:
@@ -212,7 +223,7 @@ def editor_process_txt_file():
 def editor_processor_get_metadata():
     data = {}
     try:
-        data = backend_handler.editor_get_process_metadata()
+        data = bh.editor_get_process_metadata()
     except Exception as e:
         print("Exception class: ", e.__class__)
         print(f"ERROR: {e}")
@@ -322,14 +333,14 @@ def set_current_media_runtime():
     data = {}
     if json_request := request.get_json():
         if new_media_time := json_request.get("new_media_time"):
-            backend_handler.seek_media_time(new_media_time)
+            bh.seek_media_time(new_media_time)
     return data, 200
 
 
 @app.route(APIEndpoints.GET_CURRENT_MEDIA_RUNTIME.value, methods=['GET'])
 def get_current_media_runtime():
     data = {}
-    if media_metadata := backend_handler.get_chromecast_media_controller_metadata():
+    if media_metadata := bh.get_chromecast_media_controller_metadata():
         data = media_metadata
     return data, 200
 
@@ -339,7 +350,7 @@ def connect_chromecast():
     data = {}
     if json_request := request.get_json():
         if chromecast_id := json_request.get("chromecast_id"):
-            if backend_handler.connect_chromecast(chromecast_id):
+            if bh.connect_chromecast(chromecast_id):
                 data = {'chromecast_id': chromecast_id}
     return data, 200
 
@@ -347,8 +358,8 @@ def connect_chromecast():
 @app.route(APIEndpoints.GET_CHROMECAST_LIST.value, methods=['POST'])
 def get_chromecast_list():
     data = {
-        "scanned_devices": backend_handler.get_chromecast_scan_list(),
-        "connected_device": backend_handler.get_chromecast_device_id()
+        "scanned_devices": bh.get_chromecast_scan_list(),
+        "connected_device": bh.get_chromecast_device_id()
     }
     return data, 200
 
@@ -356,7 +367,7 @@ def get_chromecast_list():
 @app.route(APIEndpoints.DISCONNECT_CHROMECAST.value, methods=['POST'])
 def disconnect_chromecast():
     data = {}
-    backend_handler.disconnect_chromecast()
+    bh.disconnect_chromecast()
     return data, 200
 
 
@@ -365,7 +376,7 @@ def chromecast_command():
     data = {}
     if json_request := request.get_json():
         if chromecast_cmd_id := json_request.get("chromecast_cmd_id"):
-            backend_handler.send_chromecast_cmd(CommandList(chromecast_cmd_id))
+            bh.send_chromecast_cmd(CommandList(chromecast_cmd_id))
     return data, 200
 
 
@@ -374,19 +385,12 @@ def play_media():
     data = {}
     if json_request := request.get_json():
         if json_request.get("content_id"):
-            if not backend_handler.play_media_on_chromecast(json_request):
+            if not bh.play_media_on_chromecast(json_request):
                 with DatabaseHandlerV2() as db_connection:
                     media_metadata = db_connection.get_content_info(json_request.get("content_id"))
                 data["local_play_url"] = media_metadata.get("url")
         else:
             print(f"Media ID not provided: {json_request}")
-    return data, 200
-
-
-@app.route(APIEndpoints.SCAN_MEDIA_DIRECTORIES.value, methods=['POST'])
-def scan_media_directories():
-    data = {}
-    backend_handler.scan_media_directories()
     return data, 200
 
 
@@ -398,7 +402,7 @@ def update_media_metadata():
         if json_request.get("img_src"):
             print("Downloading")
             try:
-                bh.download_image(json_request)
+                backend_handler.download_image(json_request)
             except (ValueError, Exception) as e:
                 print(e)
                 if len(e.args) > 0:
@@ -420,7 +424,7 @@ def get_media_menu_data():
 @app.route(APIEndpoints.GET_DISK_SPACE.value, methods=['GET'])
 def get_disk_space():
     try:
-        data = {"free_space": bh.get_free_disk_space()}
+        data = {"free_space": backend_handler.get_free_disk_space()}
         return data, 200
     except Exception as e:
         print("Exception class: ", e.__class__)
@@ -431,6 +435,169 @@ def get_disk_space():
 def allowed_file(filename):
     return '.' in filename and \
         filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def server_request(url, json_data):
+    response = requests.post(url, json=json_data)
+    try:
+        return response.json()
+    except requests.JSONDecodeError as e:
+        print(e)
+
+
+def query_server():
+    print("Server scan triggered")
+    if system_mode == SystemMode.CLIENT and not bh.transfer_in_progress:
+        print("Starting server scan")
+        bh.transfer_in_progress = True
+        if server_url := config_file_handler.load_json_file_content().get("server_url"):
+            print(f"Searching for server at: {server_url}")
+            search_response_data = server_request(f"{server_url}/server_connect", {"message": HANDSHAKE_SECRET})
+            print(f"Server response: {search_response_data}")
+            if search_response_data and search_response_data.get("message") == HANDSHAKE_RESPONSE:
+                path_request_response_data = server_request(f"{server_url}/media_share",
+                                                            {"message": HANDSHAKE_RESPONSE})
+                print(f"Server secret: {path_request_response_data}")
+                for content_src in reversed(path_request_response_data.get("content_srcs")):
+                    print(f"Server content: {content_src}")
+                    with DatabaseHandlerV2() as db_connection:
+                        if not db_connection.check_if_content_src_exists(content_src.get("content_src")):
+                            try:
+                                output_file = backend_handler.build_tv_show_output_path(content_src.get("content_src"))
+                                print(f"Expected save path: {output_file}")
+                                if output_file:
+                                    print(f"Requesting: {content_src}")
+                                    # '54 Lincoln Backyard Timelapse - s2024e234.mp4'
+                                    response = requests.post(f"{server_url}/request_content",
+                                                             json={
+                                                                 "message": HANDSHAKE_RESPONSE,
+                                                                 "id": content_src.get("id")
+                                                             })
+                                    print(response)
+                                    response.raise_for_status()  # Raise an exception for error responses
+                                    print(f"Saving content: {output_file}")
+                                    with open(output_file, 'wb') as f:
+                                        f.write(response.content)
+                                    print('File downloaded successfully!')
+                            except (requests.exceptions.RequestException, FileExistsError) as e:
+                                print(f'Error downloading file: {e} ')
+        bh.transfer_in_progress = False
+
+
+@app.route(APIEndpoints.SCAN_MEDIA_DIRECTORIES.value, methods=['POST'])
+def scan_media_directories():
+    """
+        X User triggeres media scan
+        X media scan asses local files
+        media scan asses free disk space
+        X media scan checks for server
+        media scan submits all local paths to server
+        server begins distributing missing paths to client
+        media client asses free disk space
+        media client stores new paths in disk with free space
+        media client rejects distribution if out of disk space
+
+        :return:
+    """
+    data = {}
+    # bh.scan_media_directories()
+    try:
+        query_server()
+    except Exception as e:
+        print(e)
+    # bh.scan_media_directories()
+
+    return data, 200
+
+
+@app.route(APIEndpoints.SERVER_CONNECT.value, methods=['GET', 'POST'])
+def server_connect():
+    data = {}
+    error_code = 400
+    if json_request := request.get_json():
+        if system_mode == SystemMode.CLIENT:
+            data["error"] = "not a server"
+            error_code = 400
+        elif system_mode == SystemMode.SERVER and json_request.get("message", "") == HANDSHAKE_SECRET:
+            print("Client encountered")
+            data["message"] = HANDSHAKE_RESPONSE
+            error_code = 200
+        else:
+            data["error"] = "System in unknown mode"
+            error_code = 400
+
+            print(json.dumps(json_request, indent=4))
+        # try:
+        #     print(json.dumps(backend_handler.get_system_data(), indent=4))
+        # except Exception as e:
+        #     print(e)
+    return data, error_code
+
+
+@app.route(APIEndpoints.MEDIA_SHARE.value, methods=['GET', 'POST'])
+def media_share():
+    data = {}
+    if json_request := request.get_json():
+        print("Client connected")
+        if json_request.get("message") == HANDSHAKE_RESPONSE:
+            with DatabaseHandlerV2() as db_connection:
+                content_paths = db_connection.get_all_content_paths()
+            for content_path in content_paths:
+                content_path["content_src"] = pathlib.Path(content_path["content_src"]).name
+            # print(content_paths)
+            data["content_srcs"] = content_paths
+        # print(json.dumps(json_request, indent=4))
+        print(f"Sharing content {data}")
+    return data, 200
+
+
+@app.route(APIEndpoints.REQUEST_CONTENT.value, methods=['GET', 'POST'])
+def request_content():
+    data = {}
+    error_code = 400
+    if json_request := request.get_json():
+        print(f"Content id requested: {json.dumps(json_request, indent=4)}")
+        if json_request.get("message") == HANDSHAKE_RESPONSE and (content_id := json_request.get("id")):
+            with DatabaseHandlerV2() as db_connection:
+                content_data = db_connection.get_content_info(content_id)
+            if content_path := content_data.get('path'):
+                print(f"Found content path {content_path}")
+                if os.path.exists(content_path):
+                    try:
+                        file_size = os.path.getsize(content_path)
+                        if file_size > 2 * 1024 * 1024 * 1024:
+                            data["error"] = 'File is too large'
+                        else:
+                            return send_file(content_data.get("path"), as_attachment=True, mimetype='video/mp4')
+                    except FileNotFoundError:
+                        data["error"] = 'File not found'
+                        error_code = 404
+
+                else:
+                    data["error"] = 'File not found'
+                    error_code = 404
+            else:
+                data["error"] = 'Content missing path'
+                error_code = 404
+
+            # return send_file(content_data.get("path"), as_attachment=True, mimetype='video/mp4')
+
+            # response = requests.post(f"{request.url_root}media_upload",
+            #                          json={"file_name": pathlib.Path(content_data.get("content_src")).name},
+            #                          files={'file': open(content_data.get("path"), 'rb')})
+            # try:
+            #     data = response.json()
+            # except requests.JSONDecodeError:
+            #     data = None
+            # print(data)
+
+            # for content_path in content_paths:
+            #     content_path["content_src"] = pathlib.Path(content_path["content_src"]).name
+            # # print(content_paths)
+            # data["content_srcs"] = content_paths
+        # print(json.dumps(json_request, indent=4))
+    print(data)
+    return data, error_code
 
 
 @app.route(APIEndpoints.MEDIA_UPLOAD.value, methods=['GET', 'POST'])
@@ -449,9 +616,11 @@ def upload_file():
                 data["filename"] = f"{file.filename}"
             elif file and allowed_file(file.filename):
                 filename = secure_filename(file.filename).replace('_', ' ')
+                print(filename)
                 try:
-                    output_path = bh.build_tv_show_output_path(filename)
-                    file.save(output_path)
+                    output_path = backend_handler.build_tv_show_output_path(filename)
+                    print(output_path)
+                    # file.save(output_path)
                     data["message"] = "File saved"
                     data["filename"] = f"{file.filename}"
                     error_code = 200
@@ -460,6 +629,8 @@ def upload_file():
     print(data)
     return data, error_code
 
+
+# query_server()
 
 if __name__ == "__main__":
     print("--------------------Running Main--------------------")

@@ -21,6 +21,13 @@ class DatabaseHandlerV2(DBConnection):
     def get_all_tags(self):
         return self.get_data_from_db("SELECT * FROM user_tags;")
 
+    def get_all_content_paths(self):
+        return self.get_data_from_db("SELECT id, content_src FROM content;")
+
+    def check_if_content_src_exists(self, content_src):
+        return self.get_data_from_db("SELECT * FROM content WHERE :content_src LIKE content_src;",
+                                     {"content_src": f"%{content_src}%"})
+
     def get_container_info(self, container_id):
         return self.get_data_from_db_first_result(
             "SELECT *, GROUP_CONCAT(user_tags.tag_title) AS user_tags FROM container LEFT JOIN user_tags_content ON container.id = user_tags_content.container_id LEFT JOIN user_tags ON user_tags_content.user_tags_id = user_tags.id WHERE container.id = :id;",
@@ -28,7 +35,7 @@ class DatabaseHandlerV2(DBConnection):
 
     def get_content_info(self, content_id):
         return self.get_data_from_db_first_result(
-            "SELECT *, content_directory.content_url || '/' || content.content_src AS url, GROUP_CONCAT(user_tags.tag_title) AS user_tags FROM content INNER JOIN content_directory ON content.content_directory_id = content_directory.id LEFT JOIN user_tags_content ON content.id = user_tags_content.content_id LEFT JOIN user_tags ON user_tags_content.user_tags_id = user_tags.id WHERE content.id = :id;",
+            "SELECT *, content_directory.content_url || '/' || content.content_src AS url, content_directory.content_src || content.content_src AS path, GROUP_CONCAT(user_tags.tag_title) AS user_tags FROM content INNER JOIN content_directory ON content.content_directory_id = content_directory.id LEFT JOIN user_tags_content ON content.id = user_tags_content.content_id LEFT JOIN user_tags ON user_tags_content.user_tags_id = user_tags.id WHERE content.id = :id;",
             {'id': content_id})
 
     def collect_all_sub_content(self, container_id, sub_content_list):

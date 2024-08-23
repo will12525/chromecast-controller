@@ -7,6 +7,7 @@ import ffmpeg
 import shutil
 
 from database_handler import common_objects
+from . import common_objects
 
 DELETE = False
 MOVE_FILE = True
@@ -183,6 +184,21 @@ def build_tv_show(content_src, mp4_file_path, match, content_data):
         tv_container_content['img_src'] = img_src.as_posix().replace(content_src, '')
 
     return tv_container_content
+
+
+def get_content_type(file_name):
+    content_type = None
+    mp4_file_path_posix = pathlib.Path(file_name).as_posix()
+    if match := re.search(TV_PATTERN, mp4_file_path_posix):
+        content_type = common_objects.ContentType.TV
+        # container_data = build_tv_show(content_directory_src_posix, mp4_file_path, match, content_data)
+    elif match := re.search(MOVIE_PATTERN, mp4_file_path_posix):
+        content_type = common_objects.ContentType.MOVIE
+    elif match := re.search(BOOK_PATTERN, mp4_file_path_posix):
+        content_type = common_objects.ContentType.BOOK
+    else:
+        print(f"Unknown content type: {file_name}")
+    return content_type
 
 
 def collect_mp4_files(content_directory_info):

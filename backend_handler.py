@@ -15,6 +15,7 @@ from chromecast_handler import ChromecastHandler
 from database_handler.db_setter import DBCreatorV2
 from database_handler.db_getter import DatabaseHandlerV2
 import mp4_splitter
+from database_handler.media_metadata_collector import get_content_type
 
 EDITOR_PROCESSED_LOG = "editor_metadata.json"
 DISK_SPACE_USE_LIMIT = 20
@@ -85,7 +86,7 @@ def get_free_media_drive():
     for media_directory in media_directory_info:
         media_directory_path_str = media_directory.get("content_src")
         if path_has_space(media_directory_path_str):
-            return media_directory_path_str
+            return media_directory
 
 
 def build_editor_output_path(media_type, error_log):
@@ -169,13 +170,27 @@ def download_image(json_request):
 
 
 def build_tv_show_output_path(file_name_str):
-    content_src = get_free_media_drive()
-    if match := re.search(r"^([\w\W]+) - s(\d+)e(\d+)\.mp4$", file_name_str) and content_src:
-        output_path = pathlib.Path(f"{content_src}/tv_shows/{match[1]}/{file_name_str}").absolute()
+    error_log = []
+    output_path = None
+    mp4_output_parent_path = None
+
+    content_type = get_content_type(f"/{file_name_str}")
+    if content_type:
+        mp4_output_parent_path = build_editor_output_path(content_type.name, error_log)
+    # media_directory = get_free_media_drive()
+    # content_src = media_directory.get("content_src")
+    if not error_log and mp4_output_parent_path:
+        if content_type == common_objects.ContentType.TV:
+            if match := re.search(r"^([\w\W]+) - s(\d+)e(\d+)\.mp4$", file_name_str):
+                output_path = mp4_output_parent_path / match[1] / file_name_str
+        else:
+            output_path = mp4_output_parent_path / file_name_str
         if output_path.exists():
             raise FileExistsError({"message": "File already exists", "file_name": file_name_str})
         output_path.parent.mkdir(parents=True, exist_ok=True)
         return output_path.as_posix()
+    else:
+        print(error_log)
 
 
 class BackEndHandler:
@@ -183,6 +198,7 @@ class BackEndHandler:
     chromecast_handler = None
     editor_processor = mp4_splitter.SubclipProcessHandler()
     media_scan_in_progress = False
+    transfer_in_progress = False
 
     def __init__(self):
         repo = git.Repo(search_parent_directories=True)
