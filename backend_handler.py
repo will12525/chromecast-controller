@@ -34,7 +34,6 @@ def get_free_disk_space(size=None, ret=3, dir_path=None):
         path = dir_path.parent
 
     if path and path.exists():
-        print(f"Check free space of directory: {path}")
         cmd = ["df", f"{path}"]
         if size:
             cmd = ["df", "-B", size, f"{path}"]
@@ -42,7 +41,6 @@ def get_free_disk_space(size=None, ret=3, dir_path=None):
         output = df.communicate()[0]
         decoded_output_list = output.decode("utf-8").split("\n")
         # device, size, used, available, percent, mount_point
-        print(f"Disk space check: {decoded_output_list}")
         cmd_output_list = output.decode("utf-8").split("\n")[1].split()
         return cmd_output_list[ret]
     else:

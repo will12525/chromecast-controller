@@ -479,8 +479,9 @@ def query_server():
                                     with open(output_file, 'wb') as f:
                                         f.write(response.content)
                                     print('File downloaded successfully!')
-                            except (requests.exceptions.RequestException, FileExistsError) as e:
+                            except (requests.exceptions.RequestException, FileExistsError, Exception) as e:
                                 print(f'Error downloading file: {e} ')
+        print("Server scan complete")
         bh.transfer_in_progress = False
 
 
@@ -500,12 +501,12 @@ def scan_media_directories():
         :return:
     """
     data = {}
-    # bh.scan_media_directories()
+    bh.scan_media_directories()
     try:
         query_server()
     except Exception as e:
         print(e)
-    # bh.scan_media_directories()
+    bh.scan_media_directories()
 
     return data, 200
 
