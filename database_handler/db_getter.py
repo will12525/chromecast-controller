@@ -24,6 +24,15 @@ class DatabaseHandlerV2(DBConnection):
     def get_all_content_paths(self):
         return self.get_data_from_db("SELECT id, content_src FROM content;")
 
+    def get_all_image_paths(self, content_src):
+        img_path_list = []
+        img_path_list.extend(self.get_data_from_db(
+            "SELECT content.id, img_src, content_directory.content_src || content.content_src AS path FROM content INNER JOIN content_directory ON content.content_directory_id = content_directory.id WHERE img_src != '';"))
+        img_path_list.extend(self.get_data_from_db(
+            "SELECT id, img_src, :content_src || img_src AS path FROM container WHERE img_src != '';",
+            {"content_src": content_src}))
+        return img_path_list
+
     def check_if_content_src_exists(self, content_src):
         return self.get_data_from_db("SELECT * FROM content WHERE :content_src LIKE content_src;",
                                      {"content_src": f"%{content_src}%"})

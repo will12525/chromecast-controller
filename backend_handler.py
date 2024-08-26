@@ -8,6 +8,7 @@ import shutil  # save img locally
 import git
 import pathlib
 import re
+import shutil
 
 import config_file_handler
 import database_handler.common_objects as common_objects
@@ -28,28 +29,20 @@ def setup_db():
             db_connection.setup_content_directory(media_folder_info)
 
 
-def get_free_disk_space(size=None, ret=3, dir_path=None):
-    path = dir_path
-    if dir_path and dir_path.is_file():
-        path = dir_path.parent
-
-    if path and path.exists():
-        cmd = ["df", f"{path}"]
-        if size:
-            cmd = ["df", "-B", size, f"{path}"]
-        df = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-        output = df.communicate()[0]
-        decoded_output_list = output.decode("utf-8").split("\n")
-        # device, size, used, available, percent, mount_point
-        cmd_output_list = output.decode("utf-8").split("\n")[1].split()
-        return cmd_output_list[ret]
-    else:
-        print(f"Missing Path: {path}")
-    return ""
+def get_gb(value):
+    KB = 1024
+    MB = 1024 * KB
+    GB = 1024 * MB
+    return value / GB
 
 
-def get_free_disk_space_percent(editor_folder):
-    return get_free_disk_space(ret=4, dir_path=editor_folder)
+def get_free_disk_space(dir_path) -> int:
+    return round(get_gb(shutil.disk_usage(dir_path).free))
+
+
+def get_free_disk_space_percent(dir_path):
+    disk_usage = shutil.disk_usage(dir_path)
+    return round((disk_usage.used / disk_usage.total) * 100)
 
 
 def get_system_data():
@@ -58,7 +51,7 @@ def get_system_data():
     }
     if raw_folder := config_file_handler.load_json_file_content().get('editor_raw_folder'):
         disk_space["raw_folder"] = {
-            "free_disk_space": get_free_disk_space(size="G", dir_path=raw_folder),
+            "free_disk_space": get_free_disk_space(raw_folder),
             "free_disk_percent": get_free_disk_space_percent(raw_folder),
             "directory_path": raw_folder
         }
@@ -70,7 +63,7 @@ def get_system_data():
         media_directory_path_str = media_directory.get("content_src")
         disk_space["disk_space"].append(
             {
-                "free_disk_space": get_free_disk_space(size="G", dir_path=media_directory_path_str),
+                "free_disk_space": get_free_disk_space(media_directory_path_str),
                 "free_disk_percent": get_free_disk_space_percent(media_directory_path_str),
                 "directory_path": media_directory_path_str
             })
@@ -79,13 +72,7 @@ def get_system_data():
 
 
 def path_has_space(dir_path):
-    free_disk_space_str = get_free_disk_space(size="G", dir_path=dir_path)
-    if free_disk_space_str:
-        try:
-            return int(free_disk_space_str[:-1]) > DISK_SPACE_USE_LIMIT
-        except ValueError as e:
-            print(e)
-    return False
+    return (free_disk_space := get_free_disk_space(dir_path)) is not None and free_disk_space > DISK_SPACE_USE_LIMIT
 
 
 def get_free_media_drive():
@@ -100,16 +87,10 @@ def get_free_media_drive():
 
 def build_editor_output_path(media_type, error_log):
     mp4_output_parent_path = None
-    with DBCreatorV2() as db_connection:
-        media_folder_path = db_connection.get_all_content_directory_info()[0]
+    media_folder_path = get_free_media_drive()
     if media_type == common_objects.ContentType.RAW.name:
-        pass
         if raw_folder := config_file_handler.load_json_file_content().get('editor_raw_folder'):
-            if not path_has_space(raw_folder):
-                error_log.append({"message": "Splitter folder out of space", "file_name": f"{raw_folder}",
-                                  "value": get_free_disk_space(size="G", dir_path=raw_folder)})
-        else:
-            error_log.append({"message": "Splitter folder missing from config file"})
+            mp4_output_parent_path = pathlib.Path(raw_folder).resolve()
     elif media_type == common_objects.ContentType.MOVIE.name:
         mp4_output_parent_path = pathlib.Path(f"{media_folder_path.get('content_src')}/movies").resolve()
     elif media_type == common_objects.ContentType.TV.name:
@@ -120,10 +101,16 @@ def build_editor_output_path(media_type, error_log):
         print(f"Unknown media type: {media_type}")
 
     if mp4_output_parent_path:
-        if not path_has_space(mp4_output_parent_path):
-            error_log.append({"message": "Splitter folder out of space", "file_name": f"{mp4_output_parent_path}",
-                              "value": get_free_disk_space(size="G", dir_path=mp4_output_parent_path)})
-    return mp4_output_parent_path
+        if not mp4_output_parent_path.exists():
+            error_log.append({"message": "Disk parent paths don't exist", "file_name": f"{mp4_output_parent_path}"})
+        elif not path_has_space(mp4_output_parent_path):
+            error_log.append(
+                {
+                    "message": "Disk out of space", "file_name": f"{mp4_output_parent_path}",
+                    "value": get_free_disk_space(mp4_output_parent_path)
+                })
+        else:
+            return mp4_output_parent_path
 
 
 def editor_validate_txt_file(json_request):

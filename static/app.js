@@ -64,6 +64,7 @@ async function connectChromecast(chromecast_id) {
 };
 
 async function apply_default_image(imageElement) {
+    imageElement.setAttribute("onerror", "")
     imageElement.src = "http://192.168.1.175:8000/images/" + default_image_array[Math.floor(Math.random()*default_image_array.length)];
 }
 

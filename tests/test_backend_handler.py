@@ -5,6 +5,7 @@ import time
 from unittest import TestCase
 import pathlib
 
+import backend_handler
 import backend_handler as bh
 import config_file_handler
 from database_handler.common_objects import ContentType
@@ -21,7 +22,7 @@ class TestBackEndHandler(TestCase):
         __init__.patch_extract_subclip(self)
         __init__.patch_get_file_hash(self)
         __init__.patch_get_ffmpeg_metadata(self)
-        __init__.patch_get_free_disk_space(self)
+        # __init__.patch_get_free_disk_space(self)
 
         self.backend_handler = bh.BackEndHandler()
         setup_thread = self.backend_handler.start()
@@ -81,6 +82,16 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
         self.assertTrue(self.backend_handler.startup_sha)
         self.assertTrue(self.backend_handler.chromecast_handler)
         # self.assertTrue(self.backend_handler.media_folder_metadata_handler)
+
+    def test_disk_space(self):
+        media_folders = config_file_handler.load_json_file_content().get("media_folders")
+        print(media_folders)
+        remaining_space = backend_handler.get_free_disk_space(dir_path=media_folders[0].get("content_src"))
+        percent_filled = backend_handler.get_free_disk_space_percent(media_folders[0].get("content_src"))
+        print(percent_filled)
+        print(remaining_space)
+        assert remaining_space > 66.7
+        assert remaining_space < 77
 
     def test_get_startup_sha(self):
         startup_sha = self.backend_handler.get_startup_sha()

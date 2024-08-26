@@ -78,17 +78,12 @@ class APIEndpoints(Enum):
     UPDATE_MEDIA_METADATA = "/update_media_metadata"
     MEDIA_UPLOAD = "/media_upload"
     MEDIA_SHARE = "/media_share"
+    IMAGE_SHARE = "/image_share"
     SERVER_CONNECT = "/server_connect"
     REQUEST_CONTENT = "/request_content"
 
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', "mp4"}
-
-app = Flask(__name__)
-app.jinja_env.lstrip_blocks = True
-app.jinja_env.trim_blocks = True
-app.config['SEND_FILE_MAX_AGE'] = 0  # Disable caching to force compression
-app.config['COMPRESSOR_MIMETYPES'] = ['video/mp4']
 
 media_controller_button_dict = {
     "rewind": {"icon": "bi-rewind-fill", "id": f"{CommandList.CMD_REWIND.name}_media_button"},
@@ -112,9 +107,10 @@ if config_file_handler.load_json_file_content().get("mode") == SystemMode.SERVER
     system_mode = SystemMode.SERVER
 
 bh = backend_handler.BackEndHandler()
-setup_thread = bh.start()
-
+bh.start()
 error_log = queue.Queue()
+
+app = Flask(__name__)
 
 
 def build_main_content(request_args):
@@ -424,7 +420,7 @@ def get_media_menu_data():
 @app.route(APIEndpoints.GET_DISK_SPACE.value, methods=['GET'])
 def get_disk_space():
     try:
-        data = {"free_space": backend_handler.get_free_disk_space()}
+        data = {"free_space": backend_handler.get_free_disk_space(None)}
         return data, 200
     except Exception as e:
         print("Exception class: ", e.__class__)
@@ -437,12 +433,74 @@ def allowed_file(filename):
         filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
-def server_request(url, json_data):
-    response = requests.post(url, json=json_data)
+def check_network_connected(server_url):
     try:
-        return response.json()
-    except requests.JSONDecodeError as e:
+        requests.post(server_url, timeout=4)
+        return True
+    except Exception as e:
         print(e)
+        return False
+
+
+def server_request(url, json_data):
+    try:
+        response = requests.post(url, json=json_data)
+        return response.json()
+    except (requests.JSONDecodeError, Exception) as e:
+        print(e)
+
+
+def process_mp4_file(server_url, content_srcs):
+    for content_src in reversed(content_srcs):
+        print(f"Server content: {content_src}")
+        with DatabaseHandlerV2() as db_connection:
+            if not db_connection.check_if_content_src_exists(content_src.get("content_src")):
+                try:
+                    output_file = backend_handler.build_tv_show_output_path(content_src.get("content_src"))
+                    print(f"Expected save path: {output_file}")
+                    if output_file:
+                        print(f"Requesting: {content_src}")
+                        response = requests.post(f"{server_url}/request_content",
+                                                 json={
+                                                     "message": HANDSHAKE_RESPONSE,
+                                                     "id": content_src.get("id")
+                                                 })
+                        response.raise_for_status()  # Raise an exception for error responses
+                        print(f"Saving content: {output_file}")
+                        with open(output_file, 'wb') as f:
+                            f.write(response.content)
+                        print('File downloaded successfully!')
+                except (requests.exceptions.RequestException, FileExistsError, Exception) as e:
+                    print(f'Error downloading file: {e} ')
+                    print(e.with_traceback(e.__traceback__))
+                    print(e.with_traceback(e.__traceback__).args)
+                    traceback.print_exc()
+
+
+def process_img_file(server_url, img_srcs):
+    for content_src in img_srcs:
+        print(f"Server content: {content_src}")
+        try:
+            output_file = pathlib.Path(
+                f"{backend_handler.get_free_media_drive().get('content_src')}{content_src.get('img_src')}").resolve()
+            print(f"Expected save path: {output_file}")
+            if output_file:
+                print(f"Requesting: {content_src.get('path')}")
+                response = requests.post(f"{server_url}/image_share",
+                                         json={
+                                             "message": HANDSHAKE_RESPONSE,
+                                             "path": f"{output_file}"
+                                         })
+                response.raise_for_status()  # Raise an exception for error responses
+                print(f"Saving content: {output_file}")
+                with open(output_file, 'wb') as f:
+                    f.write(response.content)
+                print('File downloaded successfully!')
+        except (requests.exceptions.RequestException, FileExistsError, Exception) as e:
+            print(f'Error downloading file: {e} ')
+            print(e.with_traceback(e.__traceback__))
+            print(e.with_traceback(e.__traceback__).args)
+            traceback.print_exc()
 
 
 def query_server():
@@ -454,34 +512,14 @@ def query_server():
             print(f"Searching for server at: {server_url}")
             search_response_data = server_request(f"{server_url}/server_connect", {"message": HANDSHAKE_SECRET})
             print(f"Server response: {search_response_data}")
+            # Scan for all media content
             if search_response_data and search_response_data.get("message") == HANDSHAKE_RESPONSE:
                 path_request_response_data = server_request(f"{server_url}/media_share",
                                                             {"message": HANDSHAKE_RESPONSE})
                 print(f"Server secret: {path_request_response_data}")
-                for content_src in reversed(path_request_response_data.get("content_srcs")):
-                    print(f"Server content: {content_src}")
-                    with DatabaseHandlerV2() as db_connection:
-                        if not db_connection.check_if_content_src_exists(content_src.get("content_src")):
-                            try:
-                                output_file = backend_handler.build_tv_show_output_path(content_src.get("content_src"))
-                                print(f"Expected save path: {output_file}")
-                                if output_file:
-                                    print(f"Requesting: {content_src}")
-                                    # '54 Lincoln Backyard Timelapse - s2024e234.mp4'
-                                    response = requests.post(f"{server_url}/request_content",
-                                                             json={
-                                                                 "message": HANDSHAKE_RESPONSE,
-                                                                 "id": content_src.get("id")
-                                                             })
-                                    print(response)
-                                    response.raise_for_status()  # Raise an exception for error responses
-                                    print(f"Saving content: {output_file}")
-                                    with open(output_file, 'wb') as f:
-                                        f.write(response.content)
-                                    print('File downloaded successfully!')
-                            except (requests.exceptions.RequestException, FileExistsError, Exception) as e:
-                                print(f'Error downloading file: {e} ')
-        print("Server scan complete")
+                process_mp4_file(server_url, path_request_response_data.get("content_srcs", []))
+                process_img_file(server_url, path_request_response_data.get("img_srcs", []))
+                print("Server scan complete")
         bh.transfer_in_progress = False
 
 
@@ -501,7 +539,6 @@ def scan_media_directories():
         :return:
     """
     data = {}
-    bh.scan_media_directories()
     try:
         query_server()
     except Exception as e:
@@ -526,12 +563,7 @@ def server_connect():
         else:
             data["error"] = "System in unknown mode"
             error_code = 400
-
             print(json.dumps(json_request, indent=4))
-        # try:
-        #     print(json.dumps(backend_handler.get_system_data(), indent=4))
-        # except Exception as e:
-        #     print(e)
     return data, error_code
 
 
@@ -541,15 +573,35 @@ def media_share():
     if json_request := request.get_json():
         print("Client connected")
         if json_request.get("message") == HANDSHAKE_RESPONSE:
+            media_directory_info = config_file_handler.load_json_file_content().get("media_folders")
             with DatabaseHandlerV2() as db_connection:
                 content_paths = db_connection.get_all_content_paths()
+                image_paths = db_connection.get_all_image_paths(media_directory_info[0].get("content_src"))
             for content_path in content_paths:
                 content_path["content_src"] = pathlib.Path(content_path["content_src"]).name
-            # print(content_paths)
             data["content_srcs"] = content_paths
+            data["img_srcs"] = image_paths
         # print(json.dumps(json_request, indent=4))
-        print(f"Sharing content {data}")
     return data, 200
+
+
+@app.route(APIEndpoints.IMAGE_SHARE.value, methods=['GET', 'POST'])
+def image_share():
+    data = {}
+    error_code = 200
+    if json_request := request.get_json():
+        if json_request.get("message") == HANDSHAKE_RESPONSE and json_request.get("path"):
+            img_path = json_request.get("path")
+            if os.path.exists(img_path):
+                mimetype = ""
+                if img_path.endswith('.jpg') or img_path.endswith('.png'):
+                    mimetype = 'image/jpeg' if img_path.endswith('.jpg') else 'image/png'
+                try:
+                    return send_file(img_path, as_attachment=True, mimetype=mimetype)
+                except FileNotFoundError:
+                    data["error"] = 'File not found'
+                    error_code = 404
+    return data, error_code
 
 
 @app.route(APIEndpoints.REQUEST_CONTENT.value, methods=['GET', 'POST'])
@@ -565,8 +617,7 @@ def request_content():
                 print(f"Found content path {content_path}")
                 if os.path.exists(content_path):
                     try:
-                        file_size = os.path.getsize(content_path)
-                        if file_size > 2 * 1024 * 1024 * 1024:
+                        if backend_handler.get_gb(os.path.getsize(content_path)) > 2:
                             data["error"] = 'File is too large'
                         else:
                             return send_file(content_data.get("path"), as_attachment=True, mimetype='video/mp4')
@@ -580,23 +631,6 @@ def request_content():
             else:
                 data["error"] = 'Content missing path'
                 error_code = 404
-
-            # return send_file(content_data.get("path"), as_attachment=True, mimetype='video/mp4')
-
-            # response = requests.post(f"{request.url_root}media_upload",
-            #                          json={"file_name": pathlib.Path(content_data.get("content_src")).name},
-            #                          files={'file': open(content_data.get("path"), 'rb')})
-            # try:
-            #     data = response.json()
-            # except requests.JSONDecodeError:
-            #     data = None
-            # print(data)
-
-            # for content_path in content_paths:
-            #     content_path["content_src"] = pathlib.Path(content_path["content_src"]).name
-            # # print(content_paths)
-            # data["content_srcs"] = content_paths
-        # print(json.dumps(json_request, indent=4))
     print(data)
     return data, error_code
 
@@ -636,4 +670,9 @@ def upload_file():
 if __name__ == "__main__":
     print("--------------------Running Main--------------------")
     # app.run(debug=True)
+    app.jinja_env.lstrip_blocks = True
+    app.jinja_env.trim_blocks = True
+
+    # app.config['SEND_FILE_MAX_AGE'] = 0  # Disable caching to force compression
+    # app.config['COMPRESSOR_MIMETYPES'] = ['video/mp4']
     app.run(debug=True, host='0.0.0.0', port=5002)
