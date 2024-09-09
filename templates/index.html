@@ -20,13 +20,11 @@
 {% include 'top_navbar.html' %}
 <div class="main-content-container container-fluid">
     <div class="row gx-2 gy-2">
-        {% if 'local_play_url' %}
         <div class="col-md-12">
             <video controls preload autoplay class="object-fit-contain img-fluid" id="local_video_player" hidden>
                 <source src="{{ local_play_url }}" type="video/mp4" id="local_video_player_src">
             </video>
         </div>
-        {% endif %}
         <div class="col-md-12">
             <div class="row gx-2 gy-2">
                 <div class="col-sm-2">

@@ -72,6 +72,7 @@ class APIEndpoints(Enum):
     DISCONNECT_CHROMECAST = "/disconnect_chromecast"
     CHROMECAST_COMMAND = "/chromecast_command"
     PLAY_MEDIA = "/play_media"
+    GET_NEXT_MEDIA = "/get_next_media"
     SCAN_MEDIA_DIRECTORIES = "/scan_media_directories"
     GET_MEDIA_MENU_DATA = "/get_media_menu_data"
     GET_DISK_SPACE = "/get_disk_space"
@@ -384,9 +385,31 @@ def play_media():
             if not bh.play_media_on_chromecast(json_request):
                 with DatabaseHandlerV2() as db_connection:
                     media_metadata = db_connection.get_content_info(json_request.get("content_id"))
+                data["id"] = media_metadata.get("id")
+                data["parent_container_id"] = json_request.get("parent_container_id")
                 data["local_play_url"] = media_metadata.get("url")
         else:
             print(f"Media ID not provided: {json_request}")
+    return data, 200
+
+
+@app.route(APIEndpoints.GET_NEXT_MEDIA.value, methods=['POST'])
+def get_next_media():
+    data = {}
+    if json_request := request.get_json():
+        try:
+            if json_request.get("content_id") and json_request.get("parent_container_id"):
+                with DatabaseHandlerV2() as db_connection:
+                    media_metadata = db_connection.get_next_content_in_container(json_request)
+                data["id"] = media_metadata.get("id")
+                data["parent_container_id"] = json_request.get("parent_container_id")
+                data["local_play_url"] = media_metadata.get("url")
+            else:
+                print(f"content_id not provided: {json_request}")
+        except Exception as e:
+            print("Exception class: ", e.__class__)
+            print(f"ERROR: {e}")
+            print(traceback.print_exc())
     return data, 200
 
 

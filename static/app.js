@@ -65,7 +65,7 @@ async function connectChromecast(chromecast_id) {
 
 async function apply_default_image(imageElement) {
     imageElement.setAttribute("onerror", "")
-    imageElement.src = "http://192.168.1.175:8000/images/" + default_image_array[Math.floor(Math.random()*default_image_array.length)];
+    imageElement.src = window.location.protocol + "//" + window.location.hostname + ":8000/images/" + default_image_array[Math.floor(Math.random()*default_image_array.length)];
 }
 
 async function getChromecastList() {
@@ -415,15 +415,42 @@ async function query_db_get_all_filters(event) {
     queryDB(data)
 }
 
-async function update_local_media_player(url) {
-    console.log(url)
-    document.getElementById("local_video_player").pause();
-    document.getElementById("local_video_player").hidden = false;
-    document.getElementById("local_video_player").style.visibility = "visible";
-    document.getElementById("local_video_player_src").setAttribute("src", url)
-    document.getElementById("local_video_player").load();
-    document.getElementById("local_video_player").scrollIntoView();
-    document.getElementById("local_video_player").play();
+async function get_next_media(event) {
+    var url = "/get_next_media";
+    let data = {
+        "content_id": parseInt(event.target.dataset.content_id),
+        "parent_container_id": parseInt(event.target.dataset.parent_container_id)
+    };
+    let response = await fetch(url, {
+        "method": "POST",
+        "headers": {"Content-Type": "application/json"},
+        "body": JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+        throw new Error("HTTP status get_next_media: " + response.status);
+    } else {
+        let response_data = await response.json();
+        update_local_media_player(response_data)
+    }
+};
+async function update_local_media_player(response_data) {
+    const videoPlayer = document.getElementById('local_video_player');
+    const videoSource = document.getElementById('local_video_player_src');
+
+    try {
+        videoPlayer.pause();
+        videoPlayer.hidden = false;
+        videoPlayer.style.visibility = 'visible';
+        videoSource.setAttribute('src', response_data['local_play_url']);
+        videoPlayer.dataset.content_id = response_data['id'];
+        videoPlayer.dataset.parent_container_id = response_data['parent_container_id'];
+        videoPlayer.load();
+        videoPlayer.scrollIntoView();
+        videoPlayer.play();
+    } catch (error) {
+        console.error('Error playing video:', error);
+    }
 }
 
 async function play_media(content_id, parent_container_id=null) {
@@ -444,7 +471,7 @@ async function play_media(content_id, parent_container_id=null) {
     } else {
         let response_data = await response.json();
         if (response_data["local_play_url"] !== undefined) {
-            update_local_media_player(response_data["local_play_url"])
+            update_local_media_player(response_data)
         }
     }
 }
@@ -706,6 +733,9 @@ document.addEventListener("DOMContentLoaded", function(event){
     if (document.getElementById("mediaContentSelectDiv") !== null)
     {
         setup_media_page()
+    }
+    if(document.getElementById('local_video_player') !== null) {
+        document.getElementById('local_video_player').addEventListener('ended', get_next_media)
     }
 
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
