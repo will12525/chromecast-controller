@@ -431,7 +431,9 @@ async function get_next_media(event) {
         throw new Error("HTTP status get_next_media: " + response.status);
     } else {
         let response_data = await response.json();
-        update_local_media_player(response_data)
+        if (response_data["local_play_url"] !== undefined) {
+            update_local_media_player(response_data)
+        }
     }
 };
 async function update_local_media_player(response_data) {
