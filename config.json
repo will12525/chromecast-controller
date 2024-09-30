@@ -1,9 +1,10 @@
 {
+    "mode": "SERVER",
     "media_folders": [
         {
-            "media_type": null,
-            "media_directory_path": null,
-            "media_directory_url": null
+            "content_src": "/media/raid/",
+            "content_url": "http://192.168.x.xxx:8000/"
         }
     ]
 }
+
