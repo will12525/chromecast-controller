@@ -25,12 +25,10 @@ MEDIA_DIR=/media/raid/
 }
 ```
 
-- "media_type": int, from [database_handler.common_objects.ContentType](database_handler/common_objects.py), e.g: TV <
-  5>,
-  MOVIE <2>
-- "media_directory_path": str, absolute path based on path used in config.cfg with sub-folder. e.g. /media/raid/tv_shows
-- "media_directory_url": str, server url on the network with sub-folder: e.g. http://192.168.x.xxx:8000/tv_shows/
-    - Do not use localhost, this address needs to be visible for the chromecast
+- "mode": CLIENT, SERVER
+- "media_folders": list, Contains a list of paths to the media
+- "content_src": str, absolute path based on path used in config.cfg with sub-folder. e.g. /media/raid/
+- "content_url": str, server url on the network with sub-folder: e.g. http://192.168.x.xxx:8000/tv_shows/
 
 ## Setup and Install the necessary system services
 
