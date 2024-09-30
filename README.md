@@ -15,11 +15,11 @@ MEDIA_DIR=/media/raid/
 
 ```json
 {
+  "mode": "CLIENT",
   "media_folders": [
     {
-      "media_type": 5,
-      "media_directory_path": "/media/raid/tv_shows",
-      "media_directory_url": "http://192.168.x.xxx:8000/tv_shows/"
+      "content_src": "/media/raid/",
+      "content_url": "http://192.168.x.xxx:8000/"
     }
   ]
 }
@@ -62,9 +62,3 @@ services:
 ```bash
 sudo systemctl <start|stop|restart> <service>
 ```
-
-## Sources
-
-Icons: https://fontawesome.com/v4/icons/
-Unicode character [chart](https://en.wikipedia.org/wiki/List_of_Unicode_characters).
-
