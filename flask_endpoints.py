@@ -489,15 +489,23 @@ def process_mp4_file(server_url, content_srcs):
                                                      "id": content_src.get("id")
                                                  })
                         response.raise_for_status()  # Raise an exception for error responses
-                        print(f"Saving content: {output_file}")
-                        with open(output_file, 'wb') as f:
-                            f.write(response.content)
-                        print('File downloaded successfully!')
+                        if 'md5sum' in response.headers:
+                            md5sum_from_server = response.headers['md5sum']
+                            print(f"Saving content: {output_file}")
+                            with open(output_file, 'wb') as f:
+                                f.write(response.content)
+                            md5sum = backend_handler.get_file_hash(output_file)
+                            if md5sum_from_server == md5sum:
+                                print('File downloaded successfully!')
+                                print("Copy success")
+                            else:
+                                print(md5sum_from_server, md5sum)
+                                input("Copy failed, Press enter to continue...")
                 except (requests.exceptions.RequestException, FileExistsError, Exception) as e:
                     print(f'Error downloading file: {e} ')
-                    print(e.with_traceback(e.__traceback__))
-                    print(e.with_traceback(e.__traceback__).args)
-                    traceback.print_exc()
+                    # print(e.with_traceback(e.__traceback__))
+                    # print(e.with_traceback(e.__traceback__).args)
+                    # traceback.print_exc()
 
 
 def process_img_file(server_url, img_srcs):
@@ -512,13 +520,21 @@ def process_img_file(server_url, img_srcs):
                 response = requests.post(f"{server_url}/image_share",
                                          json={
                                              "message": HANDSHAKE_RESPONSE,
-                                             "path": f"{output_file}"
+                                             "path": f"{content_src}"
                                          })
+                print(response.headers)
                 response.raise_for_status()  # Raise an exception for error responses
-                print(f"Saving content: {output_file}")
-                with open(output_file, 'wb') as f:
-                    f.write(response.content)
-                print('File downloaded successfully!')
+                if 'md5sum' in response.headers:
+                    md5sum_from_server = response.headers['md5sum']
+                    print(f"Saving content: {output_file}")
+                    with open(output_file, 'wb') as f:
+                        f.write(response.content)
+                    md5sum = backend_handler.get_file_hash(output_file)
+                    if md5sum_from_server == md5sum:
+                        print('File downloaded successfully!')
+                    else:
+                        print(md5sum_from_server, md5sum)
+                        input("Copy failed, Press enter to continue...")
         except (requests.exceptions.RequestException, FileExistsError, Exception) as e:
             print(f'Error downloading file: {e} ')
             print(e.with_traceback(e.__traceback__))
@@ -613,14 +629,20 @@ def image_share():
     data = {}
     error_code = 200
     if json_request := request.get_json():
+        print(f"Content requested: {json.dumps(json_request, indent=4)}")
         if json_request.get("message") == HANDSHAKE_RESPONSE and json_request.get("path"):
             img_path = json_request.get("path")
+            print(f"Found content path {img_path}")
             if os.path.exists(img_path):
-                mimetype = ""
-                if img_path.endswith('.jpg') or img_path.endswith('.png'):
-                    mimetype = 'image/jpeg' if img_path.endswith('.jpg') else 'image/png'
+                mimetype = "image/jpeg"
+                if '.png' in img_path:
+                    mimetype = 'image/png'
                 try:
-                    return send_file(img_path, as_attachment=True, mimetype=mimetype)
+                    md5sum = backend_handler.get_file_hash(img_path)
+                    print(img_path, mimetype, md5sum)
+                    response = send_file(img_path, as_attachment=True, mimetype=mimetype)
+                    response.headers['md5sum'] = md5sum
+                    return response
                 except FileNotFoundError:
                     data["error"] = 'File not found'
                     error_code = 404
@@ -643,7 +665,11 @@ def request_content():
                         if backend_handler.get_gb(os.path.getsize(content_path)) > 2:
                             data["error"] = 'File is too large'
                         else:
-                            return send_file(content_data.get("path"), as_attachment=True, mimetype='video/mp4')
+                            md5sum = backend_handler.get_file_hash(content_data.get("path"))
+                            response = send_file(content_data.get("path"), as_attachment=True, mimetype='video/mp4')
+                            response.headers['md5sum'] = md5sum
+                            return response
+
                     except FileNotFoundError:
                         data["error"] = 'File not found'
                         error_code = 404

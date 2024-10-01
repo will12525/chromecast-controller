@@ -1,3 +1,4 @@
+import hashlib
 import json
 import subprocess
 import threading
@@ -187,6 +188,14 @@ def build_tv_show_output_path(file_name_str):
         return output_path.as_posix()
     else:
         print(error_log)
+
+
+def get_file_hash(file_path):
+    with open(file_path, 'rb') as f:
+        file_hash = hashlib.md5()
+        while chunk := f.read(8192):
+            file_hash.update(chunk)
+    return file_hash.hexdigest()
 
 
 class BackEndHandler:
