@@ -417,22 +417,24 @@ async function query_db_get_all_filters(event) {
 
 async function get_next_media(event) {
     var url = "/get_next_media";
-    let data = {
-        "content_id": parseInt(event.target.dataset.content_id),
-        "parent_container_id": parseInt(event.target.dataset.parent_container_id)
-    };
-    let response = await fetch(url, {
-        "method": "POST",
-        "headers": {"Content-Type": "application/json"},
-        "body": JSON.stringify(data),
-    });
+    if (event.target.dataset.content_id !== undefined && event.target.dataset.parent_container_id !== undefined) {
+        let data = {
+            "content_id": parseInt(event.target.dataset.content_id),
+            "parent_container_id": parseInt(event.target.dataset.parent_container_id)
+        };
+        let response = await fetch(url, {
+            "method": "POST",
+            "headers": {"Content-Type": "application/json"},
+            "body": JSON.stringify(data),
+        });
 
-    if (!response.ok) {
-        throw new Error("HTTP status get_next_media: " + response.status);
-    } else {
-        let response_data = await response.json();
-        if (response_data["local_play_url"] !== undefined) {
-            update_local_media_player(response_data)
+        if (!response.ok) {
+            throw new Error("HTTP status get_next_media: " + response.status);
+        } else {
+            let response_data = await response.json();
+            if (response_data["local_play_url"] !== undefined) {
+                update_local_media_player(response_data)
+            }
         }
     }
 };
@@ -445,8 +447,12 @@ async function update_local_media_player(response_data) {
         videoPlayer.hidden = false;
         videoPlayer.style.visibility = 'visible';
         videoSource.setAttribute('src', response_data['local_play_url']);
-        videoPlayer.dataset.content_id = response_data['id'];
-        videoPlayer.dataset.parent_container_id = response_data['parent_container_id'];
+        if (response_data["id"] !== undefined) {
+            videoPlayer.dataset.content_id = response_data['id'];
+        }
+        if (response_data["parent_container_id"] !== undefined) {
+            videoPlayer.dataset.parent_container_id = response_data['parent_container_id'];
+        }
         videoPlayer.load();
         videoPlayer.scrollIntoView();
         videoPlayer.play();

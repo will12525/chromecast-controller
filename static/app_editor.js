@@ -130,7 +130,7 @@ async function load_txt_file(file_name) {
     fetchAndSetData('/load_txt_file', {"editor_txt_file_name": file_name}).then(response_data => {
         update_editor_webpage(response_data);
         if (document.getElementById("load_media_for_local_play").checked && response_data["local_play_url"] !== undefined) {
-            update_local_media_player(response_data["local_play_url"])
+            update_local_media_player(response_data)
         }
         update_editor_process_queue(response_data);
     }).catch(error => {
