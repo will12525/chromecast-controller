@@ -3,6 +3,7 @@ import json
 import subprocess
 import threading
 import traceback
+from enum import Enum, auto
 
 import requests  # request img from web
 import shutil  # save img locally
@@ -23,11 +24,23 @@ EDITOR_PROCESSED_LOG = "editor_metadata.json"
 DISK_SPACE_USE_LIMIT = 20
 
 
+class SystemMode(Enum):
+    SERVER = auto()
+    CLIENT = auto()
+
+
 def setup_db():
     with DBCreatorV2() as db_connection:
         db_connection.create_db()
         for media_folder_info in config_file_handler.load_json_file_content().get("media_folders", []):
-            db_connection.setup_content_directory(media_folder_info)
+            content_path = pathlib.Path(media_folder_info.get("content_src", "")).resolve()
+            if content_path.exists():
+                pathlib.Path(content_path / "tv_shows").mkdir(exist_ok=True)
+                pathlib.Path(content_path / "movies").mkdir(exist_ok=True)
+                pathlib.Path(content_path / "books").mkdir(exist_ok=True)
+                db_connection.setup_content_directory(media_folder_info)
+            else:
+                print(f"Config file path missing: {content_path}")
 
 
 def get_gb(value):
@@ -100,16 +113,14 @@ def build_editor_output_path(media_type, error_log):
         mp4_output_parent_path = pathlib.Path(f"{media_folder_path.get('content_src')}/books").resolve()
     else:
         print(f"Unknown media type: {media_type}")
-
     if mp4_output_parent_path:
         if not mp4_output_parent_path.exists():
             error_log.append({"message": "Disk parent paths don't exist", "file_name": f"{mp4_output_parent_path}"})
         elif not path_has_space(mp4_output_parent_path):
-            error_log.append(
-                {
-                    "message": "Disk out of space", "file_name": f"{mp4_output_parent_path}",
-                    "value": get_free_disk_space(mp4_output_parent_path)
-                })
+            error_log.append({
+                "message": "Disk out of space", "file_name": f"{mp4_output_parent_path}",
+                "value": get_free_disk_space(mp4_output_parent_path)
+            })
         else:
             return mp4_output_parent_path
 
@@ -171,7 +182,7 @@ def build_tv_show_output_path(file_name_str):
     output_path = None
     mp4_output_parent_path = None
 
-    content_type = get_content_type(f"/{file_name_str}")
+    (content_type, match_data) = get_content_type(f"/{file_name_str}")
     if content_type:
         mp4_output_parent_path = build_editor_output_path(content_type.name, error_log)
     # media_directory = get_free_media_drive()

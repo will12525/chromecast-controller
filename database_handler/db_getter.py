@@ -24,18 +24,31 @@ class DatabaseHandlerV2(DBConnection):
     def get_all_content_paths(self):
         return self.get_data_from_db("SELECT id, content_src FROM content;")
 
-    def get_all_image_paths(self, content_src):
+    def get_all_image_paths(self):
         img_path_list = []
-        img_path_list.extend(self.get_data_from_db(
-            "SELECT content.id, img_src, content_directory.content_src || content.content_src AS path FROM content INNER JOIN content_directory ON content.content_directory_id = content_directory.id WHERE img_src != '';"))
-        img_path_list.extend(self.get_data_from_db(
-            "SELECT id, img_src, :content_src || img_src AS path FROM container WHERE img_src != '';",
-            {"content_src": content_src}))
+        img_path_list.extend(
+            self.get_data_from_db("SELECT id AS content_id, img_src, content_src FROM content WHERE img_src != '';"))
+        img_path_list.extend(
+            self.get_data_from_db(
+                "SELECT id AS container_id, img_src, container_path FROM container WHERE img_src != '';"))
         return img_path_list
 
+    def get_content_img_path(self, content_id):
+        return self.get_data_from_db_first_result(
+            "SELECT content_directory.content_src || content.content_src AS path FROM content INNER JOIN content_directory ON content.content_directory_id = content_directory.id WHERE content.id = :id;",
+            {'id': content_id})
+
+    def get_container_img_path(self, container_id):
+        return self.get_data_from_db_first_result(
+            "SELECT img_src FROM container WHERE container.id = :id;",
+            {'id': container_id})
+
     def check_if_content_src_exists(self, content_src):
-        return self.get_data_from_db("SELECT * FROM content WHERE :content_src LIKE content_src;",
-                                     {"content_src": f"%{content_src}%"})
+        return self.get_data_from_db("SELECT * FROM content WHERE :content_src == content_src;", content_src)
+
+    def check_if_container_src_exists(self, content_src):
+        return self.get_data_from_db("SELECT * FROM container WHERE :container_path LIKE container_path;",
+                                     {"container_path": f"%{content_src.get('container_path')}%"})
 
     def get_container_info(self, container_id):
         return self.get_data_from_db_first_result(

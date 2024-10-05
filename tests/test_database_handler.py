@@ -196,12 +196,27 @@ class TestDatabaseHandlerFunctionsV2(TestDatabaseHandlerV2):
             assert content.get("id")
             assert content.get("content_src")
 
-    def test_query_db_all_image_paths(self):
-        content_src = self.media_directory_info[0]
+    def test_query_db_content_img_path(self):
         with DatabaseHandlerV2() as db_connection:
-            metadata = db_connection.get_all_image_paths(content_src.get("content_src"))
+            metadata_1 = db_connection.get_content_img_path(4)
+
+            metadata_2 = db_connection.get_content_img_path(19)
+        print(json.dumps(metadata_1, indent=4))
+        print(json.dumps(metadata_2, indent=4))
+
+    def test_query_db_container_img_path(self):
+        with DatabaseHandlerV2() as db_connection:
+            metadata_1 = db_connection.get_container_img_path(1)
+
+            metadata_2 = db_connection.get_container_img_path(7)
+        print(json.dumps(metadata_1, indent=4))
+        print(json.dumps(metadata_2, indent=4))
+
+    def test_query_db_all_image_paths(self):
+        with DatabaseHandlerV2() as db_connection:
+            metadata = db_connection.get_all_image_paths()
         print(json.dumps(metadata, indent=4))
-        # assert len(metadata) == 30
+        assert len(metadata) == 9
         # for content in metadata:
         #     assert content.get("id")
         #     assert content.get("content_src")

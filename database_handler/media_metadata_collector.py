@@ -191,14 +191,13 @@ def get_content_type(file_name):
     mp4_file_path_posix = pathlib.Path(file_name).as_posix()
     if match := re.search(TV_PATTERN, mp4_file_path_posix):
         content_type = common_objects.ContentType.TV
-        # container_data = build_tv_show(content_directory_src_posix, mp4_file_path, match, content_data)
     elif match := re.search(MOVIE_PATTERN, mp4_file_path_posix):
         content_type = common_objects.ContentType.MOVIE
     elif match := re.search(BOOK_PATTERN, mp4_file_path_posix):
         content_type = common_objects.ContentType.BOOK
     else:
         print(f"Unknown content type: {file_name}")
-    return content_type
+    return content_type, match
 
 
 def collect_mp4_files(content_directory_info):
@@ -206,15 +205,16 @@ def collect_mp4_files(content_directory_info):
     content_directory_src_posix = content_directory_src.as_posix()
     for mp4_file_path in list(content_directory_src.rglob(mp4_file_ext)):
         mp4_file_path_posix = mp4_file_path.as_posix()
+        (content_type, match) = get_content_type(mp4_file_path.as_posix())
         container_data = None
         content_data = default_content_data.copy()
         content_data['content_directory_id'] = content_directory_info['id']
         content_data['content_src'] = mp4_file_path_posix.replace(content_directory_src_posix, '')
-        if match := re.search(TV_PATTERN, mp4_file_path_posix):
+        if common_objects.ContentType.TV == content_type:
             container_data = build_tv_show(content_directory_src_posix, mp4_file_path, match, content_data)
-        elif match := re.search(MOVIE_PATTERN, mp4_file_path_posix):
+        elif common_objects.ContentType.MOVIE == content_type:
             build_movie(content_directory_src_posix, mp4_file_path, match, content_data)
-        elif match := re.search(BOOK_PATTERN, mp4_file_path_posix):
+        elif common_objects.ContentType.BOOK == content_type:
             build_book(content_directory_src_posix, mp4_file_path, match, content_data)
         else:
             # print(media_folder_mp4.as_posix())

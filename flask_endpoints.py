@@ -6,16 +6,17 @@ import queue
 from enum import Enum, auto
 import traceback
 
-import requests
 from flask import Flask, request, render_template, jsonify, send_file
 from werkzeug.utils import secure_filename
 
 import backend_handler
+from backend_handler import SystemMode
 from chromecast_handler import CommandList
 from database_handler.db_getter import DatabaseHandlerV2
 from database_handler.common_objects import ContentType
 import config_file_handler
 from database_handler.db_setter import DBCreatorV2
+import content_transfer
 
 # TODO: UI
 # TODO: Notify user when media scan completes
@@ -45,13 +46,7 @@ from database_handler.db_setter import DBCreatorV2
 # TODO: Convert chromecast name strings to IDs and use IDs to refer to chromecasts
 # TODO: The chromecast select menu shall never contain chromecasts that no longer exist
 
-HANDSHAKE_SECRET = "Hello world!"
-HANDSHAKE_RESPONSE = "LEONARD IS THE COOLEST DINOSAUR"
-
-
-class SystemMode(Enum):
-    SERVER = auto()
-    CLIENT = auto()
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', "mp4"}
 
 
 class APIEndpoints(Enum):
@@ -78,13 +73,11 @@ class APIEndpoints(Enum):
     GET_DISK_SPACE = "/get_disk_space"
     UPDATE_MEDIA_METADATA = "/update_media_metadata"
     MEDIA_UPLOAD = "/media_upload"
-    MEDIA_SHARE = "/media_share"
-    IMAGE_SHARE = "/image_share"
+    REQUEST_ALL_CONTENT = "/request_all_content"
+    REQUEST_IMAGE = "/request_image"
     SERVER_CONNECT = "/server_connect"
     REQUEST_CONTENT = "/request_content"
 
-
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', "mp4"}
 
 media_controller_button_dict = {
     "rewind": {"icon": "bi-rewind-fill", "id": f"{CommandList.CMD_REWIND.name}_media_button"},
@@ -451,117 +444,6 @@ def get_disk_space():
         print(traceback.print_exc())
 
 
-def allowed_file(filename):
-    return '.' in filename and \
-        filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-
-def check_network_connected(server_url):
-    try:
-        requests.post(server_url, timeout=4)
-        return True
-    except Exception as e:
-        print(e)
-        return False
-
-
-def server_request(url, json_data):
-    try:
-        response = requests.post(url, json=json_data)
-        return response.json()
-    except (requests.JSONDecodeError, Exception) as e:
-        print(e)
-
-
-def process_mp4_file(server_url, content_srcs):
-    for content_src in reversed(content_srcs):
-        print(f"Server content: {content_src}")
-        with DatabaseHandlerV2() as db_connection:
-            if not db_connection.check_if_content_src_exists(content_src.get("content_src")):
-                try:
-                    output_file = backend_handler.build_tv_show_output_path(content_src.get("content_src"))
-                    print(f"Expected save path: {output_file}")
-                    if output_file:
-                        print(f"Requesting: {content_src}")
-                        response = requests.post(f"{server_url}/request_content",
-                                                 json={
-                                                     "message": HANDSHAKE_RESPONSE,
-                                                     "id": content_src.get("id")
-                                                 })
-                        response.raise_for_status()  # Raise an exception for error responses
-                        if 'md5sum' in response.headers:
-                            md5sum_from_server = response.headers['md5sum']
-                            print(f"Saving content: {output_file}")
-                            with open(output_file, 'wb') as f:
-                                f.write(response.content)
-                            md5sum = backend_handler.get_file_hash(output_file)
-                            if md5sum_from_server == md5sum:
-                                print('File downloaded successfully!')
-                                print("Copy success")
-                            else:
-                                print(md5sum_from_server, md5sum)
-                                input("Copy failed, Press enter to continue...")
-                except (requests.exceptions.RequestException, FileExistsError, Exception) as e:
-                    print(f'Error downloading file: {e} ')
-                    # print(e.with_traceback(e.__traceback__))
-                    # print(e.with_traceback(e.__traceback__).args)
-                    # traceback.print_exc()
-
-
-def process_img_file(server_url, img_srcs):
-    for content_src in img_srcs:
-        print(f"Server content: {content_src}")
-        try:
-            output_file = pathlib.Path(
-                f"{backend_handler.get_free_media_drive().get('content_src')}{content_src.get('img_src')}").resolve()
-            print(f"Expected save path: {output_file}")
-            if output_file:
-                print(f"Requesting: {content_src.get('path')}")
-                response = requests.post(f"{server_url}/image_share",
-                                         json={
-                                             "message": HANDSHAKE_RESPONSE,
-                                             "path": f"{content_src}"
-                                         })
-                print(response.headers)
-                response.raise_for_status()  # Raise an exception for error responses
-                if 'md5sum' in response.headers:
-                    md5sum_from_server = response.headers['md5sum']
-                    print(f"Saving content: {output_file}")
-                    with open(output_file, 'wb') as f:
-                        f.write(response.content)
-                    md5sum = backend_handler.get_file_hash(output_file)
-                    if md5sum_from_server == md5sum:
-                        print('File downloaded successfully!')
-                    else:
-                        print(md5sum_from_server, md5sum)
-                        input("Copy failed, Press enter to continue...")
-        except (requests.exceptions.RequestException, FileExistsError, Exception) as e:
-            print(f'Error downloading file: {e} ')
-            print(e.with_traceback(e.__traceback__))
-            print(e.with_traceback(e.__traceback__).args)
-            traceback.print_exc()
-
-
-def query_server():
-    print("Server scan triggered")
-    if system_mode == SystemMode.CLIENT and not bh.transfer_in_progress:
-        print("Starting server scan")
-        bh.transfer_in_progress = True
-        if server_url := config_file_handler.load_json_file_content().get("server_url"):
-            print(f"Searching for server at: {server_url}")
-            search_response_data = server_request(f"{server_url}/server_connect", {"message": HANDSHAKE_SECRET})
-            print(f"Server response: {search_response_data}")
-            # Scan for all media content
-            if search_response_data and search_response_data.get("message") == HANDSHAKE_RESPONSE:
-                path_request_response_data = server_request(f"{server_url}/media_share",
-                                                            {"message": HANDSHAKE_RESPONSE})
-                print(f"Server secret: {path_request_response_data}")
-                process_mp4_file(server_url, path_request_response_data.get("content_srcs", []))
-                process_img_file(server_url, path_request_response_data.get("img_srcs", []))
-                print("Server scan complete")
-        bh.transfer_in_progress = False
-
-
 @app.route(APIEndpoints.SCAN_MEDIA_DIRECTORIES.value, methods=['POST'])
 def scan_media_directories():
     """
@@ -579,9 +461,15 @@ def scan_media_directories():
     """
     data = {}
     try:
-        query_server()
+        print("Server scan triggered")
+        if system_mode == SystemMode.CLIENT and not bh.transfer_in_progress:
+            print("Starting server scan")
+            bh.transfer_in_progress = True
+            content_transfer.query_server()
     except Exception as e:
         print(e)
+
+    bh.transfer_in_progress = False
     bh.scan_media_directories()
 
     return data, 200
@@ -589,105 +477,62 @@ def scan_media_directories():
 
 @app.route(APIEndpoints.SERVER_CONNECT.value, methods=['GET', 'POST'])
 def server_connect():
-    data = {}
-    error_code = 400
+    data = {"error_code": 400}
     if json_request := request.get_json():
-        if system_mode == SystemMode.CLIENT:
-            data["error"] = "not a server"
-            error_code = 400
-        elif system_mode == SystemMode.SERVER and json_request.get("message", "") == HANDSHAKE_SECRET:
-            print("Client encountered")
-            data["message"] = HANDSHAKE_RESPONSE
-            error_code = 200
-        else:
-            data["error"] = "System in unknown mode"
-            error_code = 400
-            print(json.dumps(json_request, indent=4))
-    return data, error_code
+        content_transfer.new_client_connection(system_mode, json_request.get("server_token", ""), data)
+    return data, data["error_code"]
 
 
-@app.route(APIEndpoints.MEDIA_SHARE.value, methods=['GET', 'POST'])
-def media_share():
-    data = {}
+@app.route(APIEndpoints.REQUEST_ALL_CONTENT.value, methods=['GET', 'POST'])
+def request_all_content():
+    data = {"error_code": 200}
     if json_request := request.get_json():
-        print("Client connected")
-        if json_request.get("message") == HANDSHAKE_RESPONSE:
-            media_directory_info = config_file_handler.load_json_file_content().get("media_folders")
-            with DatabaseHandlerV2() as db_connection:
-                content_paths = db_connection.get_all_content_paths()
-                image_paths = db_connection.get_all_image_paths(media_directory_info[0].get("content_src"))
-            for content_path in content_paths:
-                content_path["content_src"] = pathlib.Path(content_path["content_src"]).name
-            data["content_srcs"] = content_paths
-            data["img_srcs"] = image_paths
-        # print(json.dumps(json_request, indent=4))
-    return data, 200
+        try:
+            content_transfer.request_all_content(json_request.get("server_token", ""), data)
+        except Exception as e:
+            print("Exception class: ", e.__class__)
+            print(f"ERROR: {e}")
+            print(traceback.print_exc())
+    return data, data["error_code"]
 
 
-@app.route(APIEndpoints.IMAGE_SHARE.value, methods=['GET', 'POST'])
-def image_share():
-    data = {}
-    error_code = 200
+@app.route(APIEndpoints.REQUEST_IMAGE.value, methods=['GET', 'POST'])
+def request_image():
+    data = {"error_code": 200}
     if json_request := request.get_json():
-        print(f"Content requested: {json.dumps(json_request, indent=4)}")
-        if json_request.get("message") == HANDSHAKE_RESPONSE and json_request.get("path"):
-            img_path = json_request.get("path")
-            print(f"Found content path {img_path}")
-            if os.path.exists(img_path):
-                mimetype = "image/jpeg"
-                if '.png' in img_path:
-                    mimetype = 'image/png'
-                try:
-                    md5sum = backend_handler.get_file_hash(img_path)
-                    print(img_path, mimetype, md5sum)
-                    response = send_file(img_path, as_attachment=True, mimetype=mimetype)
-                    response.headers['md5sum'] = md5sum
-                    return response
-                except FileNotFoundError:
-                    data["error"] = 'File not found'
-                    error_code = 404
-    return data, error_code
+        try:
+            if request_response := content_transfer.request_image(json_request, data):
+                return request_response
+        except Exception as e:
+            print("Exception class: ", e.__class__)
+            print(f"ERROR: {e}")
+            print(traceback.print_exc())
+    return data, data["error_code"]
 
 
 @app.route(APIEndpoints.REQUEST_CONTENT.value, methods=['GET', 'POST'])
 def request_content():
-    data = {}
-    error_code = 400
+    data = {"error_code": 400}
     if json_request := request.get_json():
-        print(f"Content id requested: {json.dumps(json_request, indent=4)}")
-        if json_request.get("message") == HANDSHAKE_RESPONSE and (content_id := json_request.get("id")):
-            with DatabaseHandlerV2() as db_connection:
-                content_data = db_connection.get_content_info(content_id)
-            if content_path := content_data.get('path'):
-                print(f"Found content path {content_path}")
-                if os.path.exists(content_path):
-                    try:
-                        if backend_handler.get_gb(os.path.getsize(content_path)) > 2:
-                            data["error"] = 'File is too large'
-                        else:
-                            md5sum = backend_handler.get_file_hash(content_data.get("path"))
-                            response = send_file(content_data.get("path"), as_attachment=True, mimetype='video/mp4')
-                            response.headers['md5sum'] = md5sum
-                            return response
-
-                    except FileNotFoundError:
-                        data["error"] = 'File not found'
-                        error_code = 404
-
-                else:
-                    data["error"] = 'File not found'
-                    error_code = 404
-            else:
-                data["error"] = 'Content missing path'
-                error_code = 404
+        try:
+            if request_response := content_transfer.request_content(json_request, data):
+                return request_response
+        except Exception as e:
+            print("Exception class: ", e.__class__)
+            print(f"ERROR: {e}")
+            print(traceback.print_exc())
     print(data)
-    return data, error_code
+    return data, data["error_code"]
+
+
+def allowed_file(filename):
+    return '.' in filename and \
+        filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
 @app.route(APIEndpoints.MEDIA_UPLOAD.value, methods=['GET', 'POST'])
 def upload_file():
-    data = {}
-    error_code = 400
+    data = {"error_code": 400}
     if request.method == 'POST':
         print(request.files)
         # check if the post request has the file part
@@ -711,10 +556,10 @@ def upload_file():
                 except (ValueError, FileExistsError) as e:
                     data["error"] = e.args[0]
     print(data)
-    return data, error_code
+    return data, data["error_code"]
 
 
-# query_server()
+# content_transfer.query_server()
 
 if __name__ == "__main__":
     print("--------------------Running Main--------------------")
