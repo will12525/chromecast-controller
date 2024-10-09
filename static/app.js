@@ -262,11 +262,6 @@ async function update_media_container(response_data) {
         }
         fragment.appendChild(template)
     }
-    for (const content_data of response_data["containers"]) {
-        generate_media_container(content_data, media_card_template, fragment)
-    }
-    for (const content_data of response_data["content"]) {
-        generate_media_container(content_data, media_card_template, fragment)
     if ('containers' in response_data) {
         for (const content_data of response_data["containers"]) {
             generate_media_container(content_data, media_card_template, fragment)
