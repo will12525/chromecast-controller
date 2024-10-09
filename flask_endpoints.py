@@ -1,12 +1,10 @@
 import json
-import os
-import pathlib
 import queue
 
-from enum import Enum, auto
+from enum import Enum
 import traceback
 
-from flask import Flask, request, render_template, jsonify, send_file
+from flask import Flask, request, render_template
 from werkzeug.utils import secure_filename
 
 import backend_handler
@@ -233,10 +231,10 @@ def query_media_db():
         print(json_request)
         with DatabaseHandlerV2() as db_getter_connection:
             media_metadata.update(
-                db_getter_connection.query_content(
-                    json_request.get("tag_list", ["tv shows"]),
-                    json_request.get("container_dict", {}),
-                )
+                db_getter_connection.query_db(json_request.get("tag_list", ["tv shows"]),
+                                              json_request.get("container_dict", {}),
+                                              json_request.get("container_txt_search"),
+                                              json_request.get("content_txt_search"))
             )
     # print(json.dumps(media_metadata, indent=4))
     return media_metadata, 200

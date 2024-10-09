@@ -175,7 +175,7 @@ async function set_media_runtime(range) {
 
 async function generate_media_container(content_data, media_card_template, fragment) {
     const template = document.createElement("div");
-    template.className = "col-sm-4 my-class";
+    template.className = "col-sm-3";
     template.innerHTML = media_card_template;
     if ('container_title' in content_data) {
         if (content_data["container_id"])
@@ -267,6 +267,15 @@ async function update_media_container(response_data) {
     }
     for (const content_data of response_data["content"]) {
         generate_media_container(content_data, media_card_template, fragment)
+    if ('containers' in response_data) {
+        for (const content_data of response_data["containers"]) {
+            generate_media_container(content_data, media_card_template, fragment)
+        }
+    }
+    if ('content' in response_data) {
+        for (const content_data of response_data["content"]) {
+            generate_media_container(content_data, media_card_template, fragment)
+        }
     }
     const mainContent = document.getElementById("mediaContentSelectDiv");
     mainContent.innerHTML = "";
@@ -410,6 +419,8 @@ function get_selected_checkboxes(listGroup) {
 async function query_db_get_all_filters(event) {
     let data = {
         "tag_list": get_selected_checkboxes(document.getElementById("tag_list_group")),
+        "container_txt_search": document.getElementById("container_txt_search").value,
+        "content_txt_search": document.getElementById("content_txt_search").value,
         "container_dict": {}
     };
     queryDB(data)

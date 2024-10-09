@@ -1,7 +1,3 @@
-import json
-import pathlib
-
-from .common_objects import ContentType
 from . import common_objects
 from .db_access import DBConnection
 
@@ -141,39 +137,24 @@ class DatabaseHandlerV2(DBConnection):
         params = {'id': content_id}
         return self.get_data_from_db_first_result(parent_containers_query, params)
 
-    def query_content(
-            self,
-            tag_list,
-            container_dict
-    ):
-        # print(tag_list)
-        # print(container_dict)
-        # print()
-        ret_data = {}
-        params = {}
+    def query_container(self, tag_list, container_dict, container_txt_search):
+        # DEFINE
         container_select_clauses = ["*", "CAST(SUBSTR(container_title, 7) AS INTEGER) AS season_index"]
-        content_select_clauses = ["*"]
         container_where_clauses = []
-        content_where_clauses = []
         container_join_clauses = []
-        content_join_clauses = []
+        params = {}
         container_sort_order = f"ORDER BY season_index, container_title"
-        content_sort_order = f"ORDER BY content_title"
 
+        # BUILD
         if tag_list:
             placeholders = ', '.join([f':tag_{i}' for i in range(len(tag_list))])
             for index, value in enumerate(tag_list):
                 params[f'tag_{index}'] = value
             container_where_clauses.append(f"user_tags.tag_title IN ({placeholders})")
-            content_where_clauses.append(f"user_tags.tag_title IN ({placeholders})")
 
-        container_select_clauses.append("GROUP_CONCAT(user_tags.tag_title) AS user_tags")
-        container_join_clauses.append(
-            "LEFT JOIN user_tags_content ON container.id = user_tags_content.container_id LEFT JOIN user_tags ON user_tags_content.user_tags_id = user_tags.id")
-
-        content_select_clauses.append("GROUP_CONCAT(user_tags.tag_title) AS user_tags")
-        content_join_clauses.append(
-            "LEFT JOIN user_tags_content ON content.id = user_tags_content.content_id LEFT JOIN user_tags ON user_tags_content.user_tags_id = user_tags.id")
+            container_select_clauses.append("GROUP_CONCAT(user_tags.tag_title) AS user_tags")
+            container_join_clauses.append(
+                "LEFT JOIN user_tags_content ON container.id = user_tags_content.container_id LEFT JOIN user_tags ON user_tags_content.user_tags_id = user_tags.id")
 
         if container_dict.get("container_id"):
             container_join_clauses.append(
@@ -181,16 +162,13 @@ class DatabaseHandlerV2(DBConnection):
             container_where_clauses.append("container_container.parent_container_id = :parent_container_id")
             container_sort_order = f"ORDER BY content_index ASC NULLS LAST, container_title {SORT_ALPHABETICAL}"
 
-            content_join_clauses.append(
-                "INNER JOIN container_content ON content.id = container_content.content_id")
-            content_where_clauses.append("container_content.parent_container_id = :parent_container_id")
-            content_sort_order = f"ORDER BY content_index ASC NULLS LAST, content_title {SORT_ALPHABETICAL}"
             params["parent_container_id"] = container_dict.get("container_id")
 
-        if container_dict.get("content_id"):
-            content_where_clauses.append("content.id = :content_id")
-            params["content_id"] = container_dict.get("content_id")
+        if container_txt_search:
+            container_where_clauses.append("container.container_title LIKE :container_txt_search")
+            params["container_txt_search"] = f"%{container_txt_search}%"
 
+        # COMBINE
         container_select_clause = ""
         if container_select_clauses:
             container_select_clause = ", ".join(container_select_clauses)
@@ -202,6 +180,46 @@ class DatabaseHandlerV2(DBConnection):
         container_where_clause = ""
         if container_where_clauses:
             container_where_clause = "WHERE " + " AND ".join(container_where_clauses)
+
+        return self.get_data_from_db(
+            f"SELECT {container_select_clause} FROM container {container_join_clause} {container_where_clause} GROUP BY container.id {container_sort_order};",
+            params
+        )
+
+    def query_content(self, tag_list, container_dict, content_txt_search):
+        # print(tag_list)
+        # print(container_dict)
+        # print()
+        params = {}
+        content_select_clauses = ["*"]
+        content_where_clauses = []
+        content_join_clauses = []
+        content_sort_order = f"ORDER BY content_title"
+
+        if tag_list:
+            placeholders = ', '.join([f':tag_{i}' for i in range(len(tag_list))])
+            for index, value in enumerate(tag_list):
+                params[f'tag_{index}'] = value
+            content_where_clauses.append(f"user_tags.tag_title IN ({placeholders})")
+
+        content_select_clauses.append("GROUP_CONCAT(user_tags.tag_title) AS user_tags")
+        content_join_clauses.append(
+            "LEFT JOIN user_tags_content ON content.id = user_tags_content.content_id LEFT JOIN user_tags ON user_tags_content.user_tags_id = user_tags.id")
+
+        if container_dict.get("container_id"):
+            content_join_clauses.append(
+                "INNER JOIN container_content ON content.id = container_content.content_id")
+            content_where_clauses.append("container_content.parent_container_id = :parent_container_id")
+            content_sort_order = f"ORDER BY content_index ASC NULLS LAST, content_title {SORT_ALPHABETICAL}"
+            params["parent_container_id"] = container_dict.get("container_id")
+
+        if container_dict.get("content_id"):
+            content_where_clauses.append("content.id = :content_id")
+            params["content_id"] = container_dict.get("content_id")
+
+        if content_txt_search:
+            content_where_clauses.append("content.content_title LIKE :content_txt_search")
+            params["content_txt_search"] = f"%{content_txt_search}%"
 
         content_select_clause = ""
         if content_select_clauses:
@@ -215,15 +233,17 @@ class DatabaseHandlerV2(DBConnection):
         if content_where_clauses:
             content_where_clause = "WHERE " + " AND ".join(content_where_clauses)
 
-        ret_data["containers"] = self.get_data_from_db(
-            f"SELECT {container_select_clause} FROM container {container_join_clause} {container_where_clause} GROUP BY container.id {container_sort_order};",
-            params
-        )
-        ret_data["content"] = self.get_data_from_db(
+        return self.get_data_from_db(
             f"SELECT {content_select_clause} FROM content {content_join_clause} {content_where_clause} GROUP BY content.id {content_sort_order};",
             params
         )
 
+    def query_db(self, tag_list, container_dict, container_txt_search, content_txt_search):
+        ret_data = {}
+        if not content_txt_search:
+            ret_data["containers"] = self.query_container(tag_list, container_dict, container_txt_search)
+        if not container_txt_search:
+            ret_data["content"] = self.query_content(tag_list, container_dict, content_txt_search)
         if container_id := container_dict.get("container_id"):
             ret_data["parent_containers"] = self.get_top_container(container_id)
 
