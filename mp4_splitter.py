@@ -419,6 +419,7 @@ def extract_subclip(sub_clip):
                 '-filter:v', 'setpts=PTS-STARTPTS',
                 '-c:a', 'aac',
                 '-metadata', f"title={sub_clip.media_title}",
+                '-y',
                 sub_clip.destination_file_path]
     if not sub_clip.destination_file_path:
         return {"message": "Missing destination path:", "value": f"{sub_clip.media_title}"}
