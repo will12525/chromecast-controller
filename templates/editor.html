@@ -130,9 +130,10 @@
             </div>
         </div>
         <div class="col-sm-3">
-            <p class="fw-semibold fs-4">End Time:
-                <span style="float:right" id="editor_process_metadata_end_time">{{ editor_metadata['editor_process_metadata_end_time'] }}</span>
-                <span class="fw-normal fs-5" style="float:right">D HH:MM:SS AP</span>
+            <p class="fw-semibold fs-4">
+                End Time:
+                <span style="float:right" id="editor_process_metadata_end_time" data-bs-toggle="tooltip"
+                      data-bs-placement="bottom" data-bs-title="D HH:MM:SS">{{ editor_metadata['editor_process_metadata_end_time'] }}</span>
             </p>
         </div>
         <div class="col-sm-2">
