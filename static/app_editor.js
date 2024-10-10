@@ -44,7 +44,11 @@ async function populate_splitter_form(response_data) {
                 var form_inputs = form_input_groups[i].querySelectorAll('input');
                 form_inputs.forEach(form_input => {
                     if (form_input.name in splitter_content_data) {
-                        form_input.value = splitter_content_data[form_input.name]
+                        if (form_input.type == "checkbox") {
+                            form_input.checked = splitter_content_data[form_input.name]
+                        } else {
+                            form_input.value = splitter_content_data[form_input.name]
+                        }
                     }
                 });
             }
@@ -106,6 +110,8 @@ async function update_editor_webpage(response_data) {
     if (response_data["error"] !== undefined) {
         update_editor_log(response_data?.error)
     }
+    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
+    const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl))
 }
 
 async function update_editor_process_queue(response_data) {
@@ -156,6 +162,13 @@ async function validate_txt_file(content_data) {
 
 async function process_txt_file(content_data) {
     fetchAndSetData('/process_txt_file', content_data).then(response_data => {
+        update_editor_process_queue(response_data);
+    }).catch(error => {
+        console.error('Error:', error);
+    });
+}
+async function delete_txt_file(content_data) {
+    fetchAndSetData('/delete_txt_file', content_data).then(response_data => {
         update_editor_process_queue(response_data);
     }).catch(error => {
         console.error('Error:', error);
@@ -236,9 +249,18 @@ function extract_form_data() {
             if (form_inputs.length > 0) { // Check if there are any inputs in the group
                 let data = {};
                 form_inputs.forEach(input => {
-                    data[input.name] = input.value;
+                    if (input.type == "text") {
+                        data[input.name] = input.value;
+                    } else if (input.type == "checkbox") {
+                        data[input.name] = input.checked
+                    }
                 });
-                const allValuesFilled = Object.values(data).every(value => value !== ''); // Check values of data object
+                const allValuesFilled = Object.values(data).every(value => {
+                    if (typeof value === 'boolean') {
+                        return true;
+                    }
+                    return value !== '';
+                });
                 if (allValuesFilled) {
                     form_data["splitter_content"].push(data);
                 }
@@ -263,6 +285,8 @@ async function handle_splitter_form_container_submit(event) {
         save_txt_file(form_data)
     } else if (clickedButton.id === 'run_button') {
         process_txt_file(form_data)
+    } else if (clickedButton.id === 'delete_button') {
+        delete_txt_file(form_data)
     }
 }
 

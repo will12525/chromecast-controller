@@ -30,6 +30,8 @@
             <input type="text" placeholder="End Time" aria-label="End time" class="form-control"
                    data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-title="HH:MM:SS"
                    name="end_time">
+            <input class="form-check-input" type="checkbox" value="" name="overwrite" data-bs-toggle="tooltip"
+                   data-bs-placement="bottom" data-bs-title="Overwrite File">
         </div>
     </div>
 </template>
@@ -44,6 +46,8 @@
             <input type="text" placeholder="End Time" aria-label="End time" class="form-control"
                    data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-title="HH:MM:SS"
                    name="end_time">
+            <input class="form-check-input" type="checkbox" value="" name="overwrite" data-bs-toggle="tooltip"
+                   data-bs-placement="bottom" data-bs-title="Overwrite File">
         </div>
     </div>
 </template>
@@ -64,6 +68,8 @@
             <input type="text" placeholder="End Time" aria-label="End time" class="form-control"
                    data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-title="HH:MM:SS"
                    name="end_time">
+            <input class="form-check-input" type="checkbox" value="" name="overwrite" data-bs-toggle="tooltip"
+                   data-bs-placement="bottom" data-bs-title="Overwrite File">
         </div>
     </div>
     <div class="col-md-2">
@@ -77,9 +83,13 @@
             <input type="number" placeholder="Episode Index" class="form-control" min="0"
                    name="episode_index">
             <input type="text" placeholder="Start Time" aria-label="Start time" class="form-control"
+                   data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-title="HH:MM:SS"
                    name="start_time">
             <input type="text" placeholder="End Time" aria-label="End time" class="form-control"
+                   data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-title="HH:MM:SS"
                    name="end_time">
+            <input class="form-check-input" type="checkbox" value="" name="overwrite"
+                   data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-title="Overwrite File">
         </div>
     </div>
 </template>
@@ -95,6 +105,8 @@
             <input type="text" placeholder="End Time" aria-label="End time" class="form-control"
                    data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-title="HH:MM:SS"
                    name="end_time">
+            <input class="form-check-input" type="checkbox" value="" name="overwrite" data-bs-toggle="tooltip"
+                   data-bs-placement="bottom" data-bs-title="Overwrite File">
         </div>
     </div>
 </template>
@@ -162,6 +174,12 @@
                     <button id="validate_button" type="submit" class="btn btn-success">Validate</button>
                     <button id="save_button" type="submit" class="btn btn-success">Save</button>
                     <button id="run_button" type="submit" class="btn btn-primary">Run</button>
+                    <button id="download_button" type="submit" class="btn btn-primary">
+                        <span class="bi bi-download"></span>
+                        <a href="{{ editor_metadata['local_play_url'] }}" download></a>
+                    </button>
+                    <button id="delete_button" type="submit" class="btn btn-danger"><span class="bi bi-trash"></span>
+                    </button>
                 </div>
                 <div id="form_editor_page" class="col-lg-12 row g-3 my_form">
                 </div>

@@ -55,6 +55,7 @@ class APIEndpoints(Enum):
     EDITOR_SAVE_TXT_FILE = "/save_txt_file"
     EDITOR_LOAD_TXT_FILE = "/load_txt_file"
     EDITOR_PROCESS_TXT_FILE = "/process_txt_file"
+    DELETE_TXT_FILE = "/delete_txt_file"
     EDITOR_PROCESSOR_METADATA = "/process_metadata"
     GET_CHROMECAST_CONTROLS = "/get_chromecast_controls"
     GET_MEDIA_CONTENT_TYPES = "/get_media_content_types"
@@ -183,6 +184,22 @@ def editor_load_txt_file():
                 print(f"ERROR: {e}")
                 print(traceback.print_exc())
                 print(json.dumps(json_request, indent=4))
+    return data, 200
+
+
+@app.route(APIEndpoints.DELETE_TXT_FILE.value, methods=['POST'])
+def editor_delete_txt_file():
+    data = {}
+    if json_request := request.get_json():
+        try:
+            backend_handler.delete_splitter_file(json_request)
+            data = bh.get_editor_metadata()
+
+        except Exception as e:
+            print("Exception class: ", e.__class__)
+            print(f"ERROR: {e}")
+            print(traceback.print_exc())
+            print(json.dumps(json_request, indent=4))
     return data, 200
 
 

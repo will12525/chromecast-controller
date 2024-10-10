@@ -84,14 +84,17 @@ class SubclipMetadata:
     source_file_path = None
     file_name = None
     error_log = None
+    overwrite = False
 
     def __init__(self, subclip_metadata, source_file_path=None, destination_file_path=None, media_title=None):
         self.error_log = []
         self.subclip_metadata = subclip_metadata
         self.extract_start_end_times(self.subclip_metadata.get("start_time"), self.subclip_metadata.get("end_time"))
+        if self.subclip_metadata.get("overwrite"):
+            self.overwrite = True
 
     def set_cmd_metadata(self, source_file_path, destination_file_path):
-        if destination_file_path.exists():
+        if destination_file_path.exists() and not self.overwrite:
             self.error_log.append({"message": "File already exists", "value": destination_file_path.name})
         else:
             self.file_name = source_file_path.stem.strip()
@@ -148,7 +151,7 @@ class MovieSubclipMetadata(SubclipMetadata):
 
     def __init__(self, subclip_metadata, source_file_path, destination_file_path, media_title=None):
         super().__init__(subclip_metadata)
-        if len(self.subclip_metadata) == 4:
+        if len(self.subclip_metadata) == 5:
             self.extract_media_title(self.subclip_metadata.get("media_title"))
             self.year = self.extract_int(self.subclip_metadata.get("year"), "year")
         else:
@@ -169,7 +172,7 @@ class RawSubclipMetadata(SubclipMetadata):
 
     def __init__(self, subclip_metadata, source_file_path, destination_file_path=None, media_title=None):
         super().__init__(subclip_metadata)
-        if len(self.subclip_metadata) == 2:
+        if len(self.subclip_metadata) == 3:
             self.media_title = media_title
         else:
             self.error_log.append({"message": "Missing content", "value": subclip_metadata})
@@ -190,7 +193,7 @@ class BookSubclipMetadata(SubclipMetadata):
 
     def __init__(self, subclip_metadata, source_file_path, destination_file_path, media_title=None):
         super().__init__(subclip_metadata)
-        if len(self.subclip_metadata) == 4:
+        if len(self.subclip_metadata) == 5:
             self.extract_media_title(self.subclip_metadata.get("media_title"))
             self.author = self.extract_str(self.subclip_metadata.get("author"), "author")
         else:
@@ -214,7 +217,7 @@ class TvShowSubclipMetadata(SubclipMetadata):
 
     def __init__(self, subclip_metadata, source_file_path, destination_file_path, media_title=None):
         super().__init__(subclip_metadata)
-        if len(self.subclip_metadata) == 6:
+        if len(self.subclip_metadata) == 7:
             self.extract_playlist_title(self.subclip_metadata.get("playlist_title"))
             self.extract_media_title(self.subclip_metadata.get("media_title"))
             self.extract_season_index(self.subclip_metadata.get("season_index"))
@@ -422,7 +425,7 @@ def extract_subclip(sub_clip):
 
     destination_file = pathlib.Path(sub_clip.destination_file_path).resolve()
 
-    if destination_file.is_file():
+    if destination_file.is_file() and not sub_clip.overwrite:
         return {"message": "Media already exists:", "value": f"{sub_clip.media_title}, {sub_clip.file_name}"}
 
     output_dir = destination_file.parent

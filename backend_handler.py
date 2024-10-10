@@ -85,6 +85,19 @@ def get_system_data():
     return disk_space
 
 
+def delete_splitter_file(json_request):
+    if raw_folder := config_file_handler.load_json_file_content().get('editor_raw_folder'):
+        file_name = json_request.get('file_name')
+        mp4_file_name = file_name.replace(".json", ".mp4")
+        json_file_path = pathlib.Path(f"{raw_folder}/{file_name}")
+        mp4_file_path = pathlib.Path(f"{raw_folder}/{mp4_file_name}")
+        if mp4_file_path.exists():
+            print(f"Deleting: {mp4_file_path}")
+            mp4_file_path.unlink()
+            if json_file_path.exists():
+                json_file_path.unlink()
+
+
 def path_has_space(dir_path):
     return (free_disk_space := get_free_disk_space(dir_path)) is not None and free_disk_space > DISK_SPACE_USE_LIMIT
 

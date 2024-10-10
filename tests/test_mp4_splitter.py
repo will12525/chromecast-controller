@@ -35,11 +35,11 @@ class TestSplitterV2(TestMp4Splitter):
         }
         with DBCreatorV2() as db_connection:
             media_folder_path = db_connection.get_all_content_directory_info()[0]
-        mp4_output_parent_path = pathlib.Path(f"{media_folder_path.get('content_src')}/media_folder_sample").resolve()
-
+        mp4_output_parent_path = pathlib.Path(f"{media_folder_path.get('content_src')}/editor_raw_files").resolve()
         error_log = mp4_splitter.editor_validate_txt_file(editor_metadata.get("file_name"), mp4_output_parent_path)
         print(json.dumps(error_log, indent=4))
-        assert not error_log
+        assert len(error_log) == 1
+        assert error_log[0].get("message") == "Text file empty"
 
 
 class Test(TestMp4Splitter):
