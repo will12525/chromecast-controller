@@ -171,14 +171,21 @@
                             {% endfor %}
                         </ul>
                     </div>
-                    <button id="validate_button" type="submit" class="btn btn-success">Validate</button>
-                    <button id="save_button" type="submit" class="btn btn-success">Save</button>
-                    <button id="run_button" type="submit" class="btn btn-primary">Run</button>
+                    <button id="validate_button" type="submit" class="btn btn-success">
+                        <span class="bi bi-clipboard2-check-fill"></span>
+                    </button>
+                    <button id="save_button" type="submit" class="btn btn-success">
+                        <span class="bi bi-floppy-fill"></span>
+                    </button>
+                    <button id="run_button" type="submit" class="btn btn-primary">
+                        <span class="bi bi-play-fill"></span>
+                    </button>
                     <button id="download_button" type="submit" class="btn btn-primary">
                         <span class="bi bi-download"></span>
                         <a href="{{ editor_metadata['local_play_url'] }}" download></a>
                     </button>
-                    <button id="delete_button" type="submit" class="btn btn-danger"><span class="bi bi-trash"></span>
+                    <button id="delete_button" type="submit" class="btn btn-danger">
+                        <span class="bi bi-trash"></span>
                     </button>
                 </div>
                 <div id="form_editor_page" class="col-lg-12 row g-3 my_form">
