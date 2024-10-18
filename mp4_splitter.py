@@ -103,12 +103,13 @@ class SubclipMetadata:
 
     def extract_int(self, extraction_int, extraction_err_msg):
         extracted_int = None
-        try:
-            extracted_int = int(extraction_int)
-            if extracted_int < 0:
-                self.error_log.append({"message": "Values less than 0", extraction_err_msg: extraction_int})
-        except ValueError:
-            self.error_log.append({"message": "Values not int", extraction_err_msg: extraction_int})
+        if extraction_int is not None:
+            try:
+                extracted_int = int(extraction_int)
+                if extracted_int < 0:
+                    self.error_log.append({"message": "Values less than 0", extraction_err_msg: extraction_int})
+            except ValueError:
+                self.error_log.append({"message": "Values not int", extraction_err_msg: extraction_int})
         return extracted_int
 
     def extract_str(self, extraction_str, extraction_err_msg):
@@ -145,6 +146,9 @@ class SubclipMetadata:
         else:
             self.error_log.append({"message": "Missing media title"})
 
+    def __str__(self):
+        return str({"media_title": self.media_title, "start_time": self.start_time, "end_time": self.end_time})
+
 
 class MovieSubclipMetadata(SubclipMetadata):
     year = None
@@ -167,10 +171,15 @@ class MovieSubclipMetadata(SubclipMetadata):
         destination_file_path = destination_file_path / f"{self.media_title} ({self.year}).mp4"
         super().set_cmd_metadata(source_file_path, destination_file_path)
 
+    def __str__(self):
+        print_obj = {"media_title": self.media_title, "year": self.year,
+                     "start_time": self.start_time, "end_time": self.end_time}
+        return str(print_obj)
+
 
 class RawSubclipMetadata(SubclipMetadata):
 
-    def __init__(self, subclip_metadata, source_file_path, destination_file_path=None, media_title=None):
+    def __init__(self, subclip_metadata, source_file_path, media_title=None):
         super().__init__(subclip_metadata)
         if len(self.subclip_metadata) == 3:
             self.media_title = media_title
@@ -208,6 +217,11 @@ class BookSubclipMetadata(SubclipMetadata):
     def set_cmd_metadata(self, source_file_path, destination_file_path):
         destination_file_path = destination_file_path / f"{self.media_title} - {self.author}.mp4"
         super().set_cmd_metadata(source_file_path, destination_file_path)
+
+    def __str__(self):
+        print_obj = {"media_title": self.media_title, "author": self.author,
+                     "start_time": self.start_time, "end_time": self.end_time}
+        return str(print_obj)
 
 
 class TvShowSubclipMetadata(SubclipMetadata):
@@ -253,11 +267,17 @@ class TvShowSubclipMetadata(SubclipMetadata):
         else:
             self.error_log.append({"message": "Missing episode index"})
 
+    def __str__(self):
+        print_obj = {"playlist_title": self.playlist_title, "media_title": self.media_title,
+                     "season_index": self.season_index, "episode_index": self.episode_index,
+                     "start_time": self.start_time, "end_time": self.end_time}
+        return str(print_obj)
+
 
 def convert_txt_to_sub_clip(media_type, splitter_content, error_log, source_file_path, destination_file_path,
                             media_title):
     if media_type == ContentType.RAW.name:
-        return RawSubclipMetadata(splitter_content, source_file_path, destination_file_path, media_title)
+        return RawSubclipMetadata(splitter_content, source_file_path, media_title)
     elif media_type == ContentType.TV.name:
         return TvShowSubclipMetadata(splitter_content, source_file_path, destination_file_path)
     elif media_type == ContentType.MOVIE.name:
@@ -287,6 +307,7 @@ def get_sub_clips_from_txt_file(file_path, mp4_output_parent_path, sub_clips, er
                                                    mp4_file_path, mp4_output_parent_path,
                                                    chr(ALPHANUMERIC_INDEX_A + index)):
                 if sub_clip.error_log:
+                    error_log.extend(sub_clip.error_log)
                     sub_clip.error_log.append({"message": "Failing line index", "value": index})
                 sub_clips.append(sub_clip)
     else:
@@ -297,25 +318,22 @@ def editor_save_file(file_path, file_content):
     config_file_handler.save_json_file_content(file_path, file_content)
 
 
-def editor_process_txt_file(json_request, mp4_output_parent_path, editor_processor):
+def editor_process_txt_file(file_name, mp4_output_parent_path, editor_processor):
     error_log = []
     sub_clips = []
     raw_folder = config_file_handler.load_json_file_content().get('editor_raw_folder')
 
-    txt_file = f"{raw_folder}{json_request.get('file_name')}"
+    txt_file = f"{raw_folder}{file_name}"
     txt_file_path = pathlib.Path(txt_file).resolve()
 
     get_sub_clips_from_txt_file(txt_file_path, mp4_output_parent_path, sub_clips, error_log)
 
-    if not error_log and editor_processor:
+    if editor_processor:
         editor_processor.add_cmds_to_queue(sub_clips, error_log)
-
-    for sub_clip in sub_clips:
-        error_log.extend(sub_clip.error_log)
 
     if error_log:
         error_log.append(
-            {"message": "Errors occurred while processing file", "value": json_request.get('file_name')})
+            {"message": "Errors occurred while processing file", "value": file_name})
 
     return error_log
 
@@ -344,8 +362,7 @@ def editor_validate_txt_file(file_name, mp4_output_parent_path):
     file_path = pathlib.Path(file_sub_path).resolve()
 
     get_sub_clips_from_txt_file(file_path, mp4_output_parent_path, sub_clips, error_log)
-    for sub_clip in sub_clips:
-        error_log.extend(sub_clip.error_log)
+
     return error_log
 
 
@@ -467,17 +484,17 @@ class SubclipProcessHandler(threading.Thread):
             return False
 
         if not sub_clip.destination_file_path:
-            sub_clip.error_log.append({"message": "Missing destination path:", "value": f"{sub_clip.media_title}"})
+            self.log_queue.put({"message": "Missing destination path:", "value": f"{sub_clip.media_title}"})
             return False
 
-        if pathlib.Path(sub_clip.destination_file_path).resolve().is_file():
-            sub_clip.error_log.append(
-                {"message": "Error in file", "value": self.current_sub_clip.destination_file_path})
+        if pathlib.Path(sub_clip.destination_file_path).resolve().is_file() and not sub_clip.overwrite:
+            self.log_queue.put(
+                {"message": "Destination file already exists", "value": self.current_sub_clip.destination_file_path})
             return False
 
         for process_queue_sub_clip in list(self.subclip_process_queue.queue):
             if sub_clip.destination_file_path == process_queue_sub_clip.destination_file_path:
-                sub_clip.error_log.append(
+                self.log_queue.put(
                     {"message": "Destination path already in queue", "value": sub_clip.destination_file_path})
                 return False
         return True

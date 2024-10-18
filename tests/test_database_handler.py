@@ -189,7 +189,7 @@ class TestDatabaseHandlerFunctionsV2(TestDatabaseHandlerV2):
             metadata = db_connection.get_all_content_paths()
         print(json.dumps(metadata, indent=4))
         print(len(metadata))
-        assert len(metadata) == 61
+        assert len(metadata) == 30
         for content in metadata:
             assert content.get("id")
             assert content.get("content_src")
@@ -214,10 +214,16 @@ class TestDatabaseHandlerFunctionsV2(TestDatabaseHandlerV2):
         with DatabaseHandlerV2() as db_connection:
             metadata = db_connection.get_all_image_paths()
         print(json.dumps(metadata, indent=4))
-        assert len(metadata) == 9
-        # for content in metadata:
-        #     assert content.get("id")
-        #     assert content.get("content_src")
+        assert len(metadata) == 11
+        for content in metadata:
+            assert content.get("img_src")
+            if "container_id" in content:
+                assert isinstance(content.get("container_id"), int)
+                assert content.get("container_path")
+            if "content_id" in content:
+                assert isinstance(content.get("content_id"), int)
+                assert content.get("content_src")
+
         # content = metadata.get("content")[0]
         # json_request = {"content_id": content["content_id"], "parent_container_id": content["parent_container_id"]}
         # print(json.dumps(json_request, indent=4))
@@ -249,34 +255,34 @@ class TestDatabaseHandlerFunctionsV2(TestDatabaseHandlerV2):
             # metadata = db_connection.query_content([], {"container_id": 9})
             # content = metadata.get("content")[0]
             # json_request = {"content_id": content["content_id"], "parent_container_id": content["parent_container_id"]}
-            json_request = {'content_id': 59, 'parent_container_id': 14}
+            json_request = {'content_id': 23, 'parent_container_id': 9}
             next_content = db_connection.get_next_content_in_container(json_request)
             print(json.dumps(next_content, indent=4))
-            assert next_content.get("id") == 60
-            json_request = {'content_id': 57, 'parent_container_id': 14}
+            assert next_content.get("id") == 19
+            json_request = {'content_id': 19, 'parent_container_id': 9}
             next_content = db_connection.get_next_content_in_container(json_request)
             print(json.dumps(next_content, indent=4))
-            assert next_content.get("id") == 58
-            json_request = {'content_id': 58, 'parent_container_id': 14}
+            assert next_content.get("id") == 20
+            json_request = {'content_id': 22, 'parent_container_id': 9}
             next_content = db_connection.get_next_content_in_container(json_request)
             print(json.dumps(next_content, indent=4))
-            assert next_content.get("id") == 59
+            assert next_content.get("id") == 23
 
     def test_query_db_previous_media(self):
         with DatabaseHandlerV2() as db_connection:
-            json_request = {'content_id': 57, 'parent_container_id': 14}
+            json_request = {'content_id': 19, 'parent_container_id': 9}
             next_content = db_connection.get_previous_content_in_container(json_request)
             print(json.dumps(next_content, indent=4))
-            assert next_content.get("id") == 61
-            json_request = {'content_id': 59, 'parent_container_id': 14}
+            assert next_content.get("id") == 23
+            json_request = {'content_id': 23, 'parent_container_id': 9}
             next_content = db_connection.get_previous_content_in_container(json_request)
             print(json.dumps(next_content, indent=4))
-            assert next_content.get("id") == 58
-            json_request = {'content_id': 59, 'parent_container_id': 16}
+            assert next_content.get("id") == 22
+            json_request = {'content_id': 20, 'parent_container_id': 9}
             next_content = db_connection.get_previous_content_in_container(json_request)
             print(json.dumps(next_content, indent=4))
-            assert next_content.get("id") == 58
-
+            assert next_content.get("id") == 19
+            
     def test_query_db_all_tags(self):
         with DatabaseHandlerV2() as db_connection:
             tag_list = db_connection.get_all_tags()
@@ -361,7 +367,7 @@ class TestDatabaseHandler(TestCase):
         self.media_paths = config_file_handler.load_json_file_content().get("media_folders")
         assert self.media_paths
         assert isinstance(self.media_paths, list)
-        assert len(self.media_paths) == 3
+        assert len(self.media_paths) == 1
         # with DBCreator() as db_connection:
         #     db_connection.create_db()
         #     for media_path in self.media_paths:

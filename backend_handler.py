@@ -1,6 +1,4 @@
 import hashlib
-import json
-import subprocess
 import threading
 import traceback
 from enum import Enum, auto
@@ -60,26 +58,24 @@ def get_free_disk_space_percent(dir_path):
 
 
 def get_system_data():
-    disk_space = {
-        "disk_space": []
-    }
+    disk_space = []
     if raw_folder := config_file_handler.load_json_file_content().get('editor_raw_folder'):
-        disk_space["raw_folder"] = {
-            "free_disk_space": get_free_disk_space(raw_folder),
-            "free_disk_percent": get_free_disk_space_percent(raw_folder),
-            "directory_path": raw_folder
-        }
+        disk_space.append({
+            "free_space": get_free_disk_space(raw_folder),
+            "percent_used": get_free_disk_space_percent(raw_folder),
+            "path": raw_folder
+        })
 
     with DBCreatorV2() as db_connection:
         media_directory_info = db_connection.get_all_content_directory_info()
 
     for media_directory in media_directory_info:
         media_directory_path_str = media_directory.get("content_src")
-        disk_space["disk_space"].append(
+        disk_space.append(
             {
-                "free_disk_space": get_free_disk_space(media_directory_path_str),
-                "free_disk_percent": get_free_disk_space_percent(media_directory_path_str),
-                "directory_path": media_directory_path_str
+                "free_space": get_free_disk_space(media_directory_path_str),
+                "percent_used": get_free_disk_space_percent(media_directory_path_str),
+                "path": media_directory_path_str
             })
 
     return disk_space
@@ -297,7 +293,8 @@ class BackEndHandler:
         mp4_output_parent_path = build_editor_output_path(json_request.get("media_type"), error_log)
         if not error_log and mp4_output_parent_path:
             error_log.extend(
-                mp4_splitter.editor_process_txt_file(json_request, mp4_output_parent_path, self.editor_processor))
+                mp4_splitter.editor_process_txt_file(json_request.get('file_name'), mp4_output_parent_path,
+                                                     self.editor_processor))
         if not error_log:
             mp4_splitter.update_processed_file(json_request.get('file_name'), EDITOR_PROCESSED_LOG)
         return error_log

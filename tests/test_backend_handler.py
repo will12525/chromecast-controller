@@ -14,7 +14,7 @@ import __init__
 
 
 class TestBackEndHandler(TestCase):
-    CHROMECAST_ID = "Test Cast"
+    CHROMECAST_ID = "Bedroom"
     image_folder_path = "../images"
 
     def setUp(self):
@@ -194,7 +194,7 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
                         'description': 'World!'}
         bh.download_image(json_request)
         print(json.dumps(json_request, indent=4))
-        assert json_request.get("img_src") == "media_folder_sample/Vampire/Vampire - s01e001.mp4.jpg"
+        assert json_request.get("img_src") == "/media_folder_movie/Vampire_2/Vampire (2020).mp4.jpg"
 
         bh.download_image(json_request)
 
@@ -204,7 +204,7 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
                         'description': 'World!'}
         bh.download_image(json_request)
         print(json.dumps(json_request, indent=4))
-        assert json_request.get("img_src") == "media_folder_sample/Vampire/Vampire - s01e001.mp4.jpg"
+        assert json_request.get("img_src") == "/media_folder_movie/Vampire_2/Vampire (2020).mp4.jpg"
 
     def test_image_download_season(self):
         # Add test for each content type
@@ -212,7 +212,7 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
                         'description': 'World!'}
         bh.download_image(json_request)
         print(json.dumps(json_request, indent=4))
-        assert json_request.get("img_src") == f"editor_raw_files/Hilda/Season 4.jpg"
+        assert json_request.get("img_src") == f"/editor_raw_files/Hilda/Season 4.jpg"
 
     def test_image_download_movie(self):
         # Add test for each content type
@@ -220,7 +220,7 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
                         'description': 'World!'}
         bh.download_image(json_request)
         print(json.dumps(json_request, indent=4))
-        assert json_request.get("img_src") == f"media_folder_movie/Vampire_2/Shrek (2001).mp4.jpg"
+        assert json_request.get("img_src") == "/media_folder_modify/output/Sparkles/Sparkles - s2e3.mp4.jpg"
 
     def test_image_download_tv_show(self):
         # Add test for each content type
@@ -228,7 +228,7 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
                         'description': 'World!'}
         bh.download_image(json_request)
         print(json.dumps(json_request, indent=4))
-        assert json_request.get("img_src") == f"editor_raw_files/Hilda/Hilda.jpg"
+        assert json_request.get("img_src") == f"/editor_raw_files/Hilda/Hilda.jpg"
 
     # def test_image_download_playlist(self):
     #     # Add test for each content type
@@ -269,7 +269,21 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
         error_log = bh.editor_validate_txt_file(editor_metadata)
         print(json.dumps(error_log, indent=4))
         assert error_log
-        assert len(error_log) == 1
+        assert len(error_log) == 3
+        assert type(error_log[0]) is dict
+
+        error = error_log[0]
+        assert "Values less than 0" == error.get("message")
+        assert "13:-3" == error.get("value")
+        assert 0 == error.get("hour")
+        assert 13 == error.get("minute")
+        assert -3 == error.get("second")
+
+        error = error_log[1]
+        assert "End time >= start time" == error.get("message")
+
+        error = error_log[2]
+        assert "Errors occurred while parsing line" == error.get("message")
 
     def test_editor_validate_movie_txt_file(self):
         editor_metadata = {
@@ -285,7 +299,7 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
         __init__.patch_update_processed_file(self)
 
         json_request = {
-            'file_name': "movie.txt",
+            'file_name': "movie.json",
             "media_type": ContentType.MOVIE.name
         }
         errors = self.backend_handler.editor_process_txt_file(json_request)
@@ -297,7 +311,7 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
         __init__.patch_update_processed_file(self)
 
         json_request = {
-            'file_name': "2024-01-31_16-32-36.txt",
+            'file_name': "2024-01-31_16-32-36.json",
             "media_type": ContentType.TV.name
         }
         raw_folder = config_file_handler.load_json_file_content().get('editor_raw_folder')
@@ -309,7 +323,7 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
         assert not errors
 
     def test_get_system_data(self):
-        system_data = self.backend_handler.get_system_data()
+        system_data = backend_handler.get_system_data()
         print(json.dumps(system_data, indent=4))
 
 

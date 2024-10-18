@@ -251,6 +251,8 @@ function extract_form_data() {
                 form_inputs.forEach(input => {
                     if (input.type == "text") {
                         data[input.name] = input.value;
+                    } else if (input.type == "number") {
+                        data[input.name] = parseInt(input.value)
                     } else if (input.type == "checkbox") {
                         data[input.name] = input.checked
                     }
