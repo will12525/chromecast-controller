@@ -396,6 +396,7 @@ def play_media():
                 data["id"] = media_metadata.get("id")
                 data["parent_container_id"] = json_request.get("parent_container_id")
                 data["local_play_url"] = media_metadata.get("url")
+                data["content_title"] = media_metadata.get("content_title")
         else:
             print(f"Media ID not provided: {json_request}")
     return data, 200

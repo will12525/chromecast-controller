@@ -456,6 +456,9 @@ async function update_local_media_player(response_data) {
         if (response_data["id"] !== undefined) {
             videoPlayer.dataset.content_id = response_data['id'];
         }
+        if (response_data["content_title"] !== undefined) {
+            document.getElementById('content_title').innerHTML = response_data['content_title'];
+        }
         if (response_data["parent_container_id"] !== undefined) {
             videoPlayer.dataset.parent_container_id = response_data['parent_container_id'];
         }
