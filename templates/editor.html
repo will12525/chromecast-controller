@@ -121,24 +121,45 @@
         </div>
         {% endif %}
     </div>
-    <div class="row row-cols-auto gx-2 gy-2">
-        <div class="col-sm-1">
-            <div class="form-check form-switch">
-                <input class="form-check-input" type="checkbox" role="switch" id="load_media_for_local_play">
-                <label class="form-check-label" for="load_media_for_local_play"><span class="fw-semibold fs-4">Play
-                    Media</span></label>
+    <div class="card sticky-top mb-3" style="background-color:Linen;">
+        <div class="card-header">
+            Editor Data
+        </div>
+        <div class="card-body row">
+            <div class="col-md-4">
+                <p class="fw-semibold fs-5">
+                    Processing end time:
+                    <span id="editor_process_metadata_end_time" data-bs-toggle="tooltip"
+                          data-bs-placement="bottom" data-bs-title="D HH:MM:SS">{{ editor_metadata['editor_process_metadata_end_time'] }}</span>
+                </p>
+                <p class="fw-semibold fs-5">Remaining processes:
+                    <span id="editor_process_metadata_queue_size">{{ editor_metadata['process_queue_size'] }}</span>
+                </p>
+            </div>
+            <div class="col-md-8">
+                {% if 'storage' in editor_metadata %}
+                {% for storage_item in editor_metadata['storage']: %}
+                <div>
+                    <span>Free Space: {{ storage_item['free_space'] }} {{ storage_item['unit'] }}, Used: {{ storage_item['percent_used'] }}%</span>
+                    <span>Path: {{ storage_item['path'] }}</span>
+                </div>
+                {% endfor %}
+                {% endif %}
             </div>
         </div>
-        <div class="col-sm-3">
-            <p class="fw-semibold fs-4">
-                End Time:
-                <span style="float:right" id="editor_process_metadata_end_time" data-bs-toggle="tooltip"
-                      data-bs-placement="bottom" data-bs-title="D HH:MM:SS">{{ editor_metadata['editor_process_metadata_end_time'] }}</span>
-            </p>
-        </div>
-        <div class="col-sm-2">
-            <p class="fw-semibold fs-3">Remaining: <span
-                    id="editor_process_metadata_queue_size">{{ editor_metadata['process_queue_size'] }}</span></p>
+        <div class="card-footer row">
+            <div class="col-sm-4 d-grid gap-2 d-md-flex justify-content-md-start">
+                <div class="form-check form-switch">
+                    <span class="fw-semibold fs-4">Play Media</span>
+                    <input class="form-check-input" type="checkbox" role="switch"
+                           id="load_media_for_local_play">
+                </div>
+            </div>
+            <div class="col-sm-8 d-grid gap-2 d-md-flex justify-content-md-end">
+                <h5 class="form-label">File name:
+                    <span id="editor_txt_file_name">{{ editor_metadata['selected_txt_file_title'] }}</span>
+                </h5>
+            </div>
         </div>
     </div>
     <div class="row row-cols-12 gx-2 gy-2">
@@ -158,8 +179,6 @@
             </div>
         </div>
         <div class="col-lg-9">
-            <p class="form-label">File name: <span id="editor_txt_file_name">{{ editor_metadata['selected_txt_file_title'] }}</span>
-            </p>
             <form id="splitter_form_container" class="row g-3">
                 <div class="col-12">
                     <div class="btn-group">

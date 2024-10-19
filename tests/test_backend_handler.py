@@ -326,6 +326,72 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
         system_data = backend_handler.get_system_data()
         print(json.dumps(system_data, indent=4))
 
+    def test_get_editor_metadata(self):
+        editor_metadata = self.backend_handler.get_editor_metadata()
+        print(json.dumps(editor_metadata, indent=4))
+        assert "txt_file_list" in editor_metadata
+        assert type(editor_metadata.get("txt_file_list")) is list
+        assert len(editor_metadata.get("txt_file_list")) == 13
+        for txt_file in editor_metadata.get("txt_file_list"):
+            assert len(txt_file) == 2
+            assert "file_name" in txt_file
+            assert type(txt_file.get("file_name")) is str
+            assert "processed" in txt_file
+            assert type(txt_file.get("processed")) is bool
+
+        assert "selected_txt_file_title" in editor_metadata
+        assert type(editor_metadata.get("selected_txt_file_title")) is str
+        assert editor_metadata.get("selected_txt_file_title") == "2024-01-31_16-32-32.json"
+
+        assert "selected_editor_file_content" in editor_metadata
+        assert type(editor_metadata.get("selected_editor_file_content")) is dict
+        selected_editor_file_content = editor_metadata.get("selected_editor_file_content")
+        assert "splitter_content" in selected_editor_file_content
+        assert type(selected_editor_file_content.get("splitter_content")) is list
+        assert "media_type" in selected_editor_file_content
+        assert type(selected_editor_file_content.get("media_type")) is str
+        assert selected_editor_file_content.get("media_type") == ContentType.TV.name
+        assert "file_name" in selected_editor_file_content
+        assert type(selected_editor_file_content.get("file_name")) is str
+        assert selected_editor_file_content.get("file_name") == "2024-01-31_16-32-32.json"
+        assert "playlist_title" in selected_editor_file_content
+        assert type(selected_editor_file_content.get("playlist_title")) is str
+        assert selected_editor_file_content.get("playlist_title") == "Leonard 2"
+
+        assert "editor_process_metadata" in editor_metadata
+        assert type(editor_metadata.get("editor_process_metadata")) is dict
+        editor_process_metadata = editor_metadata.get("editor_process_metadata")
+        assert "process_name" in editor_process_metadata
+        assert type(editor_process_metadata.get("process_name")) is str
+        assert editor_process_metadata.get("process_name") == "Split queue empty"
+        assert "process_end_time" in editor_process_metadata
+        assert type(editor_process_metadata.get("process_end_time")) is str
+        assert "percent_complete" in editor_process_metadata
+        assert type(editor_process_metadata.get("percent_complete")) is int
+        assert editor_process_metadata.get("percent_complete") == 0
+        assert "process_queue_size" in editor_process_metadata
+        assert type(editor_process_metadata.get("process_queue_size")) is int
+        assert editor_process_metadata.get("process_queue_size") == 0
+        assert "process_log" in editor_process_metadata
+        assert type(editor_process_metadata.get("process_log")) is list
+        assert not editor_process_metadata.get("process_log")
+        assert "process_queue" in editor_process_metadata
+        assert type(editor_process_metadata.get("process_queue")) is list
+        assert not editor_process_metadata.get("process_queue")
+
+        assert "local_play_url" in editor_metadata
+        assert type(editor_metadata.get("local_play_url")) is str
+
+        assert "storage" in editor_metadata
+        assert type(editor_metadata.get("storage")) is list
+        for storage in editor_metadata.get("storage"):
+            assert "free_space" in storage
+            assert type(storage.get("free_space")) is int
+            assert "percent_used" in storage
+            assert type(storage.get("percent_used")) is int
+            assert "path" in storage
+            assert type(storage.get("path")) is str
+
 
 class TestBackEndSplitter(TestBackEndHandler):
     def test_editor_validate_tv_json_file(self):

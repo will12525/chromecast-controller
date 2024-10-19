@@ -62,6 +62,7 @@ def get_system_data():
     if raw_folder := config_file_handler.load_json_file_content().get('editor_raw_folder'):
         disk_space.append({
             "free_space": get_free_disk_space(raw_folder),
+            "unit": "G",
             "percent_used": get_free_disk_space_percent(raw_folder),
             "path": raw_folder
         })
@@ -74,6 +75,7 @@ def get_system_data():
         disk_space.append(
             {
                 "free_space": get_free_disk_space(media_directory_path_str),
+                "unit": "G",
                 "percent_used": get_free_disk_space_percent(media_directory_path_str),
                 "path": media_directory_path_str
             })
@@ -284,9 +286,13 @@ class BackEndHandler:
         config_file = config_file_handler.load_json_file_content()
         raw_folder = config_file.get('editor_raw_folder')
         raw_folder_url = config_file.get('editor_raw_url')
-        return mp4_splitter.get_editor_metadata(raw_folder, self.editor_processor,
-                                                selected_editor_file=selected_txt_file, raw_url=raw_folder_url,
-                                                process_file=EDITOR_PROCESSED_LOG)
+
+        editor_metadata = mp4_splitter.get_editor_metadata(raw_folder, self.editor_processor,
+                                                           selected_editor_file=selected_txt_file,
+                                                           raw_url=raw_folder_url,
+                                                           process_file=EDITOR_PROCESSED_LOG)
+        editor_metadata["storage"] = get_system_data()
+        return editor_metadata
 
     def editor_process_txt_file(self, json_request):
         error_log = []
