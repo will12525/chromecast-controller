@@ -566,7 +566,7 @@ def upload_file():
                 try:
                     output_path = backend_handler.build_tv_show_output_path(filename)
                     print(output_path)
-                    # file.save(output_path)
+                    file.save(output_path)
                     data["message"] = "File saved"
                     data["filename"] = f"{file.filename}"
                     error_code = 200
