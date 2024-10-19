@@ -697,6 +697,15 @@ async function load_container(container_id) {
 async function load_tv_shows() {
     let data = {
         "tag_list": ["tv show"],
+        "container_txt_search": document.getElementById("container_txt_search").value,
+        "container_dict": {}
+    };
+    queryDB(data)
+}
+async function load_movies() {
+    let data = {
+        "tag_list": ["movie"],
+        "content_txt_search": document.getElementById("content_txt_search").value,
         "container_dict": {}
     };
     queryDB(data)
