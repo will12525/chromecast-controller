@@ -4,7 +4,6 @@ import traceback
 from enum import Enum, auto
 
 import requests  # request img from web
-import shutil  # save img locally
 import git
 import pathlib
 import re
@@ -112,28 +111,30 @@ def get_free_media_drive():
 
 def build_editor_output_path(media_type, error_log):
     mp4_output_parent_path = None
-    media_folder_path = get_free_media_drive()
-    if media_type == common_objects.ContentType.RAW.name:
-        if raw_folder := config_file_handler.load_json_file_content().get('editor_raw_folder'):
-            mp4_output_parent_path = pathlib.Path(raw_folder).resolve()
-    elif media_type == common_objects.ContentType.MOVIE.name:
-        mp4_output_parent_path = pathlib.Path(f"{media_folder_path.get('content_src')}/movies").resolve()
-    elif media_type == common_objects.ContentType.TV.name:
-        mp4_output_parent_path = pathlib.Path(f"{media_folder_path.get('content_src')}/tv_shows").resolve()
-    elif media_type == common_objects.ContentType.BOOK.name:
-        mp4_output_parent_path = pathlib.Path(f"{media_folder_path.get('content_src')}/books").resolve()
-    else:
-        print(f"Unknown media type: {media_type}")
-    if mp4_output_parent_path:
-        if not mp4_output_parent_path.exists():
-            error_log.append({"message": "Disk parent paths don't exist", "file_name": f"{mp4_output_parent_path}"})
-        elif not path_has_space(mp4_output_parent_path):
-            error_log.append({
-                "message": "Disk out of space", "file_name": f"{mp4_output_parent_path}",
-                "value": get_free_disk_space(mp4_output_parent_path)
-            })
+    if media_folder_path := get_free_media_drive():
+        if media_type == common_objects.ContentType.RAW.name:
+            if raw_folder := config_file_handler.load_json_file_content().get('editor_raw_folder'):
+                mp4_output_parent_path = pathlib.Path(raw_folder).resolve()
+        elif media_type == common_objects.ContentType.MOVIE.name:
+            mp4_output_parent_path = pathlib.Path(f"{media_folder_path.get('content_src')}/movies").resolve()
+        elif media_type == common_objects.ContentType.TV.name:
+            mp4_output_parent_path = pathlib.Path(f"{media_folder_path.get('content_src')}/tv_shows").resolve()
+        elif media_type == common_objects.ContentType.BOOK.name:
+            mp4_output_parent_path = pathlib.Path(f"{media_folder_path.get('content_src')}/books").resolve()
         else:
-            return mp4_output_parent_path
+            print(f"Unknown media type: {media_type}")
+        if mp4_output_parent_path:
+            if not mp4_output_parent_path.exists():
+                error_log.append({"message": "Disk parent paths don't exist", "file_name": f"{mp4_output_parent_path}"})
+            elif not path_has_space(mp4_output_parent_path):
+                error_log.append({
+                    "message": "Disk out of space", "file_name": f"{mp4_output_parent_path}",
+                    "value": get_free_disk_space(mp4_output_parent_path)
+                })
+            else:
+                return mp4_output_parent_path
+    else:
+        error_log.append({"message": "System out of space"})
 
 
 def editor_validate_txt_file(json_request):

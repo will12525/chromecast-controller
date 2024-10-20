@@ -2,7 +2,7 @@ import json
 import shutil
 import os
 import time
-from unittest import TestCase
+from unittest import TestCase, mock
 import pathlib
 
 import backend_handler
@@ -294,17 +294,22 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
         print(json.dumps(error_log, indent=4))
         assert not error_log
 
-    def test_editor_process_movie_txt_file(self):
+    def test_editor_process_tv_json_file(self):
         __init__.patch_extract_subclip(self)
         __init__.patch_update_processed_file(self)
-
+        expected_output = [
+            {
+                "message": "System out of space"
+            }
+        ]
         json_request = {
-            'file_name': "movie.json",
-            "media_type": ContentType.MOVIE.name
+            'file_name': "Pocoyo/2022-05-13_16-56-51.json",
+            "media_type": ContentType.TV.name
         }
-        errors = self.backend_handler.editor_process_txt_file(json_request)
+        with mock.patch('backend_handler.DISK_SPACE_USE_LIMIT', 100):
+            errors = self.backend_handler.editor_process_txt_file(json_request)
         print(json.dumps(errors, indent=4))
-        assert not errors
+        assert errors == expected_output
 
     def test_editor_process_tv_txt_file(self):
         __init__.patch_extract_subclip(self)
@@ -331,7 +336,7 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
         print(json.dumps(editor_metadata, indent=4))
         assert "txt_file_list" in editor_metadata
         assert type(editor_metadata.get("txt_file_list")) is list
-        assert len(editor_metadata.get("txt_file_list")) == 13
+        assert len(editor_metadata.get("txt_file_list")) == 14
         for txt_file in editor_metadata.get("txt_file_list"):
             assert len(txt_file) == 2
             assert "file_name" in txt_file

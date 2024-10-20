@@ -1,3 +1,4 @@
+import json
 import pathlib
 from unittest import TestCase
 import __init__
@@ -581,6 +582,13 @@ class TestEditor(TestMp4Splitter):
                                                            process_file=EDITOR_PROCESSED_LOG)
         assert editor_metadata
         assert type(editor_metadata) is dict
+        print(json.dumps(editor_metadata.get("editor_process_metadata"), indent=4))
+
+    def test_editor_process_get_metadata(self):
+        editor_metadata = self.editor_processor.get_metadata()
+        assert editor_metadata
+        assert type(editor_metadata) is dict
+        print(json.dumps(editor_metadata, indent=4))
 
     def test_editor_process_txt_file(self):
         __init__.patch_extract_subclip(self)
