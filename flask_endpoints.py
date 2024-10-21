@@ -49,6 +49,7 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', "mp4"}
 
 class APIEndpoints(Enum):
     MAIN = "/"
+    TABLE = "/table"
     QUERY_DB = "/query_db"
     EDITOR = "/editor"
     EDITOR_VALIDATE_TXT_FILE = "/validate_txt_file"
@@ -106,7 +107,7 @@ error_log = queue.Queue()
 app = Flask(__name__)
 
 
-def build_main_content(request_args):
+def build_main_content():
     # system_data = backend_handler.get_system_data()
     with DatabaseHandlerV2() as db_getter_connection:
         tag_list = db_getter_connection.get_all_tags()
@@ -238,7 +239,12 @@ def editor_processor_get_metadata():
 
 @app.route(APIEndpoints.MAIN.value)
 def main_index():
-    return build_main_content(request.args)
+    return build_main_content()
+
+
+@app.route(APIEndpoints.TABLE.value)
+def table_index():
+    return build_main_content()
 
 
 @app.route(APIEndpoints.QUERY_DB.value, methods=["POST"])
@@ -324,6 +330,7 @@ def get_media_content_types():
     data = {}
     if system_mode == SystemMode.SERVER:
         data["editor"] = APIEndpoints.EDITOR.value
+        data["table_url"] = APIEndpoints.TABLE.value
     return data, 200
 
 

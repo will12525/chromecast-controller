@@ -218,6 +218,146 @@ async function generate_media_container(content_data, media_card_template, fragm
 
     fragment.appendChild(template)
 }
+async function update_media_table(response_data) {
+    const fragment = document.createDocumentFragment();
+    const template = document.createElement("div");
+    template.className = "col-md-12";
+
+    const table = document.createElement("table");
+    table.className = "table table-striped table-hover";
+
+    const table_head = document.createElement("thead");
+    const table_head_row = document.createElement("tr");
+    column_list = ["title", "type", "tags", "index", "play"]
+    for (const column_title of column_list) {
+        const th_element = document.createElement("th");
+        th_element.scope = 'col';
+        th_element.textContent = column_title;
+        table_head_row.appendChild(th_element)
+    }
+    const table_body = document.createElement("tbody");
+    if ('parent_containers' in response_data) {
+        for (const content_data of response_data["parent_containers"]) {
+            const tr_element = document.createElement("tr");
+            const td_title = document.createElement("td");
+            const load_anchor = document.createElement('a');
+            load_anchor.href = "javascript:load_container(" + content_data["id"] + ")"
+            load_anchor.textContent = content_data["container_title"];
+            td_title.appendChild(load_anchor);
+
+            const td_type = document.createElement("td");
+            td_type.textContent = "Playlist"
+
+            const td_tags = document.createElement("td");
+            td_tags.textContent = content_data["user_tags"]
+
+            const td_index = document.createElement("td");
+            td_index.textContent = content_data["content_index"]
+
+            const td_play = document.createElement("td");
+            const play_anchor = document.createElement('a');
+            play_anchor.textContent = "Play"
+            if ('parent_container_id' in content_data) {
+                play_anchor.href = "javascript:play_media(" + content_data["id"] + ", " + content_data["parent_container_id"] + ", 'container')"
+            } else {
+                play_anchor.href = "javascript:play_media(" + content_data["id"] + ", null, 'container')"
+            }
+            td_play.appendChild(play_anchor);
+
+            tr_element.appendChild(td_title)
+            tr_element.appendChild(td_type)
+            tr_element.appendChild(td_tags)
+            tr_element.appendChild(td_index)
+            tr_element.appendChild(td_play)
+            table_body.appendChild(tr_element)
+        }
+    }
+    if ('containers' in response_data) {
+        for (const content_data of response_data["containers"]) {
+            const tr_element = document.createElement("tr");
+            const td_title = document.createElement("td");
+            const load_anchor = document.createElement('a');
+            load_anchor.href = "javascript:load_container(" + content_data["id"] + ")"
+            load_anchor.textContent = content_data["container_title"];
+            td_title.appendChild(load_anchor);
+
+            const td_type = document.createElement("td");
+            td_type.textContent = "Playlist"
+
+            const td_tags = document.createElement("td");
+            td_tags.textContent = content_data["user_tags"]
+
+            const td_index = document.createElement("td");
+            td_index.textContent = content_data["season_index"]
+
+            const td_play = document.createElement("td");
+            const play_anchor = document.createElement('a');
+            play_anchor.textContent = "Play"
+            if ('parent_container_id' in content_data) {
+                play_anchor.href = "javascript:play_media(" + content_data["id"] + ", " + content_data["parent_container_id"] + ", 'container')"
+            } else {
+                play_anchor.href = "javascript:play_media(" + content_data["id"] + ", null, 'container')"
+            }
+            td_play.appendChild(play_anchor);
+
+            tr_element.appendChild(td_title)
+            tr_element.appendChild(td_type)
+            tr_element.appendChild(td_tags)
+            tr_element.appendChild(td_index)
+            tr_element.appendChild(td_play)
+            table_body.appendChild(tr_element)
+        }
+    }
+    if ('content' in response_data) {
+        for (const content_data of response_data["content"]) {
+            const tr_element = document.createElement("tr");
+            const td_title = document.createElement("td");
+            td_title.textContent = content_data["content_title"];
+
+            const td_type = document.createElement("td");
+            td_type.textContent = "Media"
+
+            const td_tags = document.createElement("td");
+            td_tags.textContent = content_data["user_tags"]
+
+            const td_index = document.createElement("td");
+            td_index.textContent = content_data["content_index"]
+
+            const td_play = document.createElement("td");
+            const play_anchor = document.createElement('a');
+            play_anchor.textContent = "Play"
+            if ('parent_container_id' in content_data) {
+                play_anchor.href = "javascript:play_media(" + content_data["id"] + ", " + content_data["parent_container_id"] + ", 'content')"
+            } else {
+                play_anchor.href = "javascript:play_media(" + content_data["id"] + ", null, 'content')"
+            }
+            td_play.appendChild(play_anchor);
+
+            tr_element.appendChild(td_title)
+            tr_element.appendChild(td_type)
+            tr_element.appendChild(td_tags)
+            tr_element.appendChild(td_index)
+            tr_element.appendChild(td_play)
+            table_body.appendChild(tr_element)
+        }
+    }
+
+    table_head.appendChild(table_head_row)
+    table.appendChild(table_head)
+    table.appendChild(table_body)
+    template.appendChild(table)
+    fragment.appendChild(template)
+
+    const mainContent = document.getElementById("mediaContentSelectDiv");
+    mainContent.innerHTML = "";
+    document.getElementById("mediaContentSelectDiv").appendChild(fragment);
+
+    document.getElementById("rainbow_loading_bar").hidden = true;
+    window.scroll({
+        top: 0,
+        behavior: 'smooth'
+    });
+}
 async function update_media_container(response_data) {
     const header_res = await fetch("static/media_list_header.html")
     const media_list_template = await header_res.text()
@@ -324,7 +464,12 @@ async function queryDB(data) {
         "body": JSON.stringify(data),
     }).then(response => response.json())
         .then(response_data => {
-            update_media_container(response_data)
+            pathname = new URL(window.location.href).pathname
+            if (pathname == "/table") {
+                update_media_table(response_data)
+            } else {
+                update_media_container(response_data)
+            }
         })
         .catch(error => console.error(error));
 }
@@ -470,11 +615,12 @@ async function update_local_media_player(response_data) {
     }
 }
 
-async function play_media(content_id, parent_container_id=null) {
+async function play_media(content_id, parent_container_id=null, content_type=null) {
     var url = "/play_media";
     let data = {
         "content_id": content_id,
-        "parent_container_id": parent_container_id
+        "parent_container_id": parent_container_id,
+        "content_type": content_type
     };
     // Send POST request
     let response = await fetch(url, {
@@ -649,6 +795,7 @@ async function updateSeekSelector() {
 async function setNavbarLinks() {
     var scan_media_button = document.getElementById("scan_media_button");
     var editor_button = document.getElementById("editor_button");
+    var table_button = document.getElementById("table_button");
 
     var url = "/get_media_content_types";
     let response = await fetch(url);
@@ -661,6 +808,11 @@ async function setNavbarLinks() {
         {
             editor_button.setAttribute('href', response_data["editor"]);
             editor_button.hidden = false;
+        }
+        if (table_button !== null && response_data["table_url"] !== undefined)
+        {
+            table_button.setAttribute('href', response_data["table_url"]);
+            table_button.hidden = false;
         }
         if (scan_media_button !== null)
         {
