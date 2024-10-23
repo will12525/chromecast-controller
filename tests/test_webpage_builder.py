@@ -10,7 +10,7 @@ import backend_handler as bh
 from flask import Flask
 
 from database_handler import common_objects
-import pytest_mocks
+from . import pytest_mocks
 
 SAVE_FILES = False
 

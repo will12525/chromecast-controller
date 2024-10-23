@@ -7,7 +7,7 @@ from database_handler import common_objects
 from database_handler.common_objects import DBType
 from database_handler.db_setter import DBCreatorV2
 from database_handler.media_metadata_collector import get_playlist_list_index
-import pytest_mocks
+from . import pytest_mocks
 
 
 class TestDBCreatorInit(TestCase):

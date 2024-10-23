@@ -6,7 +6,7 @@ import config_file_handler
 from database_handler.db_setter import DBCreatorV2
 from database_handler.db_getter import DatabaseHandlerV2
 from database_handler.common_objects import ContentType, DBType
-import pytest_mocks
+from . import pytest_mocks
 
 
 class TestDatabaseHandlerV2(TestCase):

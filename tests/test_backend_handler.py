@@ -10,7 +10,7 @@ import backend_handler as bh
 import config_file_handler
 from database_handler.common_objects import ContentType
 from database_handler.db_setter import DBCreatorV2
-import pytest_mocks
+from . import pytest_mocks
 
 
 class TestBackEndHandler(TestCase):
@@ -212,7 +212,7 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
                         'description': 'World!'}
         bh.download_image(json_request)
         print(json.dumps(json_request, indent=4))
-        assert json_request.get("img_src") == f"/editor_raw_files/Hilda/Season 4.jpg"
+        assert json_request.get("img_src") == "/editor_raw_files/Hilda/Season 4.jpg"
 
     def test_image_download_movie(self):
         # Add test for each content type
@@ -228,7 +228,7 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
                         'description': 'World!'}
         bh.download_image(json_request)
         print(json.dumps(json_request, indent=4))
-        assert json_request.get("img_src") == f"/editor_raw_files/Hilda/Hilda.jpg"
+        assert json_request.get("img_src") == "/editor_raw_files/Hilda/Hilda.jpg"
 
     # def test_image_download_playlist(self):
     #     # Add test for each content type

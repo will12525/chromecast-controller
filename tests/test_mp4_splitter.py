@@ -1,7 +1,7 @@
 import json
 import pathlib
 from unittest import TestCase
-import pytest_mocks
+from . import pytest_mocks
 
 import mp4_splitter
 import config_file_handler

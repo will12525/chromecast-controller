@@ -5,7 +5,7 @@ import backend_handler
 
 import content_transfer
 import config_file_handler
-import pytest_mocks
+from . import pytest_mocks
 
 
 class TestContentTransferSetup(TestCase):

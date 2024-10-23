@@ -6,7 +6,7 @@ from unittest import TestCase
 import config_file_handler
 import database_handler.media_metadata_collector as md_collector
 from database_handler import common_objects
-import pytest_mocks
+from . import pytest_mocks
 
 
 class TestMediaMetadataCollectorSetup(TestCase):
