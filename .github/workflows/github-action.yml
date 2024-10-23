@@ -17,8 +17,9 @@ jobs:
       - name: Test with pytest
         run: pytest test_create_database.py --doctest-modules --junitxml=junit/test-results.xml --cov-report=xml --cov-report=html
         working-directory: tests
-      - name: Upload test reports
+      - name: Archive code coverage results
         uses: actions/upload-artifact@v4
         with:
-          name: Test Reports
-          path: tests/junit/test-results.xml,tests/coverage/*.xml,tests/coverage/html/*
+          name: my-artifact
+          path: tests/junit/test-results.xml
+          retention-days: 5
