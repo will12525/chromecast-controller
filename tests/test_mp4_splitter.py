@@ -1,7 +1,7 @@
 import json
 import pathlib
 from unittest import TestCase
-import __init__
+import pytest_mocks
 
 import mp4_splitter
 import config_file_handler
@@ -539,8 +539,8 @@ class TestEditor(TestMp4Splitter):
         assert file_name == error.get("value")
 
     def test_editor_process_txt_file_name(self):
-        __init__.patch_extract_subclip(self)
-        __init__.patch_update_processed_file(self)
+        pytest_mocks.patch_extract_subclip(self)
+        pytest_mocks.patch_update_processed_file(self)
         file_name = "2024-01-31_16-32-36.json"
 
         mp4_splitter.editor_process_txt_file(file_name, self.modify_output_path, self.editor_processor)
@@ -591,8 +591,8 @@ class TestEditor(TestMp4Splitter):
         print(json.dumps(editor_metadata, indent=4))
 
     def test_editor_process_txt_file(self):
-        __init__.patch_extract_subclip(self)
-        __init__.patch_update_processed_file(self)
+        pytest_mocks.patch_extract_subclip(self)
+        pytest_mocks.patch_update_processed_file(self)
         file_name_36 = "2024-01-31_16-32-36.json"
         file_name_38 = "2024-01-31_16-32-38.json"
         process_already_in_queue_error = {

@@ -6,7 +6,7 @@ import config_file_handler
 from database_handler.db_setter import DBCreatorV2
 from database_handler.db_getter import DatabaseHandlerV2
 from database_handler.common_objects import ContentType, DBType
-import __init__
+import pytest_mocks
 
 
 class TestDatabaseHandlerV2(TestCase):
@@ -16,10 +16,10 @@ class TestDatabaseHandlerV2(TestCase):
     def setUp(self) -> None:
         self.media_directory_info = config_file_handler.load_json_file_content().get("media_folders")
 
-        __init__.patch_get_file_hash(self)
-        __init__.patch_get_ffmpeg_metadata(self)
-        __init__.patch_extract_subclip(self)
-        __init__.patch_update_processed_file(self)
+        pytest_mocks.patch_get_file_hash(self)
+        pytest_mocks.patch_get_ffmpeg_metadata(self)
+        pytest_mocks.patch_extract_subclip(self)
+        pytest_mocks.patch_update_processed_file(self)
 
         self.erase_db()
         self.create_db()
@@ -282,7 +282,7 @@ class TestDatabaseHandlerFunctionsV2(TestDatabaseHandlerV2):
             next_content = db_connection.get_previous_content_in_container(json_request)
             print(json.dumps(next_content, indent=4))
             assert next_content.get("id") == 19
-            
+
     def test_query_db_all_tags(self):
         with DatabaseHandlerV2() as db_connection:
             tag_list = db_connection.get_all_tags()
@@ -347,6 +347,20 @@ class TestDatabaseHandlerFunctionsV2(TestDatabaseHandlerV2):
         assert new_tag_found
         print(json.dumps(tag_list, indent=4))
 
+    def test_query_db_delete_content(self):
+        print(self.media_directory_info)
+        test_movie_path = "/media_folder_movie/Dinosaur/The Wild Dinosaur (2005).mp4"
+        with DatabaseHandlerV2() as db_connection:
+            content_paths = db_connection.get_all_content_paths()
+        # with DatabaseHandlerV2() as db_connection:
+        #     tag_list = db_connection.get_all_tags()
+        # new_tag_found = False
+        # for tag in tag_list:
+        #     if tag.get("tag_title") == new_tag.get("tag_title"):
+        #         new_tag_found = True
+        # assert new_tag_found
+        print(json.dumps(content_paths, indent=4))
+
 
 class TestDatabaseHandler(TestCase):
     DB_PATH = "media_metadata.db"
@@ -356,10 +370,10 @@ class TestDatabaseHandler(TestCase):
     media_paths = None
 
     def setUp(self) -> None:
-        __init__.patch_get_file_hash(self)
-        __init__.patch_get_ffmpeg_metadata(self)
-        __init__.patch_extract_subclip(self)
-        __init__.patch_update_processed_file(self)
+        pytest_mocks.patch_get_file_hash(self)
+        pytest_mocks.patch_get_ffmpeg_metadata(self)
+        pytest_mocks.patch_extract_subclip(self)
+        pytest_mocks.patch_update_processed_file(self)
 
         if os.path.exists(self.DB_PATH):
             os.remove(self.DB_PATH)

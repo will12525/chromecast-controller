@@ -5,17 +5,17 @@ import backend_handler
 
 import content_transfer
 import config_file_handler
-import __init__
+import pytest_mocks
 
 
 class TestContentTransferSetup(TestCase):
     DB_PATH = "media_metadata.db"
 
     def setUp(self) -> None:
-        __init__.patch_get_file_hash(self)
-        __init__.patch_get_ffmpeg_metadata(self)
-        __init__.patch_extract_subclip(self)
-        __init__.patch_update_processed_file(self)
+        pytest_mocks.patch_get_file_hash(self)
+        pytest_mocks.patch_get_ffmpeg_metadata(self)
+        pytest_mocks.patch_extract_subclip(self)
+        pytest_mocks.patch_update_processed_file(self)
         # if os.path.exists(self.DB_PATH):
         #     os.remove(self.DB_PATH)
         # assert not os.path.exists(self.DB_PATH)

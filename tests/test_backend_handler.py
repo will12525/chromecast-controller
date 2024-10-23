@@ -10,7 +10,7 @@ import backend_handler as bh
 import config_file_handler
 from database_handler.common_objects import ContentType
 from database_handler.db_setter import DBCreatorV2
-import __init__
+import pytest_mocks
 
 
 class TestBackEndHandler(TestCase):
@@ -18,11 +18,11 @@ class TestBackEndHandler(TestCase):
     image_folder_path = "../images"
 
     def setUp(self):
-        __init__.patch_update_processed_file(self)
-        __init__.patch_extract_subclip(self)
-        __init__.patch_get_file_hash(self)
-        __init__.patch_get_ffmpeg_metadata(self)
-        # __init__.patch_get_free_disk_space(self)
+        pytest_mocks.patch_update_processed_file(self)
+        pytest_mocks.patch_extract_subclip(self)
+        pytest_mocks.patch_get_file_hash(self)
+        pytest_mocks.patch_get_ffmpeg_metadata(self)
+        # pytest_mocks.patch_get_free_disk_space(self)
 
         self.backend_handler = bh.BackEndHandler()
         setup_thread = self.backend_handler.start()
@@ -39,10 +39,10 @@ class TestSetupDB(TestCase):
     DB_PATH = "media_metadata.db"
 
     def setUp(self):
-        __init__.patch_get_file_hash(self)
-        __init__.patch_get_ffmpeg_metadata(self)
-        __init__.patch_extract_subclip(self)
-        __init__.patch_update_processed_file(self)
+        pytest_mocks.patch_get_file_hash(self)
+        pytest_mocks.patch_get_ffmpeg_metadata(self)
+        pytest_mocks.patch_extract_subclip(self)
+        pytest_mocks.patch_update_processed_file(self)
         if os.path.exists(self.DB_PATH):
             os.remove(self.DB_PATH)
 
@@ -252,81 +252,6 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
         print(expected_str)
         assert expected_str in output_path
 
-    def test_editor_validate_txt_file(self):
-        editor_metadata = {
-            'file_name': "2024-01-31_16-32-36.json",
-            'media_type': ContentType.TV.name
-        }
-        error_log = bh.editor_validate_txt_file(editor_metadata)
-        print(json.dumps(error_log, indent=4))
-        assert not error_log
-
-    def test_editor_validate_broken_txt_file(self):
-        editor_metadata = {
-            'file_name': "2024-01-31_16-32-36_invalid.json",
-            'media_type': ContentType.TV.name
-        }
-        error_log = bh.editor_validate_txt_file(editor_metadata)
-        print(json.dumps(error_log, indent=4))
-        assert error_log
-        assert len(error_log) == 3
-        assert type(error_log[0]) is dict
-
-        error = error_log[0]
-        assert "Values less than 0" == error.get("message")
-        assert "13:-3" == error.get("value")
-        assert 0 == error.get("hour")
-        assert 13 == error.get("minute")
-        assert -3 == error.get("second")
-
-        error = error_log[1]
-        assert "End time >= start time" == error.get("message")
-
-        error = error_log[2]
-        assert "Errors occurred while parsing line" == error.get("message")
-
-    def test_editor_validate_movie_txt_file(self):
-        editor_metadata = {
-            'file_name': "movie.json",
-            'media_type': ContentType.MOVIE.name
-        }
-        error_log = bh.editor_validate_txt_file(editor_metadata)
-        print(json.dumps(error_log, indent=4))
-        assert not error_log
-
-    def test_editor_process_tv_json_file(self):
-        __init__.patch_extract_subclip(self)
-        __init__.patch_update_processed_file(self)
-        expected_output = [
-            {
-                "message": "System out of space"
-            }
-        ]
-        json_request = {
-            'file_name': "Pocoyo/2022-05-13_16-56-51.json",
-            "media_type": ContentType.TV.name
-        }
-        with mock.patch('backend_handler.DISK_SPACE_USE_LIMIT', 100):
-            errors = self.backend_handler.editor_process_txt_file(json_request)
-        print(json.dumps(errors, indent=4))
-        assert errors == expected_output
-
-    def test_editor_process_tv_txt_file(self):
-        __init__.patch_extract_subclip(self)
-        __init__.patch_update_processed_file(self)
-
-        json_request = {
-            'file_name': "2024-01-31_16-32-36.json",
-            "media_type": ContentType.TV.name
-        }
-        raw_folder = config_file_handler.load_json_file_content().get('editor_raw_folder')
-        with DBCreatorV2() as db_connection:
-            media_folder_path = db_connection.get_all_content_directory_info()[0]
-        output_path = pathlib.Path(media_folder_path.get("content_src")).resolve()
-        errors = self.backend_handler.editor_process_txt_file(json_request)
-        print(json.dumps(errors, indent=4))
-        assert not errors
-
     def test_get_system_data(self):
         system_data = backend_handler.get_system_data()
         print(json.dumps(system_data, indent=4))
@@ -398,7 +323,50 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
             assert type(storage.get("path")) is str
 
 
-class TestBackEndSplitter(TestBackEndHandler):
+class TestBackEndEditorValidateTextFile(TestBackEndHandler):
+
+    def test_editor_validate_txt_file(self):
+        editor_metadata = {
+            'file_name': "2024-01-31_16-32-36.json",
+            'media_type': ContentType.TV.name
+        }
+        error_log = bh.editor_validate_txt_file(editor_metadata)
+        print(json.dumps(error_log, indent=4))
+        assert not error_log
+
+    def test_editor_validate_broken_txt_file(self):
+        editor_metadata = {
+            'file_name': "2024-01-31_16-32-36_invalid.json",
+            'media_type': ContentType.TV.name
+        }
+        error_log = bh.editor_validate_txt_file(editor_metadata)
+        print(json.dumps(error_log, indent=4))
+        assert error_log
+        assert len(error_log) == 3
+        assert type(error_log[0]) is dict
+
+        error = error_log[0]
+        assert "Values less than 0" == error.get("message")
+        assert "13:-3" == error.get("value")
+        assert 0 == error.get("hour")
+        assert 13 == error.get("minute")
+        assert -3 == error.get("second")
+
+        error = error_log[1]
+        assert "End time >= start time" == error.get("message")
+
+        error = error_log[2]
+        assert "Errors occurred while parsing line" == error.get("message")
+
+    def test_editor_validate_movie_txt_file(self):
+        editor_metadata = {
+            'file_name': "movie.json",
+            'media_type': ContentType.MOVIE.name
+        }
+        error_log = bh.editor_validate_txt_file(editor_metadata)
+        print(json.dumps(error_log, indent=4))
+        assert not error_log
+
     def test_editor_validate_tv_json_file(self):
         editor_metadata = {
             'file_name': "2024-01-31_16-32-32.json",
@@ -434,6 +402,42 @@ class TestBackEndSplitter(TestBackEndHandler):
         error_log = bh.editor_validate_txt_file(editor_metadata)
         print(json.dumps(error_log, indent=4))
         assert not error_log
+
+
+class TestBackEndEditorProcessTextFile(TestBackEndHandler):
+
+    def test_editor_process_system_out_of_space(self):
+        pytest_mocks.patch_extract_subclip(self)
+        pytest_mocks.patch_update_processed_file(self)
+        expected_output = [
+            {
+                "message": "System out of space"
+            }
+        ]
+        json_request = {
+            'file_name': "Pocoyo/2022-05-13_16-56-51.json",
+            "media_type": ContentType.TV.name
+        }
+        with mock.patch('backend_handler.DISK_SPACE_USE_LIMIT', 100):
+            errors = self.backend_handler.editor_process_txt_file(json_request)
+        print(json.dumps(errors, indent=4))
+        assert errors == expected_output
+
+    def test_editor_process_tv_txt_file(self):
+        pytest_mocks.patch_extract_subclip(self)
+        pytest_mocks.patch_update_processed_file(self)
+
+        json_request = {
+            'file_name': "2024-01-31_16-32-36.json",
+            "media_type": ContentType.TV.name
+        }
+        raw_folder = config_file_handler.load_json_file_content().get('editor_raw_folder')
+        with DBCreatorV2() as db_connection:
+            media_folder_path = db_connection.get_all_content_directory_info()[0]
+        output_path = pathlib.Path(media_folder_path.get("content_src")).resolve()
+        errors = self.backend_handler.editor_process_txt_file(json_request)
+        print(json.dumps(errors, indent=4))
+        assert not errors
 
     def test_editor_process_tv_json_file(self):
         editor_metadata = {

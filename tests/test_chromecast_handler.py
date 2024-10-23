@@ -9,7 +9,7 @@ from chromecast_handler import ChromecastHandler
 from database_handler import common_objects
 from database_handler.common_objects import ContentType
 from database_handler.db_setter import DBCreatorV2
-import __init__
+import pytest_mocks
 
 
 class TestChromecastHandler(TestCase):
@@ -17,10 +17,10 @@ class TestChromecastHandler(TestCase):
 
     def setUp(self):
         self.chromecast_handler = ChromecastHandler()
-        __init__.patch_get_file_hash(self)
-        __init__.patch_get_ffmpeg_metadata(self)
-        __init__.patch_extract_subclip(self)
-        __init__.patch_update_processed_file(self)
+        pytest_mocks.patch_get_file_hash(self)
+        pytest_mocks.patch_get_ffmpeg_metadata(self)
+        pytest_mocks.patch_extract_subclip(self)
+        pytest_mocks.patch_update_processed_file(self)
 
         self.media_paths = config_file_handler.load_json_file_content().get("media_folders")
         assert self.media_paths
@@ -123,10 +123,10 @@ class TestMyMediaDevice(TestCase):
     media_controller = None
 
     def setUp(self):
-        __init__.patch_get_file_hash(self)
-        __init__.patch_get_ffmpeg_metadata(self)
-        __init__.patch_extract_subclip(self)
-        __init__.patch_update_processed_file(self)
+        pytest_mocks.patch_get_file_hash(self)
+        pytest_mocks.patch_get_ffmpeg_metadata(self)
+        pytest_mocks.patch_extract_subclip(self)
+        pytest_mocks.patch_update_processed_file(self)
 
         if os.path.exists(self.DB_PATH):
             os.remove(self.DB_PATH)

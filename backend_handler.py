@@ -122,7 +122,7 @@ def build_editor_output_path(media_type, error_log):
         elif media_type == common_objects.ContentType.BOOK.name:
             mp4_output_parent_path = pathlib.Path(f"{media_folder_path.get('content_src')}/books").resolve()
         else:
-            print(f"Unknown media type: {media_type}")
+            error_log.append({"message": "Unknown media type", "value": f"{media_type}"})
         if mp4_output_parent_path:
             if not mp4_output_parent_path.exists():
                 error_log.append({"message": "Disk parent paths don't exist", "file_name": f"{mp4_output_parent_path}"})

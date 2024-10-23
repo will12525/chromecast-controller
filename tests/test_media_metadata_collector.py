@@ -6,7 +6,7 @@ from unittest import TestCase
 import config_file_handler
 import database_handler.media_metadata_collector as md_collector
 from database_handler import common_objects
-import __init__
+import pytest_mocks
 
 
 class TestMediaMetadataCollectorSetup(TestCase):
@@ -17,10 +17,10 @@ class TestMediaMetadataCollectorSetup(TestCase):
         self.media_paths = config_file_handler.load_json_file_content().get("media_folders")
         for index, media_path in enumerate(self.media_paths):
             media_path["id"] = index
-        __init__.patch_get_file_hash(self)
-        __init__.patch_get_ffmpeg_metadata(self)
-        __init__.patch_extract_subclip(self)
-        __init__.patch_update_processed_file(self)
+        pytest_mocks.patch_get_file_hash(self)
+        pytest_mocks.patch_get_ffmpeg_metadata(self)
+        pytest_mocks.patch_extract_subclip(self)
+        pytest_mocks.patch_update_processed_file(self)
 
 
 class TestDBCreator(TestMediaMetadataCollectorSetup):

@@ -10,7 +10,7 @@ import backend_handler as bh
 from flask import Flask
 
 from database_handler import common_objects
-import __init__
+import pytest_mocks
 
 SAVE_FILES = False
 
@@ -48,11 +48,11 @@ class TestWebpageBuilder(TestCase):
     def setUp(self) -> None:
         # if os.path.exists(self.DB_PATH):
         #     os.remove(self.DB_PATH)
-        __init__.patch_get_file_hash(self)
-        __init__.patch_get_ffmpeg_metadata(self)
-        __init__.patch_extract_subclip(self)
-        __init__.patch_update_processed_file(self)
-        __init__.patch_get_free_disk_space(self)
+        pytest_mocks.patch_get_file_hash(self)
+        pytest_mocks.patch_get_ffmpeg_metadata(self)
+        pytest_mocks.patch_extract_subclip(self)
+        pytest_mocks.patch_update_processed_file(self)
+        pytest_mocks.patch_get_free_disk_space(self)
 
         self.app = Flask(__name__)
         # Wait for the setup_thread to finish so the database is fully populated for testing

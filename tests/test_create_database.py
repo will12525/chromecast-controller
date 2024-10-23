@@ -7,7 +7,7 @@ from database_handler import common_objects
 from database_handler.common_objects import DBType
 from database_handler.db_setter import DBCreatorV2
 from database_handler.media_metadata_collector import get_playlist_list_index
-import __init__
+import pytest_mocks
 
 
 class TestDBCreatorInit(TestCase):
@@ -83,10 +83,10 @@ class TestDBCreatorInit(TestCase):
     def setUp(self) -> None:
         self.media_directory_info = config_file_handler.load_json_file_content().get("media_folders")
 
-        __init__.patch_get_file_hash(self)
-        __init__.patch_get_ffmpeg_metadata(self)
-        __init__.patch_extract_subclip(self)
-        __init__.patch_update_processed_file(self)
+        pytest_mocks.patch_get_file_hash(self)
+        pytest_mocks.patch_get_ffmpeg_metadata(self)
+        pytest_mocks.patch_extract_subclip(self)
+        pytest_mocks.patch_update_processed_file(self)
 
     def erase_db(self):
         if os.path.exists(self.DB_PATH):
