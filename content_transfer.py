@@ -83,7 +83,7 @@ class ServerConnection:
 
     def process_img_files(self):
         with DBCreatorV2() as db_connection:
-            media_directory_info = db_connection.get_all_content_directory_info()
+            media_directory_info = db_connection.get_all_media_folders()
         for content_src in self.img_srcs:
             if media_directory_info:
                 if output_file := find_existing_img_dir(content_src.get('img_src'), media_directory_info):
@@ -174,7 +174,7 @@ def request_file(output_file, data):
 def request_image(json_request, data):
     if json_request.get("server_token") == HANDSHAKE_RESPONSE:
         with DBCreatorV2() as db_connection:
-            media_directory_info = db_connection.get_all_content_directory_info()
+            media_directory_info = db_connection.get_all_media_folders()
         if output_file := find_existing_img_path(json_request.get('img_src'), media_directory_info):
             return request_file(output_file, data)
         else:

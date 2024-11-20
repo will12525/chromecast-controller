@@ -8,6 +8,19 @@ import os
 import config_file_handler
 from database_handler import common_objects
 
+example_config_file = {
+    "mode": "SERVER",
+    "editor_raw_folder": "/media/raw_files/",
+    "editor_raw_url": "http://localhost:8001/",
+    "server_url": "http://localhost:5001/",
+    "media_folders": [
+        {
+            "content_src": "/media/example/",
+            "content_url": "http://localhost:8000"
+        }
+    ]
+}
+
 
 def get_file_hash(extra_metadata):
     time_hash = hashlib.md5()
@@ -63,6 +76,13 @@ def patch_get_free_disk_space(test_class):
     patcher = patch('backend_handler.get_free_disk_space')
     test_class.get_free_disk_space = patcher.start()
     test_class.get_free_disk_space.return_value = 100
+    test_class.addCleanup(patcher.stop)
+
+
+def patch_load_json_file_content(test_class):
+    patcher = patch('config_file_handler.load_json_file_content')
+    test_class.get_free_disk_space = patcher.start()
+    test_class.get_free_disk_space.return_value = example_config_file
     test_class.addCleanup(patcher.stop)
 
 

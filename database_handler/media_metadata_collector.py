@@ -195,8 +195,6 @@ def get_content_type(file_name):
         content_type = common_objects.ContentType.MOVIE
     elif match := re.search(BOOK_PATTERN, mp4_file_path_posix):
         content_type = common_objects.ContentType.BOOK
-    else:
-        print(f"Unknown content type: {file_name}")
     return content_type, match
 
 

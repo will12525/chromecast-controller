@@ -67,7 +67,7 @@ def get_system_data():
         })
 
     with DBCreatorV2() as db_connection:
-        media_directory_info = db_connection.get_all_content_directory_info()
+        media_directory_info = db_connection.get_all_media_folders()
 
     for media_directory in media_directory_info:
         media_directory_path_str = media_directory.get("content_src")

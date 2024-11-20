@@ -56,7 +56,7 @@ class TestSetupDB(TestCase):
         assert not os.path.exists(self.DB_PATH)
         bh.setup_db()
         with DBCreatorV2() as db_connection:
-            media_metadata = db_connection.get_all_content_directory_info()
+            media_metadata = db_connection.get_all_media_folders()
         print(media_metadata)
         print(media_folders)
         assert len(media_folders) == len(media_metadata)
@@ -433,7 +433,7 @@ class TestBackEndEditorProcessTextFile(TestBackEndHandler):
         }
         raw_folder = config_file_handler.load_json_file_content().get('editor_raw_folder')
         with DBCreatorV2() as db_connection:
-            media_folder_path = db_connection.get_all_content_directory_info()[0]
+            media_folder_path = db_connection.get_all_media_folders()[0]
         output_path = pathlib.Path(media_folder_path.get("content_src")).resolve()
         errors = self.backend_handler.editor_process_txt_file(json_request.get("media_type"),
                                                               json_request.get("file_name"))

@@ -291,7 +291,7 @@ class TestDatabaseHandlerFunctionsV2(TestDatabaseHandlerV2):
     def test_query_db_add_tag_to_content(self):
         json_request = {'content_id': 18, "tag_title": "season"}
         with DBCreatorV2() as db_connection:
-            json_request["user_tags_id"] = db_connection.get_tag_id(json_request)
+            json_request["user_tags_id"] = db_connection.get_tag_id_by_title(json_request)
             db_connection.add_tag_to_content(json_request)
         with DatabaseHandlerV2() as db_connection:
             content_info = db_connection.get_content_info(json_request.get("content_id"))
@@ -301,7 +301,7 @@ class TestDatabaseHandlerFunctionsV2(TestDatabaseHandlerV2):
     def test_query_db_remove_tag_from_content(self):
         json_request = {'content_id': 18, "tag_title": "movie"}
         with DBCreatorV2() as db_connection:
-            json_request["user_tags_id"] = db_connection.get_tag_id(json_request)
+            json_request["user_tags_id"] = db_connection.get_tag_id_by_title(json_request)
             print(json.dumps(json_request, indent=4))
             db_connection.remove_tag_from_content(json_request)
         with DatabaseHandlerV2() as db_connection:
@@ -312,7 +312,7 @@ class TestDatabaseHandlerFunctionsV2(TestDatabaseHandlerV2):
     def test_query_db_remove_tag_from_container(self):
         json_request = {'container_id': 10, "tag_title": "tv show"}
         with DBCreatorV2() as db_connection:
-            json_request["user_tags_id"] = db_connection.get_tag_id(json_request)
+            json_request["user_tags_id"] = db_connection.get_tag_id_by_title(json_request)
             print(json.dumps(json_request, indent=4))
             db_connection.remove_tag_from_container(json_request)
         with DatabaseHandlerV2() as db_connection:
@@ -323,7 +323,7 @@ class TestDatabaseHandlerFunctionsV2(TestDatabaseHandlerV2):
     def test_query_db_add_tag_to_container(self):
         json_request = {'container_id': 10, "tag_title": "season"}
         with DBCreatorV2() as db_connection:
-            json_request["user_tags_id"] = db_connection.get_tag_id(json_request)
+            json_request["user_tags_id"] = db_connection.get_tag_id_by_title(json_request)
             db_connection.add_tag_to_container(json_request)
         with DatabaseHandlerV2() as db_connection:
             content_info = db_connection.get_container_info(json_request.get("container_id"))

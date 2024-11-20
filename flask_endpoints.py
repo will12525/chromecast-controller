@@ -289,14 +289,14 @@ def add_tag_to_content():
     if json_request := request.get_json():
         if json_request.get("tag_title") and json_request.get("content_id"):
             with DBCreatorV2() as db_connection:
-                json_request["user_tags_id"] = db_connection.get_tag_id(json_request)
+                json_request["user_tags_id"] = db_connection.get_tag_id_by_title(json_request)
                 db_connection.add_tag_to_content(json_request)
             with DatabaseHandlerV2() as db_connection:
                 media_metadata.update(db_connection.query_content_tags(json_request.get("content_id")))
             media_metadata["tag_title"] = json_request.get("tag_title")
         elif json_request.get("tag_title") and json_request.get("container_id"):
             with DBCreatorV2() as db_connection:
-                json_request["user_tags_id"] = db_connection.get_tag_id(json_request)
+                json_request["user_tags_id"] = db_connection.get_tag_id_by_title(json_request)
                 db_connection.add_tag_to_container(json_request)
             with DatabaseHandlerV2() as db_connection:
                 media_metadata.update(db_connection.query_container_tags(json_request.get("container_id")))
@@ -310,14 +310,14 @@ def remove_tag_from_content():
     if json_request := request.get_json():
         if json_request.get("tag_title") and json_request.get("content_id"):
             with DBCreatorV2() as db_connection:
-                json_request["user_tags_id"] = db_connection.get_tag_id(json_request)
+                json_request["user_tags_id"] = db_connection.get_tag_id_by_title(json_request)
                 db_connection.remove_tag_from_content(json_request)
             with DatabaseHandlerV2() as db_connection:
                 media_metadata.update(db_connection.query_content_tags(json_request.get("content_id")))
             media_metadata["tag_title"] = json_request.get("tag_title")
         elif json_request.get("tag_title") and json_request.get("container_id"):
             with DBCreatorV2() as db_connection:
-                json_request["user_tags_id"] = db_connection.get_tag_id(json_request)
+                json_request["user_tags_id"] = db_connection.get_tag_id_by_title(json_request)
                 db_connection.remove_tag_from_container(json_request)
             with DatabaseHandlerV2() as db_connection:
                 media_metadata.update(db_connection.query_container_tags(json_request.get("container_id")))
