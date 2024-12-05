@@ -419,7 +419,7 @@ class TestBackEndEditorProcessTextFile(TestBackEndHandler):
             "media_type": ContentType.TV.name
         }
         with mock.patch('backend_handler.DISK_SPACE_USE_LIMIT', 100):
-            errors = self.backend_handler.editor_process_txt_file(json_request)
+            errors = self.backend_handler.editor_process_txt_file(json_request.get("media_type"), json_request.get("file_name"))
         print(json.dumps(errors, indent=4))
         assert errors == expected_output
 
@@ -435,42 +435,37 @@ class TestBackEndEditorProcessTextFile(TestBackEndHandler):
         with DBCreatorV2() as db_connection:
             media_folder_path = db_connection.get_all_content_directory_info()[0]
         output_path = pathlib.Path(media_folder_path.get("content_src")).resolve()
-        errors = self.backend_handler.editor_process_txt_file(json_request)
+        errors = self.backend_handler.editor_process_txt_file(json_request.get("media_type"),
+                                                              json_request.get("file_name"))
         print(json.dumps(errors, indent=4))
         assert not errors
 
     def test_editor_process_tv_json_file(self):
-        editor_metadata = {
-            'file_name': "2024-01-31_16-32-32.json",
-            'media_type': ContentType.TV.name
-        }
-        error_log = self.backend_handler.editor_process_txt_file(editor_metadata)
-        print(json.dumps(error_log, indent=4))
-        assert not error_log
+        file_name = "2024-01-31_16-32-32.json"
+        media_type = ContentType.TV.name
+        errors = self.backend_handler.editor_process_txt_file(media_type, file_name)
+        print(json.dumps(errors, indent=4))
+        assert not errors
 
     def test_editor_process_movie_json_file(self):
-        editor_metadata = {
-            'file_name': "movie.json",
-            'media_type': ContentType.MOVIE.name
-        }
-        error_log = self.backend_handler.editor_process_txt_file(editor_metadata)
-        print(json.dumps(error_log, indent=4))
-        assert not error_log
+        file_name = "movie.json"
+        media_type = ContentType.MOVIE.name
+        errors = self.backend_handler.editor_process_txt_file(media_type, file_name)
+        print(json.dumps(errors, indent=4))
+        assert not errors
 
     def test_editor_process_raw_json_file(self):
-        editor_metadata = {
-            'file_name': "Hilda/Hilda - s4e8.json",
-            'media_type': ContentType.RAW.name
-        }
-        error_log = self.backend_handler.editor_process_txt_file(editor_metadata)
-        print(json.dumps(error_log, indent=4))
-        assert not error_log
+        file_name = "Hilda/Hilda - s4e8.json"
+        media_type = ContentType.RAW.name
+        errors = self.backend_handler.editor_process_txt_file(media_type, file_name)
+
+        print(json.dumps(errors, indent=4))
+        assert not errors
 
     def test_editor_process_book_json_file(self):
-        editor_metadata = {
-            'file_name': "book.json",
-            'media_type': ContentType.BOOK.name
-        }
-        error_log = self.backend_handler.editor_process_txt_file(editor_metadata)
-        print(json.dumps(error_log, indent=4))
-        assert not error_log
+        file_name = "book.json",
+        media_type = ContentType.BOOK.name
+        errors = self.backend_handler.editor_process_txt_file(media_type, file_name)
+
+        print(json.dumps(errors, indent=4))
+        assert not errors

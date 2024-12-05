@@ -1,3 +1,5 @@
+import pathlib
+
 from . import common_objects
 from .db_access import DBConnection
 
@@ -206,6 +208,10 @@ class DatabaseHandlerV2(DBConnection):
         content_join_clauses.append(
             "LEFT JOIN user_tags_content ON content.id = user_tags_content.content_id LEFT JOIN user_tags ON user_tags_content.user_tags_id = user_tags.id")
 
+        content_select_clauses.append("content_directory.content_url || '/' || content.img_src AS img_url")
+        content_join_clauses.append(
+            "INNER JOIN content_directory ON content.content_directory_id = content_directory.id")
+
         if container_dict.get("container_id"):
             content_join_clauses.append(
                 "INNER JOIN container_content ON content.id = container_content.content_id")
@@ -238,13 +244,26 @@ class DatabaseHandlerV2(DBConnection):
             params
         )
 
+    def get_all_content_directory_info(self):
+        return self.get_data_from_db("SELECT * FROM content_directory;")
+
     def query_db(self, tag_list, container_dict, container_txt_search, content_txt_search):
         ret_data = {}
         if not content_txt_search:
             ret_data["containers"] = self.query_container(tag_list, container_dict, container_txt_search)
+            for container in ret_data["containers"]:
+                if container.get("img_src"):
+                    for media_directory in self.get_all_content_directory_info():
+                        if pathlib.Path(f'{media_directory.get("content_src")}{container.get("img_src")}').exists():
+                            container["img_url"] = f'{media_directory.get("content_url")}{container.get("img_src")}'
         if not container_txt_search:
             ret_data["content"] = self.query_content(tag_list, container_dict, content_txt_search)
         if container_id := container_dict.get("container_id"):
             ret_data["parent_containers"] = self.get_top_container(container_id)
+            for container in ret_data["parent_containers"]:
+                if container.get("img_src"):
+                    for media_directory in self.get_all_content_directory_info():
+                        if pathlib.Path(f'{media_directory.get("content_src")}{container.get("img_src")}').exists():
+                            container["img_url"] = f'{media_directory.get("content_url")}{container.get("img_src")}'
 
         return ret_data

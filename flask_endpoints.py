@@ -210,7 +210,7 @@ def editor_process_txt_file():
     if json_request := request.get_json():
         if json_request.get("file_name") and json_request.get("media_type"):
             try:
-                errors = bh.editor_process_txt_file(json_request)
+                errors = bh.editor_process_txt_file(json_request.get("media_type"), json_request.get("file_name"))
                 data = bh.editor_get_process_metadata()
                 if errors:
                     data["process_log"].extend(errors)
@@ -445,6 +445,7 @@ def update_media_metadata():
                     data = {"error": e.args[0]}
                     print(data)
             data["img_src"] = json_request.get('img_src')
+            data["img_url"] = json_request.get('img_url')
         with DatabaseHandlerV2() as db_connection:
             db_connection.update_metadata(json_request)
     return data, 200
@@ -490,10 +491,10 @@ def scan_media_directories():
             print("Starting server scan")
             bh.transfer_in_progress = True
             content_transfer.query_server()
+            bh.transfer_in_progress = False
     except Exception as e:
         print(e)
 
-    bh.transfer_in_progress = False
     bh.scan_media_directories()
 
     return data, 200

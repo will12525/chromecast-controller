@@ -101,46 +101,43 @@ def path_has_space(dir_path):
 
 def get_free_media_drive():
     with DBCreatorV2() as db_connection:
-        media_directory_info = db_connection.get_all_content_directory_info()
-
-    for media_directory in media_directory_info:
-        media_directory_path_str = media_directory.get("content_src")
-        if path_has_space(media_directory_path_str):
-            return media_directory
+        for media_directory in db_connection.get_all_content_directory_info():
+            if path_has_space(media_directory.get("content_src")):
+                return media_directory.get("content_src")
 
 
 def build_editor_output_path(media_type, error_log):
-    mp4_output_parent_path = None
-    if media_folder_path := get_free_media_drive():
+    destination_dir_path = None
+    if content_src := get_free_media_drive():
         if media_type == common_objects.ContentType.RAW.name:
             if raw_folder := config_file_handler.load_json_file_content().get('editor_raw_folder'):
-                mp4_output_parent_path = pathlib.Path(raw_folder).resolve()
+                destination_dir_path = pathlib.Path(raw_folder).resolve()
         elif media_type == common_objects.ContentType.MOVIE.name:
-            mp4_output_parent_path = pathlib.Path(f"{media_folder_path.get('content_src')}/movies").resolve()
+            destination_dir_path = pathlib.Path(f"{content_src}/movies").resolve()
         elif media_type == common_objects.ContentType.TV.name:
-            mp4_output_parent_path = pathlib.Path(f"{media_folder_path.get('content_src')}/tv_shows").resolve()
+            destination_dir_path = pathlib.Path(f"{content_src}/tv_shows").resolve()
         elif media_type == common_objects.ContentType.BOOK.name:
-            mp4_output_parent_path = pathlib.Path(f"{media_folder_path.get('content_src')}/books").resolve()
+            destination_dir_path = pathlib.Path(f"{content_src}/books").resolve()
         else:
             error_log.append({"message": "Unknown media type", "value": f"{media_type}"})
-        if mp4_output_parent_path:
-            if not mp4_output_parent_path.exists():
-                error_log.append({"message": "Disk parent paths don't exist", "file_name": f"{mp4_output_parent_path}"})
-            elif not path_has_space(mp4_output_parent_path):
+        if destination_dir_path:
+            if not destination_dir_path.exists():
+                error_log.append({"message": "Disk parent paths don't exist", "file_name": f"{destination_dir_path}"})
+            elif not path_has_space(destination_dir_path):
                 error_log.append({
-                    "message": "Disk out of space", "file_name": f"{mp4_output_parent_path}",
-                    "value": get_free_disk_space(mp4_output_parent_path)
+                    "message": "Disk out of space", "file_name": f"{destination_dir_path}",
+                    "value": get_free_disk_space(destination_dir_path)
                 })
             else:
-                return mp4_output_parent_path
+                return destination_dir_path
     else:
         error_log.append({"message": "System out of space"})
 
 
 def editor_validate_txt_file(json_request):
     error_log = []
-    if mp4_output_parent_path := build_editor_output_path(json_request.get("media_type"), error_log):
-        error_log.extend(mp4_splitter.editor_validate_txt_file(json_request.get('file_name'), mp4_output_parent_path))
+    if destination_dir_path := build_editor_output_path(json_request.get("media_type"), error_log):
+        error_log.extend(mp4_splitter.editor_validate_txt_file(json_request.get('file_name'), destination_dir_path))
     return error_log
 
 
@@ -157,54 +154,59 @@ def download_image(json_request):
             or json_request.get("img_src")[-4:] not in ['.jpg', '.png', '.webp']):
         raise ValueError({{"message": "Image url must be .jpg or .png"}})
 
-    with DBCreatorV2() as db_connection:
-        media_folder_path = db_connection.get_all_content_directory_info()[0]
-
     with DatabaseHandlerV2() as db_connection:
         if container_id := json_request.get("container_id"):
             media_metadata = db_connection.get_container_info(container_id)
-            file_path = f"{media_metadata.get('container_path')}/{media_metadata.get('container_title')}{pathlib.Path(json_request['img_src']).suffix}"
+            parent_file = media_metadata.get('container_path')
+            file_path = f"{parent_file}/{media_metadata.get('container_title')}{pathlib.Path(json_request['img_src']).suffix}"
         elif content_id := json_request.get("content_id"):
             media_metadata = db_connection.get_content_info(content_id)
-            file_path = f"{media_metadata.get('content_src')}{pathlib.Path(json_request['img_src']).suffix}"
+            parent_file = media_metadata.get('content_src')
+            file_path = f"{parent_file}{pathlib.Path(json_request['img_src']).suffix}"
 
     if json_request.get("img_src") == media_metadata.get("img_src"):
         return
 
     res = requests.get(json_request.get('img_src'), stream=True)
+    media_directory = None
+    with DBCreatorV2() as db_connection:
+        for media_directory in db_connection.get_all_content_directory_info():
+            print(f'{media_directory.get("content_src")}{parent_file}')
+            if pathlib.Path(f'{media_directory.get("content_src")}{parent_file}').exists():
+                break
 
-    if res.status_code == 200:
-        output_path = pathlib.Path(f"{media_folder_path.get('content_src')}/{file_path}").resolve().absolute()
+    if res.status_code == 200 and media_directory:
+        json_request["img_url"] = f"{media_directory.get('content_url')}/{file_path}"
+        output_path = pathlib.Path(f"{media_directory.get('content_src')}/{file_path}").resolve().absolute()
+        print(f'Downloading {json_request.get("img_src")} to {output_path}')
         with open(output_path, 'wb') as f:
             shutil.copyfileobj(res.raw, f)
         print('Image successfully Downloaded: ', output_path)
         json_request["img_src"] = str(file_path)
     else:
         print({"message": "requests error encountered while saving image",
-               "file_name": json_request.get(common_objects.IMAGE_URL),
+               "file_name": json_request.get("img_src"),
                "string": f"{res.status_code}"})
         raise ValueError(
             {"message": "requests error encountered while saving image",
-             "file_name": json_request.get(common_objects.IMAGE_URL),
+             "file_name": json_request.get("img_src"),
              "string": f"{res.status_code}"})
 
 
 def build_tv_show_output_path(file_name_str):
     error_log = []
     output_path = None
-    mp4_output_parent_path = None
+    destination_dir_path = None
 
     (content_type, match_data) = get_content_type(f"/{file_name_str}")
     if content_type:
-        mp4_output_parent_path = build_editor_output_path(content_type.name, error_log)
-    # media_directory = get_free_media_drive()
-    # content_src = media_directory.get("content_src")
-    if not error_log and mp4_output_parent_path:
+        destination_dir_path = build_editor_output_path(content_type.name, error_log)
+    if not error_log and destination_dir_path:
         if content_type == common_objects.ContentType.TV:
             if match := re.search(r"^([\w\W]+) - s(\d+)e(\d+)\.mp4$", file_name_str):
-                output_path = mp4_output_parent_path / match[1] / file_name_str
+                output_path = destination_dir_path / match[1] / file_name_str
         else:
-            output_path = mp4_output_parent_path / file_name_str
+            output_path = destination_dir_path / file_name_str
         if output_path.exists():
             raise FileExistsError({"message": "File already exists", "file_name": file_name_str})
         output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -224,7 +226,7 @@ def get_file_hash(file_path):
 class BackEndHandler:
     startup_sha = None
     chromecast_handler = None
-    editor_processor = mp4_splitter.SubclipProcessHandler()
+    editor_thread = mp4_splitter.SubclipThreadHandler()
     media_scan_in_progress = False
     transfer_in_progress = False
 
@@ -280,7 +282,6 @@ class BackEndHandler:
             print("Exception class: ", e.__class__)
             print(f"ERROR: {e}")
             print(traceback.print_exc())
-        finally:
             self.media_scan_in_progress = False
 
     def get_editor_metadata(self, selected_txt_file=None):
@@ -288,23 +289,22 @@ class BackEndHandler:
         raw_folder = config_file.get('editor_raw_folder')
         raw_folder_url = config_file.get('editor_raw_url')
 
-        editor_metadata = mp4_splitter.get_editor_metadata(raw_folder, self.editor_processor,
+        editor_metadata = mp4_splitter.get_editor_metadata(raw_folder, self.editor_thread,
                                                            selected_editor_file=selected_txt_file,
                                                            raw_url=raw_folder_url,
                                                            process_file=EDITOR_PROCESSED_LOG)
         editor_metadata["storage"] = get_system_data()
         return editor_metadata
 
-    def editor_process_txt_file(self, json_request):
+    def editor_process_txt_file(self, media_type, file_name):
         error_log = []
-        mp4_output_parent_path = build_editor_output_path(json_request.get("media_type"), error_log)
-        if not error_log and mp4_output_parent_path:
+        destination_dir_path = build_editor_output_path(media_type, error_log)
+        if not error_log and destination_dir_path:
             error_log.extend(
-                mp4_splitter.editor_process_txt_file(json_request.get('file_name'), mp4_output_parent_path,
-                                                     self.editor_processor))
+                mp4_splitter.editor_process_media_file(file_name, destination_dir_path, self.editor_thread))
         if not error_log:
-            mp4_splitter.update_processed_file(json_request.get('file_name'), EDITOR_PROCESSED_LOG)
+            mp4_splitter.update_processed_file(file_name, EDITOR_PROCESSED_LOG)
         return error_log
 
     def editor_get_process_metadata(self):
-        return self.editor_processor.get_metadata()
+        return self.editor_thread.get_metadata()

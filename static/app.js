@@ -213,7 +213,9 @@ async function generate_media_container(content_data, media_card_template, fragm
         template.querySelector("#content_index").textContent = "Index: " + content_data["content_index"]
     }
     template.querySelector("#card_description").textContent = content_data["description"]
-    template.querySelector("#content_img").src = "http://192.168.1.175:8000/" + content_data['img_src'];
+    if ('img_src' in content_data && 'img_url' in content_data) {
+        template.querySelector("#content_img").src = content_data['img_url'];
+    }
     template.querySelector("#content_img").dataset.img_src = content_data['img_src'];
 
     fragment.appendChild(template)
@@ -395,7 +397,9 @@ async function update_media_container(response_data) {
             template.querySelector("#content_index").textContent = "Index: " + parent_container["content_index"]
         }
         template.querySelector("#card_description").textContent = parent_container["description"];
-        template.querySelector("#content_img").src = "http://192.168.1.175:8000/" + parent_container['img_src'];
+        if ('img_src' in parent_container && 'img_url' in parent_container) {
+            template.querySelector("#content_img").src = parent_container['img_url'];
+        }
         template.querySelector("#content_img").dataset.img_src = parent_container['img_src'];
         if ('user_tags' in parent_container) {
             template.querySelector("#card_tags").textContent = "Tags: " + parent_container["user_tags"]
@@ -644,7 +648,10 @@ function edit_metadata_modal_save(content_data, reference_item) {
     content_data["description"] = document.getElementById("modal_text_area_description").value
     fetchAndSetData('/update_media_metadata', content_data).then(response_data => {
         if (response_data["img_src"] !== undefined) {
-            reference_item.querySelector('#content_img').src = "http://192.168.1.175:8000/" + response_data["img_src"];
+            if ('img_src' in response_data && 'img_url' in response_data) {
+                reference_item.querySelector("#content_img").src = response_data['img_url'];
+            }
+            reference_item.querySelector('#content_img').src = response_data["img_url"];
             reference_item.querySelector('#content_img').dataset.img_src = response_data["img_src"];
         }
     }).catch(error => {

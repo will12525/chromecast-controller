@@ -176,6 +176,7 @@ class DBCreatorV2(DBConnection):
             self.insert_content(container_content)
 
     def collect_directory_content(self, content_directory_info):
+        print(f"Scanning directory: {content_directory_info}")
         for container_content in collect_mp4_files(content_directory_info):
             self.insert_container_content(container_content)
 

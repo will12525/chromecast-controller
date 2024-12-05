@@ -477,11 +477,11 @@ class TestConvertTimestamp(TestMp4Splitter):
 
 
 class TestEditor(TestMp4Splitter):
-    editor_processor = mp4_splitter.SubclipProcessHandler()
+    editor_processor = mp4_splitter.SubclipThreadHandler()
 
     def test_editor_process_txt_file_error_invalid_file(self):
         file_name = "2024hi-01-31_16-32-36.json"
-        error_log = mp4_splitter.editor_process_txt_file(file_name, self.modify_output_path, self.editor_processor)
+        error_log = mp4_splitter.editor_process_media_file(file_name, self.modify_output_path, self.editor_processor)
         assert len(error_log) == 3
         assert type(error_log[0]) is dict
 
@@ -497,7 +497,7 @@ class TestEditor(TestMp4Splitter):
     def test_editor_process_txt_file_error_missing_mp4(self):
         file_name = "2024-01-31_16-32-36_no_mp4.json"
 
-        error_log = mp4_splitter.editor_process_txt_file(file_name, self.modify_output_path, self.editor_processor)
+        error_log = mp4_splitter.editor_process_media_file(file_name, self.modify_output_path, self.editor_processor)
         assert "Missing file" == error_log[0].get("message")
         assert "2024-01-31_16-32-36_no_mp4" in error_log[0].get("value")
         assert "Errors occurred while processing file" == error_log[1].get("message")
@@ -505,8 +505,8 @@ class TestEditor(TestMp4Splitter):
 
     def test_editor_process_txt_file_error_empty_file(self):
         file_name = "2024-01-31_16-32-36_empty.json"
-        error_log = mp4_splitter.editor_process_txt_file(file_name, self.modify_output_path,
-                                                         self.editor_processor)
+        error_log = mp4_splitter.editor_process_media_file(file_name, self.modify_output_path,
+                                                           self.editor_processor)
         assert type(error_log) is list
         assert len(error_log) == 2
         assert "Text file empty" == error_log[0].get("message")
@@ -517,7 +517,7 @@ class TestEditor(TestMp4Splitter):
 
     def test_editor_process_txt_file_error_invalid_file_content(self):
         file_name = "2024-01-31_16-32-36_invalid.json"
-        error_log = mp4_splitter.editor_process_txt_file(file_name, self.modify_output_path, self.editor_processor)
+        error_log = mp4_splitter.editor_process_media_file(file_name, self.modify_output_path, self.editor_processor)
         assert len(error_log) == 4
         assert type(error_log[0]) is dict
 
@@ -543,7 +543,7 @@ class TestEditor(TestMp4Splitter):
         pytest_mocks.patch_update_processed_file(self)
         file_name = "2024-01-31_16-32-36.json"
 
-        mp4_splitter.editor_process_txt_file(file_name, self.modify_output_path, self.editor_processor)
+        mp4_splitter.editor_process_media_file(file_name, self.modify_output_path, self.editor_processor)
         editor_metadata = mp4_splitter.get_editor_metadata(self.raw_folder, self.editor_processor,
                                                            process_file=EDITOR_PROCESSED_LOG)
 
@@ -599,7 +599,7 @@ class TestEditor(TestMp4Splitter):
             "message": "Destination path already in queue",
             "value": "/Hilda/Hilda - s2e1.mp4"
         }
-        error_log = mp4_splitter.editor_process_txt_file(file_name_36, self.modify_output_path, self.editor_processor)
+        error_log = mp4_splitter.editor_process_media_file(file_name_36, self.modify_output_path, self.editor_processor)
 
         assert not error_log
         editor_metadata = self.editor_processor.get_metadata()
@@ -613,7 +613,7 @@ class TestEditor(TestMp4Splitter):
         assert process_already_in_queue_error.get("value") in editor_metadata.get("process_log")[1].get("value")
         assert process_already_in_queue_error.get("value") in editor_metadata.get("process_log")[2].get("value")
 
-        error_log = mp4_splitter.editor_process_txt_file(file_name_38, self.modify_output_path, self.editor_processor)
+        error_log = mp4_splitter.editor_process_media_file(file_name_38, self.modify_output_path, self.editor_processor)
         editor_metadata = self.editor_processor.get_metadata()
         assert editor_metadata.get("process_queue_size") == 5
         assert len(editor_metadata.get("process_queue")) == 5
