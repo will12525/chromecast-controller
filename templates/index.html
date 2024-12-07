@@ -26,10 +26,49 @@
                 <source src="{{ local_play_url }}" type="video/mp4" id="local_video_player_src">
             </video>
         </div>
+        <div class="col-md-12" hidden id="content_editor_card">
+            <div class="card mb-3" style="background-color:Linen;">
+                <div class="card-header">
+                    Content Editor
+                </div>
+                <div class="card-body row">
+                    <div class="col-md-2">
+                        <h5 class="card-title">Add Tag</h5>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="btn-group" id="add_tag_list_group" style="z-index: 1000;">
+                            <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown"
+                                    data-bs-auto-close="true" aria-expanded="false" id="add_tag_list_group_title">
+                            </button>
+                            <ul class="dropdown-menu" id="add_tag_list_group_dropdown"
+                                style="z-index: 1000;">
+                            </ul>
+                        </div>
+                        <button class="btn btn-secondary" type="button" id="apply_tag">Apply</button>
+                        <button class="btn btn-secondary" type="button" id="remove_tag">Remove</button>
+                    </div>
+                    <div class="col-md-12">
+                    </div>
+                    <div class="col-md-2">
+                        <h5 class="card-title">Create tag</h5>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="input-group mb-3">
+                            <input type="text" class="form-control" placeholder="New Tag" aria-label="New Tag"
+                                   aria-describedby="add_new_tag_button">
+                            <button class="btn btn-outline-secondary" type="button"
+                                    onclick="javascript:add_new_tag(this)"><i class="bi bi-plus"></i></button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer row">
+                </div>
+            </div>
+        </div>
         <div class="col-md-12">
             <div class="row gx-2 gy-2">
                 <div class="col-sm-2">
-                    <div class="card sticky-top mb-3" style="background-color:Linen;">
+                    <div class="card sticky-top mb-3" style="z-index: 0; background-color:Linen;">
                         <div class="card-header">
                             Filters
                         </div>
@@ -58,13 +97,6 @@
                         <div class="card-body">
                             <h5 class="card-title">Tags</h5>
                             <ul class="list-group" id="tag_list_group"></ul>
-                            <h5 class="card-title">Add new tag</h5>
-                            <div class="input-group mb-3">
-                                <input type="text" class="form-control" placeholder="New Tag" aria-label="New Tag"
-                                       aria-describedby="add_new_tag_button">
-                                <button class="btn btn-outline-secondary" type="button" id="add_new_tag_button"
-                                        onclick="javascript:add_new_tag(this)"><i class="bi bi-plus"></i></button>
-                            </div>
                         </div>
                         <ul class="list-group list-group-flush">
                         </ul>

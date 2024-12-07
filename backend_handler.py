@@ -82,9 +82,8 @@ def get_system_data():
     return disk_space
 
 
-def delete_splitter_file(json_request):
+def delete_splitter_file(file_name):
     if raw_folder := config_file_handler.load_json_file_content().get('editor_raw_folder'):
-        file_name = json_request.get('file_name')
         mp4_file_name = file_name.replace(".json", ".mp4")
         json_file_path = pathlib.Path(f"{raw_folder}/{file_name}")
         mp4_file_path = pathlib.Path(f"{raw_folder}/{mp4_file_name}")
@@ -134,17 +133,17 @@ def build_editor_output_path(media_type, error_log):
         error_log.append({"message": "System out of space"})
 
 
-def editor_validate_txt_file(json_request):
+def editor_validate_txt_file(file_name, media_type):
     error_log = []
-    if destination_dir_path := build_editor_output_path(json_request.get("media_type"), error_log):
-        error_log.extend(mp4_splitter.editor_validate_txt_file(json_request.get('file_name'), destination_dir_path))
+    if destination_dir_path := build_editor_output_path(media_type, error_log):
+        error_log.extend(mp4_splitter.editor_validate_txt_file(file_name, destination_dir_path))
     return error_log
 
 
-def editor_save_file(file_name, json_request):
+def editor_save_file(file_name, file_content):
     raw_folder = config_file_handler.load_json_file_content().get('editor_raw_folder')
     file_path = pathlib.Path(f"{raw_folder}{file_name}").resolve()
-    mp4_splitter.editor_save_file(file_path, json_request)
+    config_file_handler.save_json_file_content(file_path, file_content)
 
 
 def download_image(json_request):

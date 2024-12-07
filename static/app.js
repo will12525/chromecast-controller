@@ -230,7 +230,7 @@ async function update_media_table(response_data) {
 
     const table_head = document.createElement("thead");
     const table_head_row = document.createElement("tr");
-    column_list = ["title", "type", "tags", "index", "play"]
+    column_list = ["Select", "Title", "Type", "Tags", "Index", "Play"]
     for (const column_title of column_list) {
         const th_element = document.createElement("th");
         th_element.scope = 'col';
@@ -241,106 +241,131 @@ async function update_media_table(response_data) {
     if ('parent_containers' in response_data) {
         for (const content_data of response_data["parent_containers"]) {
             const tr_element = document.createElement("tr");
+            tr_element.setAttribute('data-row-container_id', content_data["id"]);
             const td_title = document.createElement("td");
             const load_anchor = document.createElement('a');
-            load_anchor.href = "javascript:load_container(" + content_data["id"] + ")"
+            load_anchor.href = "javascript:load_container(" + content_data["id"] + ")";
             load_anchor.textContent = content_data["container_title"];
             td_title.appendChild(load_anchor);
 
             const td_type = document.createElement("td");
-            td_type.textContent = "Playlist"
+            td_type.textContent = "Playlist";
 
             const td_tags = document.createElement("td");
-            td_tags.textContent = content_data["user_tags"]
+            td_tags.textContent = content_data["user_tags"];
 
             const td_index = document.createElement("td");
-            td_index.textContent = content_data["content_index"]
+            td_index.textContent = content_data["season_index"];
 
             const td_play = document.createElement("td");
             const play_anchor = document.createElement('a');
-            play_anchor.textContent = "Play"
+            play_anchor.textContent = "Play";
             if ('parent_container_id' in content_data) {
-                play_anchor.href = "javascript:play_media(" + content_data["id"] + ", " + content_data["parent_container_id"] + ", 'container')"
+                play_anchor.href = "javascript:play_media(" + content_data["id"] + ", " + content_data["parent_container_id"] + ", 'container')";
             } else {
-                play_anchor.href = "javascript:play_media(" + content_data["id"] + ", null, 'container')"
+                play_anchor.href = "javascript:play_media(" + content_data["id"] + ", null, 'container')";
             }
             td_play.appendChild(play_anchor);
 
-            tr_element.appendChild(td_title)
-            tr_element.appendChild(td_type)
-            tr_element.appendChild(td_tags)
-            tr_element.appendChild(td_index)
-            tr_element.appendChild(td_play)
-            table_body.appendChild(tr_element)
+            // Create the checkbox element
+            const td_checkbox = document.createElement("td");
+            const checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            td_checkbox.appendChild(checkbox);
+
+            // Append all the elements to the row
+            tr_element.appendChild(td_checkbox);
+            tr_element.appendChild(td_title);
+            tr_element.appendChild(td_type);
+            tr_element.appendChild(td_tags);
+            tr_element.appendChild(td_index);
+            tr_element.appendChild(td_play);
+            table_body.appendChild(tr_element);
         }
     }
     if ('containers' in response_data) {
         for (const content_data of response_data["containers"]) {
             const tr_element = document.createElement("tr");
+            tr_element.setAttribute('data-row-container_id', content_data["id"]);
+
             const td_title = document.createElement("td");
             const load_anchor = document.createElement('a');
-            load_anchor.href = "javascript:load_container(" + content_data["id"] + ")"
+            load_anchor.href = "javascript:load_container(" + content_data["id"] + ")";
             load_anchor.textContent = content_data["container_title"];
             td_title.appendChild(load_anchor);
 
             const td_type = document.createElement("td");
-            td_type.textContent = "Playlist"
+            td_type.textContent = "Playlist";
 
             const td_tags = document.createElement("td");
-            td_tags.textContent = content_data["user_tags"]
+            td_tags.textContent = content_data["user_tags"];
 
             const td_index = document.createElement("td");
-            td_index.textContent = content_data["season_index"]
+            td_index.textContent = content_data["season_index"];
 
             const td_play = document.createElement("td");
             const play_anchor = document.createElement('a');
-            play_anchor.textContent = "Play"
+            play_anchor.textContent = "Play";
             if ('parent_container_id' in content_data) {
-                play_anchor.href = "javascript:play_media(" + content_data["id"] + ", " + content_data["parent_container_id"] + ", 'container')"
+                play_anchor.href = "javascript:play_media(" + content_data["id"] + ", " + content_data["parent_container_id"] + ", 'container')";
             } else {
-                play_anchor.href = "javascript:play_media(" + content_data["id"] + ", null, 'container')"
+                play_anchor.href = "javascript:play_media(" + content_data["id"] + ", null, 'container')";
             }
             td_play.appendChild(play_anchor);
 
-            tr_element.appendChild(td_title)
-            tr_element.appendChild(td_type)
-            tr_element.appendChild(td_tags)
-            tr_element.appendChild(td_index)
-            tr_element.appendChild(td_play)
-            table_body.appendChild(tr_element)
+            // Create the checkbox element
+            const td_checkbox = document.createElement("td");
+            const checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            td_checkbox.appendChild(checkbox);
+
+            // Append all the elements to the row
+            tr_element.appendChild(td_checkbox);
+            tr_element.appendChild(td_title);
+            tr_element.appendChild(td_type);
+            tr_element.appendChild(td_tags);
+            tr_element.appendChild(td_index);
+            tr_element.appendChild(td_play);
+            table_body.appendChild(tr_element);
         }
     }
     if ('content' in response_data) {
         for (const content_data of response_data["content"]) {
             const tr_element = document.createElement("tr");
+            tr_element.setAttribute('data-row-content_id', content_data["id"]);
+            const td_checkbox = document.createElement("td");
+            const checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            td_checkbox.appendChild(checkbox);
             const td_title = document.createElement("td");
             td_title.textContent = content_data["content_title"];
 
             const td_type = document.createElement("td");
-            td_type.textContent = "Media"
+            td_type.textContent = "Media";
 
             const td_tags = document.createElement("td");
-            td_tags.textContent = content_data["user_tags"]
+            td_tags.textContent = content_data["user_tags"];
 
             const td_index = document.createElement("td");
-            td_index.textContent = content_data["content_index"]
+            td_index.textContent = content_data["content_index"];
 
             const td_play = document.createElement("td");
             const play_anchor = document.createElement('a');
-            play_anchor.textContent = "Play"
-            if ('parent_container_id' in content_data) {
-                play_anchor.href = "javascript:play_media(" + content_data["id"] + ", " + content_data["parent_container_id"] + ", 'content')"
-            } else {
-                play_anchor.href = "javascript:play_media(" + content_data["id"] + ", null, 'content')"
-            }
+            play_anchor.textContent = "Play";
+
+            // Use ternary operator for cleaner conditional logic
+            play_anchor.href = `javascript:play_media(${content_data["id"]}, ${'parent_container_id' in content_data ? content_data["parent_container_id"] : null}, 'content')`;
+
             td_play.appendChild(play_anchor);
 
-            tr_element.appendChild(td_title)
-            tr_element.appendChild(td_type)
-            tr_element.appendChild(td_tags)
-            tr_element.appendChild(td_index)
-            tr_element.appendChild(td_play)
-            table_body.appendChild(tr_element)
+            tr_element.appendChild(td_checkbox);
+            tr_element.appendChild(td_title);
+            tr_element.appendChild(td_type);
+            tr_element.appendChild(td_tags);
+            tr_element.appendChild(td_index);
+            tr_element.appendChild(td_play);
+
+            table_body.appendChild(tr_element);
         }
     }
 
@@ -513,12 +538,31 @@ function generate_tag_list_element(tag_title) {
 
     return tag_group_item;
 }
+function generate_tag_dropdown_element(tag_title) {
+    // Create the label element
+    const a = document.createElement('a');
+    a.className = 'dropdown-item';
+    a.textContent = tag_title;
+
+    const tag_group_item = document.createElement('li');
+    tag_group_item.appendChild(a);
+    return tag_group_item;
+}
 function createTagElements(tagTitles) {
     const container = document.getElementById('tag_list_group'); // Replace with your container ID
     container.innerHTML = '';
     tagTitles.forEach(tagTitle => {
         container.appendChild(generate_tag_list_element(tagTitle));
     });
+    if (!document.getElementById("content_editor_card").hidden) {
+        const add_tag_list_group_dropdown = document.getElementById('add_tag_list_group_dropdown'); // Replace with your container ID
+        add_tag_list_group_dropdown.innerHTML = '';
+        document.getElementById('add_tag_list_group_title').innerHTML = tagTitles[0]
+        tagTitles.forEach(tagTitle => {
+            add_tag_list_group_dropdown.appendChild(generate_tag_dropdown_element(tagTitle));
+        });
+    }
+
 }
 async function add_new_tag(element) {
     const url = "/add_new_tag";
@@ -917,6 +961,46 @@ document.addEventListener("DOMContentLoaded", function(event){
     setup_nav_bars()
     if (document.getElementById("mediaContentSelectDiv") !== null)
     {
+        pathname = new URL(window.location.href).pathname
+        if (pathname == "/table") {
+            document.getElementById("content_editor_card").hidden = false;
+            const dropdownMenu = document.getElementById('add_tag_list_group_dropdown');
+            const apply_tag_button = document.getElementById('apply_tag');
+            const remove_tag_button = document.getElementById('remove_tag');
+            dropdownMenu.addEventListener('click', (event) => {
+                if (event.target.tagName === 'A') {
+                    document.getElementById('add_tag_list_group_title').innerHTML = event.target.textContent
+                }
+            });
+            apply_tag_button.addEventListener('click', () => {
+                const tag_title = document.getElementById('add_tag_list_group_title').innerHTML;
+                const checkedRows = Array.from(document.querySelectorAll('input[type="checkbox"]:checked')).map(checkbox => {
+                    const row = checkbox.closest('tr');
+                    if (row) {
+                        const rowData = {
+                            content_id: row.hasAttribute('data-row-content_id') ? row.getAttribute('data-row-content_id') : null,
+                            container_id: row.getAttribute('data-row-container_id') ? row.getAttribute('data-row-container_id') : null,
+                            tag_title: tag_title
+                        }
+                        add_tag_to_content(rowData)
+                    }
+                });
+            });
+            remove_tag_button.addEventListener('click', () => {
+                const tag_title = document.getElementById('add_tag_list_group_title').innerHTML;
+                const checkedRows = Array.from(document.querySelectorAll('input[type="checkbox"]:checked')).map(checkbox => {
+                    const row = checkbox.closest('tr');
+                    if (row) {
+                        const rowData = {
+                            content_id: row.hasAttribute('data-row-content_id') ? row.getAttribute('data-row-content_id') : null,
+                            container_id: row.getAttribute('data-row-container_id') ? row.getAttribute('data-row-container_id') : null,
+                            tag_title: tag_title
+                        }
+                        remove_tag_from_content(rowData)
+                    }
+                });
+            });
+        }
         setup_media_page()
     }
     if(document.getElementById('local_video_player') !== null) {

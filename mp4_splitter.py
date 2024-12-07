@@ -79,7 +79,7 @@ def convert_timestamp(timestamp_str, error_list):
 def check_content_already_exists(file_name):
     with DBCreatorV2() as db_connection:
         for media_directory in db_connection.get_all_content_directory_info():
-            return pathlib.Path(media_directory.get("content_src") / file_name).exists()
+            return pathlib.Path(f"{media_directory.get('content_src')}/{file_name}").exists()
 
 
 class SubclipMetadata:
@@ -190,7 +190,7 @@ class MovieSubclipMetadata(SubclipMetadata):
 
 class RawSubclipMetadata(SubclipMetadata):
 
-    def __init__(self, subclip_metadata, source_file_path, media_title=None):
+    def __init__(self, subclip_metadata, source_file_path, destination_dir_path, media_title=None):
         super().__init__(subclip_metadata)
         if len(self.subclip_metadata) == 3:
             self.media_title = media_title
@@ -198,7 +198,7 @@ class RawSubclipMetadata(SubclipMetadata):
             self.error_log.append({"message": "Missing content", "value": subclip_metadata})
 
         if source_file_path:
-            self.set_cmd_metadata(source_file_path)
+            self.set_cmd_metadata(source_file_path, destination_dir_path)
 
         if self.error_log:
             self.error_log.append({"message": f"Errors occurred while parsing line", "value": subclip_metadata})
@@ -300,7 +300,7 @@ class TvShowSubclipMetadata(SubclipMetadata):
 def convert_txt_to_sub_clip(media_type, splitter_content, error_log, source_file_path, destination_dir_path,
                             media_title):
     if media_type == ContentType.RAW.name:
-        return RawSubclipMetadata(splitter_content, source_file_path, media_title)
+        return RawSubclipMetadata(splitter_content, source_file_path, destination_dir_path, media_title)
     elif media_type == ContentType.TV.name:
         return TvShowSubclipMetadata(splitter_content, source_file_path, destination_dir_path)
     elif media_type == ContentType.MOVIE.name:
@@ -335,10 +335,6 @@ def get_sub_clips_from_txt_file(file_path, destination_dir_path, sub_clips, erro
                 sub_clips.append(sub_clip)
     else:
         error_log.append({"message": "Text file empty", "value": file_path.name})
-
-
-def editor_save_file(file_path, file_content):
-    config_file_handler.save_json_file_content(file_path, file_content)
 
 
 def editor_process_media_file(file_name, destination_dir_path, editor_thread):

@@ -146,9 +146,10 @@ def editor():
 def editor_validate_txt_file():
     data = {"error": {"message": "File valid"}}
     if json_request := request.get_json():
-        if json_request.get("file_name"):
+        if json_request.get("file_name") and json_request.get("media_type"):
             try:
-                if errors := backend_handler.editor_validate_txt_file(json_request):
+                if errors := backend_handler.editor_validate_txt_file(json_request.get("file_name"),
+                                                                      json_request.get("media_type")):
                     data = {"process_log": errors}
             except Exception as e:
                 print("Exception class: ", e.__class__)
@@ -193,9 +194,8 @@ def editor_delete_txt_file():
     data = {}
     if json_request := request.get_json():
         try:
-            backend_handler.delete_splitter_file(json_request)
+            backend_handler.delete_splitter_file(json_request.get('file_name'))
             data = bh.get_editor_metadata()
-
         except Exception as e:
             print("Exception class: ", e.__class__)
             print(f"ERROR: {e}")
