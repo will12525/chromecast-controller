@@ -205,10 +205,10 @@ class RawSubclipMetadata(SubclipMetadata):
 
     def set_cmd_metadata(self, source_file_path, destination_dir_path=None):
         file_name = f'{self.media_title}_{source_file_path.stem}.mp4'
-        if check_content_already_exists(file_name):
+        destination_file_path = source_file_path.parent / file_name
+        if check_content_already_exists(destination_file_path):
             self.error_log.append({"message": "File already exists", "value": file_name})
 
-        destination_file_path = destination_dir_path / file_name
         super().set_cmd_metadata(source_file_path, destination_file_path)
 
 

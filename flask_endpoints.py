@@ -327,10 +327,9 @@ def remove_tag_from_content():
 
 @app.route(APIEndpoints.GET_MEDIA_CONTENT_TYPES.value, methods=['GET'])
 def get_media_content_types():
-    data = {}
+    data = {"table_url": APIEndpoints.TABLE.value}
     if system_mode == SystemMode.SERVER:
         data["editor"] = APIEndpoints.EDITOR.value
-        data["table_url"] = APIEndpoints.TABLE.value
     return data, 200
 
 
@@ -485,6 +484,7 @@ def scan_media_directories():
         :return:
     """
     data = {}
+    bh.scan_media_directories()
     try:
         print("Server scan triggered")
         if system_mode == SystemMode.CLIENT and not bh.transfer_in_progress:
@@ -494,8 +494,8 @@ def scan_media_directories():
             bh.transfer_in_progress = False
     except Exception as e:
         print(e)
-
-    bh.scan_media_directories()
+    finally:
+        bh.scan_media_directories()
 
     return data, 200
 
