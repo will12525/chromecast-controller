@@ -132,7 +132,7 @@
 </div>
 <!-- Modal -->
 {% include 'media_edit_modal.html' %}
-{% if button_dict is defined %}
+{% if button_dict is defined and system_mode == "SERVER" %}
 {% include 'bottom_navbar.html' %}
 {% endif %}
 </body>
