@@ -56,6 +56,14 @@ class MyMediaDevice:
             self.play_media_info(media_metadata)
             return media_metadata
 
+    def play_random_container_content(self, json_request):
+        with DatabaseHandlerV2() as db_connection:
+            media_metadata = db_connection.get_random_content_in_container(json_request)
+
+        if media_metadata:
+            self.play_media_info(media_metadata)
+            return media_metadata
+
     def play_next_episode(self):
         media_info = None
         if self.status and (media_metadata := self.status.media_metadata):
@@ -198,6 +206,10 @@ class ChromecastHandler(threading.Thread):
             self.media_controller.play_episode_from_sql(content_data)
             return True
         return False
+
+    def play_random_container_content(self, json_request):
+        if self.media_controller:
+            return self.media_controller.play_random_container_content(json_request)
 
     def send_command(self, media_device_command):
         if self.media_controller:

@@ -268,6 +268,9 @@ class BackEndHandler:
     def play_media_on_chromecast(self, content_data):
         return self.chromecast_handler.play_from_sql(content_data)
 
+    def play_random_container_content(self, json_request):
+        return self.chromecast_handler.play_random_container_content(json_request)
+
     def scan_media_directories(self):
         try:
             if not self.media_scan_in_progress:

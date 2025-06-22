@@ -407,24 +407,15 @@ def play_media():
             print(f"Media ID not provided: {json_request}")
     return data, 200
 
-
-@app.route("/play_random_container", methods=['POST'])
-def play_random_container():
+@app.route("/play_random_container_content", methods=['POST'])
+def play_random_container_content():
     data = {}
     if json_request := request.get_json():
         if json_request.get("parent_container_id"):
-            with DatabaseHandlerV2() as db_connection:
-                content_id = db_connection.get_random_content_in_container(json_request)
-                media_metadata = db_connection.get_content_info(content_id)
-
-            if content_id:
-                bh.play_media_on_chromecast({"content_id": content_id})
-                data["id"] = media_metadata.get("id")
-                data["parent_container_id"] = json_request.get("parent_container_id")
-                data["local_play_url"] = media_metadata.get("url")
-                data["content_title"] = media_metadata.get("content_title")
+            data = bh.play_random_container_content(json_request)
         else:
-            print(f"Media ID not provided: {json_request}")
+            data["error_msg"] = f"Container ID not provided: {json_request}"
+            print(data)
     return data, 200
 
 
