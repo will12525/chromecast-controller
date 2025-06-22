@@ -98,7 +98,7 @@ class DatabaseHandlerV2(DBConnection):
             content_id = random.choice(sub_content_list).get("id")
             media_metadata = self.get_content_info(content_id)
             media_metadata["parent_container_id"] = parent_container_id
-            return self.get_content_info(content_id)
+            return media_metadata
 
     def get_previous_content_in_container(self, json_request):
         sub_content_list = []
