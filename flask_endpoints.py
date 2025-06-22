@@ -114,7 +114,7 @@ def build_main_content():
 
     try:
         return render_template("index.html", homepage_url=APIEndpoints.MAIN.value,
-                               button_dict=media_controller_button_dict, tag_list=tag_list, system_mode=system_mode)
+                               button_dict=media_controller_button_dict, tag_list=tag_list, system_mode=system_mode.name)
     except Exception as e:
         print("Exception class: ", e.__class__)
         print(f"ERROR: {e}")
