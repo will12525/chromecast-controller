@@ -1,4 +1,5 @@
 import pathlib
+import random
 
 from . import common_objects
 from .db_access import DBConnection
@@ -84,6 +85,16 @@ class DatabaseHandlerV2(DBConnection):
             next_content_info = self.get_content_info(next_content_id)
             next_content_info["parent_container_id"] = parent_container_id
             return next_content_info
+
+    def get_random_content_in_container(self, json_request):
+        sub_content_list = []
+        parent_containers = self.get_top_container(json_request.get("parent_container_id"))
+        if parent_containers:
+            parent_container_id = parent_containers[0].get("id")
+            self.collect_all_sub_content(parent_container_id, sub_content_list)
+
+        if sub_content_list:
+            return random.choice(sub_content_list).get("id")
 
     def get_previous_content_in_container(self, json_request):
         sub_content_list = []
