@@ -11,7 +11,7 @@ jobs:
       - name: Start Docker Compose services with CMD variable
         uses: hoverkraft-tech/compose-action@v2.0.1
         with:
-          compose-file: "./compose.yml"
+          compose-file: "./compose.yaml"
           up-flags: "--build"
           env: |
             CMD=pytest tests/test_backend_handler.py::TestSetupDB --doctest-modules --junitxml=junit/test-results.xml --cov-report=xml --cov-report=html
