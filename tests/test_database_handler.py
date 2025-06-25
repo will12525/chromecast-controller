@@ -1,20 +1,21 @@
 import json
 import os
+from pathlib import Path
 from unittest import TestCase
 
 import config_file_handler
-from database_handler.db_setter import DBCreatorV2
-from database_handler.db_getter import DatabaseHandlerV2
+from database_handler.db_setter import DBSetter
+from app.database.db_getter import DBHandler
 from database_handler.common_objects import ContentType, DBType
 from . import pytest_mocks
 
 
 class TestDatabaseHandlerV2(TestCase):
-    DB_PATH = "media_metadata.db"
-    media_directory_info = None
+    DB_PATH = Path("media_metadata.db")
+    config_file_data = config_file_handler.load_json_file_content()
+    media_directory_info = config_file_data.get("media_folders")
 
     def setUp(self) -> None:
-        self.media_directory_info = config_file_handler.load_json_file_content().get("media_folders")
 
         pytest_mocks.patch_get_file_hash(self)
         pytest_mocks.patch_get_ffmpeg_metadata(self)
@@ -25,15 +26,16 @@ class TestDatabaseHandlerV2(TestCase):
         self.create_db()
 
     def create_db(self):
-        if self.media_directory_info:
-            with DBCreatorV2(DBType.PHYSICAL) as db_setter_connection:
-                db_setter_connection.create_db()
-                for media_path in self.media_directory_info:
-                    db_setter_connection.setup_content_directory(media_path)
+        with DBSetter(DBType.PHYSICAL) as db_setter_connection:
+            db_setter_connection.create_db()
+            for media_folder in self.config_file_data.get("media_folders"):
+                db_setter_connection.setup_content_directory(media_folder)
+            assert len(db_setter_connection.get_all_content_directory_info()) == 2
 
     def erase_db(self):
-        if os.path.exists(self.DB_PATH):
-            os.remove(self.DB_PATH)
+        if self.DB_PATH.exists():
+            self.DB_PATH.unlink()
+        assert not self.DB_PATH.exists()
 
 
 class TestDatabaseHandlerFunctionsV2(TestDatabaseHandlerV2):
@@ -48,10 +50,10 @@ class TestDatabaseHandlerFunctionsV2(TestDatabaseHandlerV2):
         :return:
         """
 
-        with DatabaseHandlerV2() as db_connection:
+        with DBHandler() as db_connection:
             metadata = db_connection.query_db(["tv show"], {}, None, None)
         print(f"Found containers: {len(metadata.get('containers'))}")
-        assert len(metadata.get('containers')) == 6
+        assert len(metadata.get('containers')) == 5
         for container in metadata.get("containers"):
             print(container)
         print(f"Found content: {len(metadata.get('content'))}")
@@ -60,10 +62,10 @@ class TestDatabaseHandlerFunctionsV2(TestDatabaseHandlerV2):
             print(content)
 
     def test_query_db_all_tv_show_seasons(self):
-        with DatabaseHandlerV2() as db_connection:
+        with DBHandler() as db_connection:
             metadata = db_connection.query_db(["season"], {}, None, None)
         print(f"Found containers: {len(metadata.get('containers'))}")
-        assert len(metadata.get('containers')) == 11
+        assert len(metadata.get('containers')) == 12
         for container in metadata.get("containers"):
             print(container)
         print(f"Found content: {len(metadata.get('content'))}")
@@ -72,46 +74,46 @@ class TestDatabaseHandlerFunctionsV2(TestDatabaseHandlerV2):
             print(content)
 
     def test_query_db_all_season_content(self):
-        with DatabaseHandlerV2() as db_connection:
+        with DBHandler() as db_connection:
             metadata = db_connection.query_db(["episode"], {}, None, None)
         print(f"Found containers: {len(metadata.get('containers'))}")
         assert len(metadata.get('containers')) == 0
         for container in metadata.get("containers"):
             print(container)
         print(f"Found content: {len(metadata.get('content'))}")
-        assert len(metadata.get('content')) == 23
+        assert len(metadata.get('content')) == 24
         for content in metadata.get("content"):
             print(content)
 
     def test_query_db_all_movies(self):
-        with DatabaseHandlerV2() as db_connection:
+        with DBHandler() as db_connection:
             metadata = db_connection.query_db(["movie"], {}, None, None)
         print(f"Found containers: {len(metadata.get('containers'))}")
         assert len(metadata.get('containers')) == 0
         for container in metadata.get("containers"):
             print(container)
         print(f"Found content: {len(metadata.get('content'))}")
-        assert len(metadata.get('content')) == 5
+        assert len(metadata.get('content')) == 6
         for content in metadata.get("content"):
             print(content)
 
     def test_query_db_all_content(self):
-        with DatabaseHandlerV2() as db_connection:
+        with DBHandler() as db_connection:
             metadata = db_connection.query_db(["episode", "movie"], {}, None, None)
         print(f"Found containers: {len(metadata.get('containers'))}")
         assert len(metadata.get('containers')) == 0
         for container in metadata.get("containers"):
             print(container)
         print(f"Found content: {len(metadata.get('content'))}")
-        assert len(metadata.get('content')) == 28
+        assert len(metadata.get('content')) == 30
         for content in metadata.get("content"):
             print(content)
 
     def test_query_db_identical_tags(self):
-        with DatabaseHandlerV2() as db_connection:
+        with DBHandler() as db_connection:
             metadata = db_connection.query_db(["tv", "tv show"], {}, None, None)
         print(f"Found containers: {len(metadata.get('containers'))}")
-        assert len(metadata.get('containers')) == 6
+        assert len(metadata.get('containers')) == 5
         for container in metadata.get("containers"):
             print(container)
         print(f"Found content: {len(metadata.get('content'))}")
@@ -120,7 +122,7 @@ class TestDatabaseHandlerFunctionsV2(TestDatabaseHandlerV2):
             print(content)
 
     def test_query_db_all_containers(self):
-        with DatabaseHandlerV2() as db_connection:
+        with DBHandler() as db_connection:
             metadata = db_connection.query_db(["tv", "season"], {}, None, None)
         print(f"Found containers: {len(metadata.get('containers'))}")
         assert len(metadata.get('containers')) == 17
@@ -133,8 +135,8 @@ class TestDatabaseHandlerFunctionsV2(TestDatabaseHandlerV2):
 
     #
     def test_query_db_specific_tv_show_seasons(self):
-        with DatabaseHandlerV2() as db_connection:
-            metadata = db_connection.query_db([], {"container_id": 15}, None, None)
+        with DBHandler() as db_connection:
+            metadata = db_connection.query_db([], {"container_id": 4}, None, None)
         print(f"Found containers: {len(metadata.get('containers'))}")
         assert len(metadata.get('containers')) == 3
         for container in metadata.get("containers"):
@@ -145,8 +147,8 @@ class TestDatabaseHandlerFunctionsV2(TestDatabaseHandlerV2):
             print(content)
 
     def test_query_db_specific_season_content(self):
-        with DatabaseHandlerV2() as db_connection:
-            metadata = db_connection.query_db([], {"container_id": 11}, None, None)
+        with DBHandler() as db_connection:
+            metadata = db_connection.query_db([], {"container_id": 7}, None, None)
         print(json.dumps(metadata, indent=4))
         print(f"Found containers: {len(metadata.get('containers'))}")
         assert len(metadata.get('containers')) == 0
@@ -159,7 +161,7 @@ class TestDatabaseHandlerFunctionsV2(TestDatabaseHandlerV2):
 
     def test_query_db_empty(self):
         self.erase_db()
-        with DatabaseHandlerV2() as db_connection:
+        with DBHandler() as db_connection:
             metadata = db_connection.query_db(["episode"], {"container_id": 11}, None, None)
         print(f"Result: {metadata}")
         assert not metadata.get("containers")
@@ -170,7 +172,7 @@ class TestDatabaseHandlerFunctionsV2(TestDatabaseHandlerV2):
         json_request = {'tag_list': [], 'container_dict': {'container_id': '4'}}
         media_metadata = {}
         print(json_request)
-        with DatabaseHandlerV2() as db_getter_connection:
+        with DBHandler() as db_getter_connection:
             media_metadata.update(
                 db_getter_connection.query_db(json_request.get("tag_list"), json_request.get("container_dict", {}),
                                               None, None)
@@ -185,17 +187,17 @@ class TestDatabaseHandlerFunctionsV2(TestDatabaseHandlerV2):
         # print(json.dumps(json_request, indent=4))
 
     def test_query_db_all_content_paths(self):
-        with DatabaseHandlerV2() as db_connection:
+        with DBHandler() as db_connection:
             metadata = db_connection.get_all_content_paths()
         print(json.dumps(metadata, indent=4))
         print(len(metadata))
-        assert len(metadata) == 30
+        assert len(metadata) == 34
         for content in metadata:
             assert content.get("id")
             assert content.get("content_src")
 
     def test_query_db_content_img_path(self):
-        with DatabaseHandlerV2() as db_connection:
+        with DBHandler() as db_connection:
             metadata_1 = db_connection.get_content_img_path(4)
 
             metadata_2 = db_connection.get_content_img_path(19)
@@ -203,7 +205,7 @@ class TestDatabaseHandlerFunctionsV2(TestDatabaseHandlerV2):
         print(json.dumps(metadata_2, indent=4))
 
     def test_query_db_container_img_path(self):
-        with DatabaseHandlerV2() as db_connection:
+        with DBHandler() as db_connection:
             metadata_1 = db_connection.get_container_img_path(1)
 
             metadata_2 = db_connection.get_container_img_path(7)
@@ -211,10 +213,10 @@ class TestDatabaseHandlerFunctionsV2(TestDatabaseHandlerV2):
         print(json.dumps(metadata_2, indent=4))
 
     def test_query_db_all_image_paths(self):
-        with DatabaseHandlerV2() as db_connection:
+        with DBHandler() as db_connection:
             metadata = db_connection.get_all_image_paths()
         print(json.dumps(metadata, indent=4))
-        assert len(metadata) == 11
+        assert len(metadata) == 9
         for content in metadata:
             assert content.get("img_src")
             if "container_id" in content:
@@ -229,7 +231,7 @@ class TestDatabaseHandlerFunctionsV2(TestDatabaseHandlerV2):
         # print(json.dumps(json_request, indent=4))
 
     def test_query_db_media_content(self):
-        with DatabaseHandlerV2() as db_connection:
+        with DBHandler() as db_connection:
             metadata = db_connection.query_db([], {"content_id": 15}, None, None)
         print(json.dumps(metadata, indent=4))
         assert len(metadata.get("content")) == 1
@@ -239,7 +241,7 @@ class TestDatabaseHandlerFunctionsV2(TestDatabaseHandlerV2):
 
     def test_query_db_txt_search_content(self):
         search_term = "Vampire"
-        with DatabaseHandlerV2() as db_connection:
+        with DBHandler() as db_connection:
             metadata = db_connection.query_db([], {}, search_term, None)
         print(json.dumps(metadata, indent=4))
         assert len(metadata.get("containers")) == 1
@@ -251,94 +253,100 @@ class TestDatabaseHandlerFunctionsV2(TestDatabaseHandlerV2):
         # print(json.dumps(json_request, indent=4))
 
     def test_query_db_next_media(self):
-        with DatabaseHandlerV2() as db_connection:
+        with DBHandler() as db_connection:
             # metadata = db_connection.query_content([], {"container_id": 9})
             # content = metadata.get("content")[0]
             # json_request = {"content_id": content["content_id"], "parent_container_id": content["parent_container_id"]}
-            json_request = {'content_id': 23, 'parent_container_id': 9}
+            json_request = {'content_id': 16, 'parent_container_id': 8}
             next_content = db_connection.get_next_content_in_container(json_request)
             print(json.dumps(next_content, indent=4))
-            assert next_content.get("id") == 19
-            json_request = {'content_id': 19, 'parent_container_id': 9}
+            assert next_content.get("id") == 14
+            json_request = {'content_id': 14, 'parent_container_id': 8}
             next_content = db_connection.get_next_content_in_container(json_request)
             print(json.dumps(next_content, indent=4))
-            assert next_content.get("id") == 20
-            json_request = {'content_id': 22, 'parent_container_id': 9}
+            assert next_content.get("id") == 17
+            json_request = {'content_id': 17, 'parent_container_id': 8}
             next_content = db_connection.get_next_content_in_container(json_request)
             print(json.dumps(next_content, indent=4))
-            assert next_content.get("id") == 23
+            assert next_content.get("id") == 13
 
     def test_query_db_previous_media(self):
-        with DatabaseHandlerV2() as db_connection:
-            json_request = {'content_id': 19, 'parent_container_id': 9}
+        with DBHandler() as db_connection:
+            json_request = {'content_id': 13, 'parent_container_id': 8}
             next_content = db_connection.get_previous_content_in_container(json_request)
             print(json.dumps(next_content, indent=4))
-            assert next_content.get("id") == 23
-            json_request = {'content_id': 23, 'parent_container_id': 9}
+            assert next_content.get("id") == 17
+            json_request = {'content_id': 17, 'parent_container_id': 9}
             next_content = db_connection.get_previous_content_in_container(json_request)
             print(json.dumps(next_content, indent=4))
-            assert next_content.get("id") == 22
-            json_request = {'content_id': 20, 'parent_container_id': 9}
+            assert next_content.get("id") == 14
+            json_request = {'content_id': 14, 'parent_container_id': 9}
             next_content = db_connection.get_previous_content_in_container(json_request)
             print(json.dumps(next_content, indent=4))
-            assert next_content.get("id") == 19
+            assert next_content.get("id") == 16
 
     def test_query_db_all_tags(self):
-        with DatabaseHandlerV2() as db_connection:
+        with DBHandler() as db_connection:
             tag_list = db_connection.get_all_tags()
         print(json.dumps(tag_list, indent=4))
 
     def test_query_db_add_tag_to_content(self):
         json_request = {'content_id': 18, "tag_title": "season"}
-        with DBCreatorV2() as db_connection:
+        with DBHandler() as db_connection:
             json_request["user_tags_id"] = db_connection.get_tag_id(json_request)
             db_connection.add_tag_to_content(json_request)
-        with DatabaseHandlerV2() as db_connection:
+        with DBHandler() as db_connection:
             content_info = db_connection.get_content_info(json_request.get("content_id"))
         print(json.dumps(content_info, indent=4))
         assert json_request.get("tag_title") in content_info.get("user_tags")
 
     def test_query_db_remove_tag_from_content(self):
         json_request = {'content_id': 18, "tag_title": "movie"}
-        with DBCreatorV2() as db_connection:
+        with DBHandler() as db_connection:
             json_request["user_tags_id"] = db_connection.get_tag_id(json_request)
             print(json.dumps(json_request, indent=4))
             db_connection.remove_tag_from_content(json_request)
-        with DatabaseHandlerV2() as db_connection:
+        with DBHandler() as db_connection:
             content_info = db_connection.get_content_info(json_request.get("content_id"))
         print(json.dumps(content_info, indent=4))
         assert not content_info.get("user_tags")
 
     def test_query_db_remove_tag_from_container(self):
-        json_request = {'container_id': 10, "tag_title": "tv show"}
-        with DBCreatorV2() as db_connection:
+        # THE TAG THIS TEST IS TRYING TO REMOVE DOESN'T EXIST
+        json_request = {'container_id': 2, "tag_title": "tv show"}
+        with DBHandler() as db_connection:
             json_request["user_tags_id"] = db_connection.get_tag_id(json_request)
             print(json.dumps(json_request, indent=4))
             db_connection.remove_tag_from_container(json_request)
-        with DatabaseHandlerV2() as db_connection:
+        with DBHandler() as db_connection:
             content_info = db_connection.get_container_info(json_request.get("container_id"))
         print(json.dumps(content_info, indent=4))
         assert content_info.get("user_tags") == "tv"
 
     def test_query_db_add_tag_to_container(self):
         json_request = {'container_id': 10, "tag_title": "season"}
-        with DBCreatorV2() as db_connection:
+        with DBHandler(DBType.PHYSICAL) as db_connection:
+            db_content = db_connection.query_db(None, {}, None, None)
+            print(json.dumps(db_content, indent=4))
+        # assert False
+        with DBHandler() as db_connection:
             json_request["user_tags_id"] = db_connection.get_tag_id(json_request)
             db_connection.add_tag_to_container(json_request)
-        with DatabaseHandlerV2() as db_connection:
+        print(json.dumps(json_request, indent=4))
+        with DBHandler() as db_connection:
             content_info = db_connection.get_container_info(json_request.get("container_id"))
         print(json.dumps(content_info, indent=4))
         assert json_request.get("tag_title") in content_info.get("user_tags")
 
     def test_query_db_add_tag(self):
         new_tag = {"tag_title": "Hello world"}
-        with DatabaseHandlerV2() as db_connection:
+        with DBHandler() as db_connection:
             tag_list = db_connection.get_all_tags()
         for tag in tag_list:
             assert tag.get("tag_title") != new_tag.get("tag_title")
-        with DBCreatorV2() as db_connection:
+        with DBHandler() as db_connection:
             db_connection.insert_tag(new_tag)
-        with DatabaseHandlerV2() as db_connection:
+        with DBHandler() as db_connection:
             tag_list = db_connection.get_all_tags()
         new_tag_found = False
         for tag in tag_list:
@@ -350,7 +358,7 @@ class TestDatabaseHandlerFunctionsV2(TestDatabaseHandlerV2):
     def test_query_db_delete_content(self):
         print(self.media_directory_info)
         test_movie_path = "/media_folder_movie/Dinosaur/The Wild Dinosaur (2005).mp4"
-        with DatabaseHandlerV2() as db_connection:
+        with DBHandler() as db_connection:
             content_paths = db_connection.get_all_content_paths()
         # with DatabaseHandlerV2() as db_connection:
         #     tag_list = db_connection.get_all_tags()
@@ -381,7 +389,7 @@ class TestDatabaseHandler(TestCase):
         self.media_paths = config_file_handler.load_json_file_content().get("media_folders")
         assert self.media_paths
         assert isinstance(self.media_paths, list)
-        assert len(self.media_paths) == 1
+        assert len(self.media_paths) == 2
         # with DBCreator() as db_connection:
         #     db_connection.create_db()
         #     for media_path in self.media_paths:

@@ -1,0 +1,19 @@
+services:
+  chromecast_controller:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: chromecast_controller:latest
+    ports:
+      - "5000:5000"
+      - "8000:8000"
+      - "8001:8001"
+      - "8002:8002"
+      - "5353:5353"
+      - "8009:8009"
+    volumes:
+      - .:/app
+    pull_policy: "never"
+    environment:
+      CMD: ${CMD}
+    command: [ "/bin/bash", "-c", "./start_server.sh" ]

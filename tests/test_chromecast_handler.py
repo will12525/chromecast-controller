@@ -8,12 +8,12 @@ import config_file_handler
 from chromecast_handler import ChromecastHandler
 from database_handler import common_objects
 from database_handler.common_objects import ContentType
-from database_handler.db_setter import DBCreatorV2
+from app.database.db_getter import DBHandler
 from . import pytest_mocks
 
 
 class TestChromecastHandler(TestCase):
-    CHROMECAST_ID = "Test Cast"
+    CHROMECAST_ID = "Family Room TV"
 
     def setUp(self):
         self.chromecast_handler = ChromecastHandler()
@@ -26,7 +26,7 @@ class TestChromecastHandler(TestCase):
         assert self.media_paths
         assert isinstance(self.media_paths, list)
         assert len(self.media_paths) == 3
-        with DBCreatorV2() as db_connection:
+        with DBHandler() as db_connection:
             db_connection.create_db()
             for media_folder_info in self.media_paths:
                 db_connection.setup_content_directory(media_folder_info)
@@ -117,7 +117,7 @@ class TestChromecastConnection(TestChromecastHandler):
 
 class TestMyMediaDevice(TestCase):
     DB_PATH = "media_metadata.db"
-    CHROMECAST_ID = "Bedroom"
+    CHROMECAST_ID = "Family Room TV"
 
     chromecast_handler = None
     media_controller = None
@@ -135,7 +135,7 @@ class TestMyMediaDevice(TestCase):
         assert self.media_paths
         assert isinstance(self.media_paths, list)
         assert len(self.media_paths) == 1
-        with DBCreatorV2() as db_connection:
+        with DBHandler() as db_connection:
             db_connection.create_db()
             for media_folder_info in self.media_paths:
                 db_connection.setup_content_directory(media_folder_info)

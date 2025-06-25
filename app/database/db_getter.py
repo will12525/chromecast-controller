@@ -1,21 +1,141 @@
 import pathlib
 import random
 
-from . import common_objects
-from .db_access import DBConnection
+from app.database.db_access import DBConnection
+from app.database import db_queries
+from app.database.media_metadata_collector import collect_mp4_files
 
-SEASON_TITLE_BUILDER = f"'Season' || ' ' || {common_objects.SEASON_INDEX_COLUMN} AS season_title"
+SEASON_TITLE_BUILDER = f"'Season' || ' ' || season_index AS season_title"
 SORT_ALPHABETICAL = "GLOB '[A-Za-z]*'"
 
 
-class DatabaseHandlerV2(DBConnection):
+def build_tag_clause(table_name, tag_list, params):
+    placeholders = ', '.join([f':tag_{i}' for i in range(len(tag_list))])
+    for index, value in enumerate(tag_list):
+        params[f'tag_{index}'] = value
 
-    def build_tag_clause(self, table_name, tag_list, params):
-        placeholders = ', '.join([f':tag_{i}' for i in range(len(tag_list))])
-        for index, value in enumerate(tag_list):
-            params[f'tag_{index}'] = value
+    return f"INNER JOIN user_tags_content ON {table_name}.id = user_tags_content.{table_name}_id INNER JOIN user_tags ON user_tags_content.user_tags_id = user_tags.id WHERE user_tags.tag_title IN ({placeholders}) GROUP BY {table_name}.id"
 
-        return f"INNER JOIN user_tags_content ON {table_name}.id = user_tags_content.{table_name}_id INNER JOIN user_tags ON user_tags_content.user_tags_id = user_tags.id WHERE user_tags.tag_title IN ({placeholders}) GROUP BY {table_name}.id"
+
+class DBHandler(DBConnection):
+
+    def update_database(self, current_version):
+        """Updates the database schema to the latest version."""
+        pass
+
+    def create_db(self):
+        db_version = self.check_db_version()
+        print(f"DB COMPARE: Current: {db_version}, Expected: {self.VERSION}")
+        if self.VERSION != db_version:
+            # Run db update procedure
+            self.update_database(db_version)
+        # elif self.VERSION == db_version:
+        #     pass
+        else:
+            db_table_creation_script = [
+                db_queries.CREATE_CONTAINER_INFO_TABLE,
+                db_queries.CREATE_CONTENT_INFO_TABLE,
+                db_queries.CREATE_CONTAINER_CONTENT_INFO_TABLE,
+                db_queries.CREATE_CONTAINER_CONTAINER_INFO_TABLE,
+                db_queries.CREATE_CONTENT_DIRECTORY_INFO_TABLE,
+                db_queries.CREATE_USER_TAGS_INFO_TABLE,
+                db_queries.CREATE_USER_TAGS_CONTENT_INFO_TABLE
+            ]
+            self.execute_db_script(db_table_creation_script)
+
+    def add_content_directory_info(self, content_directory_info):
+        if media_directory_id := self.add_data_to_db(db_queries.SET_CONTENT_DIRECTORY_INFO_TABLE,
+                                                     content_directory_info):
+            content_directory_info["id"] = media_directory_id
+            return True
+        else:
+            content_directory_info["id"] = self.get_row_id(db_queries.GET_CONTENT_DIRECTORY_INFO_ID,
+                                                           content_directory_info)
+            return False
+
+    def get_all_content_directory_info(self):
+        return self.get_data_from_db(db_queries.GET_CONTENT_DIRECTORY_INFO)
+
+    def get_tag_id(self, tag):
+        return self.get_row_id(db_queries.GET_USER_TAGS_INFO_ID, tag)
+
+    def insert_tag(self, tag):
+        if tag_id := self.add_data_to_db(db_queries.SET_USER_TAGS_INFO_TABLE, tag):
+            tag["id"] = tag_id
+        else:
+            tag["id"] = self.get_tag_id(tag)
+
+    def add_tag_to_container(self, params):
+        self.add_data_to_db(db_queries.SET_USER_TAGS_CONTAINER_INFO_TABLE, params)
+
+    def remove_tag_from_container(self, params):
+        self.add_data_to_db(
+            "DELETE FROM user_tags_content WHERE user_tags_id = :user_tags_id AND container_id = :container_id;",
+            params)
+
+    def add_tag_to_content(self, params):
+        self.add_data_to_db(db_queries.SET_USER_TAGS_CONTENT_INFO_TABLE, params)
+
+    def remove_tag_from_content(self, params):
+        self.add_data_to_db(
+            "DELETE FROM user_tags_content WHERE user_tags_id = :user_tags_id AND content_id = :content_id;",
+            params)
+
+    def insert_container(self, container):
+        if container_id := self.add_data_to_db(db_queries.SET_CONTAINER_INFO_TABLE, container):
+            container["id"] = container_id
+        else:
+            container["id"] = self.get_row_id(db_queries.GET_CONTAINER_INFO_ID, container)
+
+        for tag in container.get("tags"):
+            self.insert_tag(tag)
+            self.add_tag_to_container({"user_tags_id": tag.get("id"), "container_id": container.get("id")})
+        for container_content in container.get("container_content", []):
+            if "container_content" in container_content:
+                self.add_data_to_db(db_queries.SET_CONTAINER_CONTAINER_INFO_TABLE,
+                                    {"parent_container_id": container.get("id"),
+                                     "container_id": container_content.get("id"),
+                                     "content_index": container_content.get("content_index")})
+            else:
+                self.add_data_to_db(db_queries.SET_CONTAINER_CONTENT_INFO_TABLE,
+                                    {"parent_container_id": container.get("id"),
+                                     "content_id": container_content.get("id"),
+                                     "content_index": container_content.get("content_index")})
+        # print(container)
+
+    def insert_content(self, content):
+        if content_id := self.add_data_to_db(db_queries.SET_CONTENT_INFO_TABLE, content):
+            content["id"] = content_id
+            for tag in content.get("tags"):
+                self.insert_tag(tag)
+                self.add_tag_to_content({"user_tags_id": tag.get("id"), "content_id": content.get("id")})
+
+    def insert_container_content(self, container_content):
+        if "container_content" in container_content:
+            for content in container_content.get("container_content"):
+                self.insert_container_content(content)
+            self.insert_container(container_content)
+        else:
+            self.insert_content(container_content)
+
+    def collect_directory_content(self, content_directory_info):
+        print(f"Scanning directory: {content_directory_info}")
+        for container_content in collect_mp4_files(content_directory_info):
+            self.insert_container_content(container_content)
+
+    def scan_content_directories(self):
+        if content_directory_list := self.get_all_content_directory_info():
+            print(f"Scanning: {content_directory_list}")
+            for content_directory_info in content_directory_list:
+                self.collect_directory_content(content_directory_info)
+        print("Scan Complete")
+
+    def setup_content_directory(self, content_directory_info):
+        if self.add_content_directory_info(content_directory_info):
+            self.collect_directory_content(content_directory_info)
+        else:
+            print(f"Content directory already added: {content_directory_info}")
+        print("Setup Complete")
 
     def get_all_tags(self):
         return self.get_data_from_db("SELECT * FROM user_tags;")
@@ -121,17 +241,16 @@ class DatabaseHandlerV2(DBConnection):
             return next_content_info
 
     def update_content_play_count(self, content_id):
-        UPDATE_MEDIA_PLAY_COUNT = f"UPDATE content SET play_count = play_count + 1 WHERE id=:id;"
-        self.add_data_to_db(UPDATE_MEDIA_PLAY_COUNT, {"id": content_id})
+        self.add_data_to_db(db_queries.UPDATE_MEDIA_PLAY_COUNT, {"id": content_id})
 
     def update_metadata(self, container_dict):
         if container_dict.get("container_id"):
             self.add_data_to_db(
-                f"UPDATE container SET {common_objects.DESCRIPTION}=:{common_objects.DESCRIPTION}, img_src=:img_src WHERE id=:container_id;",
+                f"UPDATE container SET description=:description, img_src=:img_src WHERE id=:container_id;",
                 container_dict)
         elif container_dict.get("content_id"):
             self.add_data_to_db(
-                f"UPDATE content SET {common_objects.DESCRIPTION}=:{common_objects.DESCRIPTION}, img_src=:img_src WHERE id=:content_id;",
+                f"UPDATE content SET description=:description, img_src=:img_src WHERE id=:content_id;",
                 container_dict)
 
     def get_top_container(self, container_id):
@@ -259,17 +378,15 @@ class DatabaseHandlerV2(DBConnection):
             params
         )
 
-    def get_all_content_directory_info(self):
-        return self.get_data_from_db("SELECT * FROM content_directory;")
-
     def query_db(self, tag_list, container_dict, container_txt_search, content_txt_search):
         ret_data = {}
         if not content_txt_search:
             ret_data["containers"] = self.query_container(tag_list, container_dict, container_txt_search)
-            for container in ret_data["containers"]:
+            for container in ret_data.get("containers"):
                 if container.get("img_src"):
                     for media_directory in self.get_all_content_directory_info():
-                        if pathlib.Path(f'{media_directory.get("content_src")}{container.get("img_src")}').exists():
+                        img_path = pathlib.Path(f'{media_directory.get("content_src")}{container.get("img_src")}')
+                        if img_path.exists():
                             container["img_url"] = f'{media_directory.get("content_url")}{container.get("img_src")}'
         if not container_txt_search:
             ret_data["content"] = self.query_content(tag_list, container_dict, content_txt_search)

@@ -4,11 +4,9 @@ import pathlib
 import requests
 from flask import send_file
 
-import backend_handler
-from backend_handler import SystemMode
-import config_file_handler
-from database_handler.db_getter import DatabaseHandlerV2
-from database_handler.db_setter import DBCreatorV2
+from app.utils.common import SystemMode, get_file_hash, build_tv_show_output_path, get_gb
+from app.utils.config_file_handler import load_json_file_content
+from app.database.db_getter import DBHandler
 
 HANDSHAKE_SECRET = "Hello world!"
 HANDSHAKE_RESPONSE = "LEONARD IS THE COOLEST DINOSAUR"
@@ -65,25 +63,30 @@ class ServerConnection:
             self.img_srcs = path_request_response_data.get("img_srcs")
 
     def check_for_missing_content(self):
-        with DatabaseHandlerV2() as db_connection:
-            for content_src in self.content_srcs:
-                if not db_connection.check_if_content_src_exists(content_src):
-                    content_src["transfer"] = True
+        db_connection = DBHandler()
+        db_connection.open()
+        for content_src in self.content_srcs:
+            if not db_connection.check_if_content_src_exists(content_src):
+                content_src["transfer"] = True
+        db_connection.close()
 
     def request_missing_content(self):
         for content_src in self.content_srcs:
             if content_src.get("transfer"):
                 try:
                     content_src_path = pathlib.Path(content_src.get("content_src")).name
-                    if output_file := pathlib.Path(backend_handler.build_tv_show_output_path(content_src_path)):
+                    if output_file := pathlib.Path(build_tv_show_output_path(content_src_path)):
                         print(f"{content_src} -> {output_file}")
                         self.request_file(content_src, output_file, "request_content")
                 except FileExistsError as e:
                     print(f'ERROR: downloading file: {e} ')
 
     def process_img_files(self):
-        with DBCreatorV2() as db_connection:
-            media_directory_info = db_connection.get_all_content_directory_info()
+        db_connection = DBHandler()
+        db_connection.open()
+        media_directory_info = db_connection.get_all_content_directory_info()
+        db_connection.close()
+
         for content_src in self.img_srcs:
             if media_directory_info:
                 if output_file := find_existing_img_dir(content_src.get('img_src'), media_directory_info):
@@ -100,7 +103,7 @@ class ServerConnection:
             if 'md5sum' in response.headers:
                 with open(file_destination, 'wb') as f:
                     f.write(response.content)
-                md5sum = backend_handler.get_file_hash(file_destination)
+                md5sum = get_file_hash(file_destination)
                 if response.headers['md5sum'] == md5sum:
                     print(f'INFO: File downloaded successfully! {file_destination}')
                 else:
@@ -113,7 +116,7 @@ class ServerConnection:
 
 # CLIENT
 def query_server():
-    server_connection = ServerConnection(config_file_handler.load_json_file_content().get("server_url"))
+    server_connection = ServerConnection(load_json_file_content().get("server_url"))
     server_connection.connect()
     if server_connection.connected():
         server_connection.request_server_content()
@@ -140,18 +143,20 @@ def new_client_connection(system_mode, server_token, data):
 # SERVER
 def request_all_content(server_token, data):
     if server_token == HANDSHAKE_RESPONSE:
-        with DatabaseHandlerV2() as db_connection:
-            data["content_srcs"] = db_connection.get_all_content_paths()
-            data["img_srcs"] = db_connection.get_all_image_paths()
+        db_connection = DBHandler()
+        db_connection.open()
+        data["content_srcs"] = db_connection.get_all_content_paths()
+        data["img_srcs"] = db_connection.get_all_image_paths()
+        db_connection.close()
 
 
 def request_file(output_file, data):
     if os.path.exists(output_file):
         try:
-            if backend_handler.get_gb(os.path.getsize(output_file)) > FILE_SIZE_LIMIT:
+            if get_gb(os.path.getsize(output_file)) > FILE_SIZE_LIMIT:
                 data["error"] = 'File is too large'
             else:
-                md5sum = backend_handler.get_file_hash(output_file)
+                md5sum = get_file_hash(output_file)
                 mimetype = 'video/mp4'
                 if '.png' == output_file.suffix:
                     mimetype = 'image/png'
@@ -173,8 +178,10 @@ def request_file(output_file, data):
 # SERVER
 def request_image(json_request, data):
     if json_request.get("server_token") == HANDSHAKE_RESPONSE:
-        with DBCreatorV2() as db_connection:
-            media_directory_info = db_connection.get_all_content_directory_info()
+        db_connection = DBHandler()
+        db_connection.open()
+        media_directory_info = db_connection.get_all_content_directory_info()
+        db_connection.close()
         if output_file := find_existing_img_path(json_request.get('img_src'), media_directory_info):
             return request_file(output_file, data)
         else:
@@ -185,8 +192,10 @@ def request_image(json_request, data):
 # SERVER
 def request_content(json_request, data):
     if json_request.get("server_token") == HANDSHAKE_RESPONSE and (content_id := json_request.get("id")):
-        with DatabaseHandlerV2() as db_connection:
-            content_data = db_connection.get_content_info(content_id)
+        db_connection = DBHandler()
+        db_connection.open()
+        content_data = db_connection.get_content_info(content_id)
+        db_connection.close()
         if output_file := content_data.get('path'):
             output_path = pathlib.Path(output_file)
             return request_file(output_path, data)

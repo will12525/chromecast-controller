@@ -1,4 +1,3 @@
-import json
 import logging
 import threading
 import time
@@ -6,7 +5,7 @@ import os
 from enum import Enum, auto
 import pychromecast
 
-from database_handler.db_getter import DatabaseHandlerV2
+from app.database.db_getter import DBHandler
 
 
 class CommandList(Enum):
@@ -48,8 +47,11 @@ class MyMediaDevice:
         self.media_controller = None
 
     def play_episode_from_sql(self, content_data):
-        with DatabaseHandlerV2() as db_connection:
-            media_metadata = db_connection.get_content_info(content_data.get("content_id"))
+        db_connection = DBHandler()
+        db_connection.open()
+        media_metadata = db_connection.get_content_info(content_data.get("content_id"))
+        db_connection.close()
+
         media_metadata["parent_container_id"] = content_data["parent_container_id"]
 
         if media_metadata:
@@ -57,8 +59,10 @@ class MyMediaDevice:
             return media_metadata
 
     def play_random_container_content(self, json_request):
-        with DatabaseHandlerV2() as db_connection:
-            media_metadata = db_connection.get_random_content_in_container(json_request)
+        db_connection = DBHandler()
+        db_connection.open()
+        media_metadata = db_connection.get_random_content_in_container(json_request)
+        db_connection.close()
 
         if media_metadata:
             self.play_media_info(media_metadata)
@@ -69,8 +73,11 @@ class MyMediaDevice:
         if self.status and (media_metadata := self.status.media_metadata):
             current_media_data = {"content_id": media_metadata.get("id"),
                                   "parent_container_id": media_metadata.get("parent_container_id")}
-            with DatabaseHandlerV2() as db_connection:
-                media_info = db_connection.get_next_content_in_container(current_media_data)
+            db_connection = DBHandler()
+            db_connection.open()
+            media_info = db_connection.get_next_content_in_container(current_media_data)
+            db_connection.close()
+
         if media_info:
             self.play_media_info(media_info)
             return media_info
@@ -80,8 +87,11 @@ class MyMediaDevice:
         if self.status and (media_metadata := self.status.media_metadata):
             current_media_data = {"content_id": media_metadata.get("id"),
                                   "parent_container_id": media_metadata.get("parent_container_id")}
-            with DatabaseHandlerV2() as db_connection:
-                media_info = db_connection.get_previous_content_in_container(current_media_data)
+            db_connection = DBHandler()
+            db_connection.open()
+            media_info = db_connection.get_previous_content_in_container(current_media_data)
+            db_connection.close()
+
         if media_info:
             self.play_media_info(media_info)
             return media_info
@@ -93,8 +103,10 @@ class MyMediaDevice:
                                              metadata=media_metadata)
             self.media_controller.block_until_active()
 
-            with DatabaseHandlerV2() as db_connection:
-                db_connection.update_content_play_count(media_metadata.get("id"))
+            db_connection = DBHandler()
+            db_connection.open()
+            db_connection.update_content_play_count(media_metadata.get("id"))
+            db_connection.close()
 
     def get_media_controller_metadata(self):
         if self.status:

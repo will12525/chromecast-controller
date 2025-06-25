@@ -7,6 +7,7 @@ import config_file_handler
 import database_handler.media_metadata_collector as md_collector
 from database_handler import common_objects
 from . import pytest_mocks
+from . import data_file
 
 
 class TestMediaMetadataCollectorSetup(TestCase):
@@ -23,18 +24,28 @@ class TestMediaMetadataCollectorSetup(TestCase):
         pytest_mocks.patch_update_processed_file(self)
 
 
-class TestDBCreator(TestMediaMetadataCollectorSetup):
+def structure_check(item, tag):
+    assert len(item) == 7
+    assert "content_directory_id" in item
+    assert item.get("content_title") is not None
+    assert isinstance(item.get("content_title"), str)
+    assert item.get("content_title")
+    assert "content_src" in item
+    assert item.get("content_src") is not None
+    assert isinstance(item.get("content_src"), str)
+    assert item.get("content_src")
+    assert ".mp4" in item.get("content_src")
+    assert item.get("tags") == [{"tag_title": tag}]
 
-    def test_print_day(self):
-        print(int(time.strftime('%j')))
+class TestCollectMP4Files(TestMediaMetadataCollectorSetup):
 
-    def test_collect_tv_shows(self):
-        content_directory_info = copy.deepcopy(self.media_paths[0])
-        content_directory_info["content_src"] = content_directory_info["content_src"] + "media_folder_sample/"
 
-        print(content_directory_info)
-        result = list(md_collector.collect_mp4_files(content_directory_info))
-        # print(json.dumps(result, indent=4))
+    def test_collect_tv_shows_src_0(self):
+        self.media_paths[0]["content_src"] += "tv_shows/"
+
+        print(self.media_paths[0])
+        result = list(md_collector.collect_mp4_files(self.media_paths[0]))
+        print(json.dumps(result, indent=4))
         assert result
         assert type(result) is list
         # print(len(result))
@@ -59,75 +70,140 @@ class TestDBCreator(TestMediaMetadataCollectorSetup):
             assert "tags" in item
             assert isinstance(item.get("tags"), list)
             assert item.get("tags") == [
-                {
-                    "tag_title": "tv"
-                },
-                {
-                    "tag_title": "tv show"
-                }
+                {"tag_title": "tv"},
+                {"tag_title": "tv show"}
             ]
 
             assert "container_content" in item
             assert isinstance(item.get("container_content"), list)
             assert len(item.get("container_content")) == 1
 
-            container_content = item.get("container_content")[0]
-            print(json.dumps(container_content, indent=4))
+            # container_content = item.get("container_content")[0]
+            # print(json.dumps(container_content, indent=4))
 
             assert "container_path" in item
             assert isinstance(item.get("container_path"), str)
+        assert result == data_file.tv_show_src_0_struct
 
-            # assert isinstance(item.get("content_index"), str)
 
-            # assert isinstance(item.get(common_objects.PLAYLIST_TITLE), str)
-            # assert isinstance(item.get(common_objects.PATH_COLUMN), str)
-            # assert isinstance(item.get(common_objects.SEASON_INDEX_COLUMN), int)
-            # assert isinstance(item.get("episode_index"), int)
-            # assert isinstance(item.get(common_objects.PLAYLIST_TITLE), str)
+    def test_collect_movies_src_0(self):
+        self.media_paths[0]["content_src"] += "movies/"
+        print(self.media_paths[0])
+        result = list(md_collector.collect_mp4_files(self.media_paths[0]))
+        print(json.dumps(result, indent=4))
+        assert result
+        assert len(result) == 3
+        for item in result:
+            structure_check(item, "movie")
+        assert result == data_file.movie_src_0_struct
 
-            # assert item.get(common_objects.PLAYLIST_TITLE)
-            # assert item.get(common_objects.PATH_COLUMN)
-            # assert item.get(common_objects.SEASON_INDEX_COLUMN)
-            # assert item.get("episode_index")
+    def test_collect_books_src_0(self):
+        self.media_paths[0]["content_src"] += "books/"
+        print(self.media_paths[0])
+        result = list(md_collector.collect_mp4_files(self.media_paths[0]))
+        print(json.dumps(result, indent=4))
+        assert result
+        assert len(result) == 2
+        for item in result:
+            structure_check(item, "book")
+        assert result == data_file.book_src_0_struct
 
-            # assert " - " in item.get(common_objects.PATH_COLUMN)
-            # assert ".mp4" in item.get(common_objects.PATH_COLUMN)
-            # assert item.get(common_objects.PLAYLIST_TITLE) in item.get(common_objects.PATH_COLUMN)
-            # assert item.get(common_objects.PATH_COLUMN).count(item.get(common_objects.PLAYLIST_TITLE)) == 2
-            # assert str(item.get(common_objects.SEASON_INDEX_COLUMN)) in item.get(common_objects.PATH_COLUMN)
-            # assert str(item.get("episode_index")) in item.get(common_objects.PATH_COLUMN)
-            # assert item.get(common_objects.PATH_COLUMN).count(str(item.get("episode_index"))) >= 1
-    #
-    # def test_collect_movies(self):
-    #     result = list(md_collector.collect_movies(self.media_paths[0]))
-    #     print(json.dumps(result, indent=4))
-    #     assert result
-    #     assert len(result) == 5
-    #     for item in result:
-    #         assert len(item) == 11
-    #         assert common_objects.MEDIA_DIRECTORY_ID_COLUMN in item
-    #         assert common_objects.PATH_COLUMN in item
-    #         assert item.get(common_objects.MEDIA_TITLE_COLUMN) is not None
-    #         assert item.get(common_objects.PATH_COLUMN) is not None
-    #         assert isinstance(item.get(common_objects.MEDIA_TITLE_COLUMN), str)
-    #         assert isinstance(item.get(common_objects.PATH_COLUMN), str)
-    #         assert item.get(common_objects.MEDIA_TITLE_COLUMN)
-    #         assert item.get(common_objects.PATH_COLUMN)
-    #         assert ".mp4" in item.get(common_objects.PATH_COLUMN)
-    #
-    # def test_collect_movies_w_extra(self):
-    #     result = list(md_collector.collect_movies(self.media_paths[0]))
-    #     print(json.dumps(result, indent=4))
-    #     assert result
-    #     assert len(result) == 5
-    #     for item in result:
-    #         assert len(item) == 11
-    #         assert common_objects.MEDIA_DIRECTORY_ID_COLUMN in item
-    #         assert common_objects.PATH_COLUMN in item
-    #         assert item.get(common_objects.MEDIA_TITLE_COLUMN) is not None
-    #         assert item.get(common_objects.PATH_COLUMN) is not None
-    #         assert isinstance(item.get(common_objects.MEDIA_TITLE_COLUMN), str)
-    #         assert isinstance(item.get(common_objects.PATH_COLUMN), str)
-    #         assert item.get(common_objects.MEDIA_TITLE_COLUMN)
-    #         assert item.get(common_objects.PATH_COLUMN)
-    #         assert ".mp4" in item.get(common_objects.PATH_COLUMN)
+
+
+    def test_collect_all_media_src_0(self):
+        print(self.media_paths[0])
+        result = list(md_collector.collect_mp4_files(self.media_paths[0]))
+        print(json.dumps(result, indent=4))
+        assert result
+        assert len(result) == 17
+        # for item in result:
+        #     print(json.dumps(item, indent=4))
+        #     assert len(item) == 7
+        #     assert "content_directory_id" in item
+        #     assert item.get("content_title") is not None
+        #     assert isinstance(item.get("content_title"), str)
+        #     assert item.get("content_title")
+        #     assert "content_src" in item
+        #     assert item.get("content_src") is not None
+        #     assert isinstance(item.get("content_src"), str)
+        #     assert item.get("content_src")
+        #     assert ".mp4" in item.get("content_src")
+        #     assert isinstance(item.get("tags"), list)
+
+
+    def test_collect_tv_shows_src_1(self):
+        self.media_paths[1]["content_src"] += "tv_shows/"
+
+        print(self.media_paths[1])
+        result = list(md_collector.collect_mp4_files(self.media_paths[1]))
+        print(json.dumps(result, indent=4))
+        assert result
+        assert type(result) is list
+        # print(len(result))
+        assert len(result) == 12
+        for item in result:
+            # print(json.dumps(item, indent=4))
+            assert len(item) == 7
+
+            assert "container_title" in item
+            assert isinstance(item.get("container_title"), str)
+            assert item.get("container_title") in ["Gremlins", "Vans", "Dinosaurs"]
+
+            assert "description" in item
+            assert isinstance(item.get("description"), str)
+            assert item.get("description") == ""
+
+            assert "img_src" in item
+            assert isinstance(item.get("img_src"), str)
+
+            assert "content_index" in item
+
+            assert "tags" in item
+            assert isinstance(item.get("tags"), list)
+            assert item.get("tags") == [
+                {"tag_title": "tv"},
+                {"tag_title": "tv show"}
+            ]
+
+            assert "container_content" in item
+            assert isinstance(item.get("container_content"), list)
+            assert len(item.get("container_content")) == 1
+
+            # container_content = item.get("container_content")[0]
+            # print(json.dumps(container_content, indent=4))
+
+            assert "container_path" in item
+            assert isinstance(item.get("container_path"), str)
+        assert result == data_file.tv_show_src_1_struct
+
+    def test_collect_movies_src_1(self):
+        self.media_paths[1]["content_src"] += "movies/"
+        print(self.media_paths[1])
+        result = list(md_collector.collect_mp4_files(self.media_paths[1]))
+        print(json.dumps(result, indent=4))
+        assert result
+        assert len(result) == 3
+        for item in result:
+            structure_check(item, "movie")
+        assert result == data_file.movie_src_1_struct
+
+
+    def test_collect_books_src_1(self):
+        self.media_paths[1]["content_src"] += "books/"
+        print(self.media_paths[1])
+        result = list(md_collector.collect_mp4_files(self.media_paths[1]))
+        print(json.dumps(result, indent=4))
+        assert result
+        assert len(result) == 2
+        for item in result:
+            structure_check(item, "book")
+        assert result == data_file.book_src_1_struct
+
+
+    def test_collect_all_media_src_1(self):
+        print(self.media_paths[1])
+        result = list(md_collector.collect_mp4_files(self.media_paths[1]))
+        print(json.dumps(result, indent=4))
+        assert result
+        assert len(result) == 17
+        # assert False

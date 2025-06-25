@@ -5,6 +5,8 @@ import backend_handler
 
 import content_transfer
 import config_file_handler
+
+import app.utils.common_objects
 from . import pytest_mocks
 
 
@@ -26,21 +28,22 @@ class TestContentTransferSetup(TestCase):
 class TestConnectServer(TestContentTransferSetup):
     def test_server_connect_unknown(self):
         data = {}
-        content_transfer.new_client_connection(content_transfer.SystemMode.SERVER, "", data)
+        content_transfer.new_client_connection(app.utils.common_objects.SystemMode.SERVER, "", data)
         assert data["error_code"] == 400
         assert data["error"] == "System in unknown mode"
         print(data)
 
     def test_server_connect_not_a_server(self):
         data = {}
-        content_transfer.new_client_connection(content_transfer.SystemMode.CLIENT, "", data)
+        content_transfer.new_client_connection(app.utils.common_objects.SystemMode.CLIENT, "", data)
         assert data["error_code"] == 400
         assert data["error"] == "not a server"
         print(data)
 
     def test_server_connect_valid(self):
         data = {}
-        content_transfer.new_client_connection(content_transfer.SystemMode.SERVER, content_transfer.HANDSHAKE_SECRET,
+        content_transfer.new_client_connection(app.utils.common_objects.SystemMode.SERVER,
+                                               content_transfer.HANDSHAKE_SECRET,
                                                data)
         assert data["error_code"] == 200
         assert data["server_token"] == content_transfer.HANDSHAKE_RESPONSE

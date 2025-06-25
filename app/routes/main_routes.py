@@ -4,17 +4,18 @@ import queue
 from enum import Enum
 import traceback
 
-from flask import Flask, request, render_template
+from flask import request, render_template, Blueprint
 from werkzeug.utils import secure_filename
 
-import backend_handler
-from backend_handler import SystemMode
-from chromecast_handler import CommandList
-from database_handler.db_getter import DatabaseHandlerV2
-from database_handler.common_objects import ContentType
-import config_file_handler
-from database_handler.db_setter import DBCreatorV2
-import content_transfer
+import app.utils.backend_handler as backend_handler
+import app.utils.common
+from app.utils.chromecast_handler import CommandList
+from app.database.db_getter import DBHandler
+from app.utils.common import ContentType, SystemMode
+from app.utils import config_file_handler
+from app.utils import content_transfer
+
+main_bp = Blueprint("main", __name__)
 
 # TODO: UI
 # TODO: Notify user when media scan completes
@@ -41,8 +42,8 @@ import content_transfer
 
 # TODO: Cleanup
 # TODO: Convert all js functions calls embedded in html to event listeners in app.js
-# TODO: Convert chromecast name strings to IDs and use IDs to refer to chromecasts
-# TODO: The chromecast select menu shall never contain chromecasts that no longer exist
+# TODO: Convert chromecast name strings to IDs and use IDs to refer to chromecast
+# TODO: The chromecast select menu shall never contain chromecast that no longer exist
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', "mp4"}
 
@@ -101,20 +102,23 @@ if config_file_handler.load_json_file_content().get("mode") == SystemMode.SERVER
     system_mode = SystemMode.SERVER
 
 bh = backend_handler.BackEndHandler()
-bh.start()
+setup_thread = bh.start()
 error_log = queue.Queue()
 
-app = Flask(__name__)
+
+# app = Flask(__name__)
 
 
 def build_main_content():
     # system_data = backend_handler.get_system_data()
-    with DatabaseHandlerV2() as db_getter_connection:
-        tag_list = db_getter_connection.get_all_tags()
-
+    db_connection = DBHandler()
+    db_connection.open()
+    tag_list = db_connection.get_all_tags()
+    db_connection.close()
     try:
         return render_template("index.html", homepage_url=APIEndpoints.MAIN.value,
-                               button_dict=media_controller_button_dict, tag_list=tag_list, system_mode=system_mode.name)
+                               button_dict=media_controller_button_dict, tag_list=tag_list,
+                               system_mode=system_mode.name)
     except Exception as e:
         print("Exception class: ", e.__class__)
         print(f"ERROR: {e}")
@@ -122,7 +126,7 @@ def build_main_content():
         return str(traceback.print_exc())
 
 
-@app.route(APIEndpoints.EDITOR.value)
+@main_bp.route(APIEndpoints.EDITOR.value)
 def editor():
     try:
         return render_template("editor.html",
@@ -142,7 +146,7 @@ def editor():
         return str(error_str)
 
 
-@app.route(APIEndpoints.EDITOR_VALIDATE_TXT_FILE.value, methods=['POST'])
+@main_bp.route(APIEndpoints.EDITOR_VALIDATE_TXT_FILE.value, methods=['POST'])
 def editor_validate_txt_file():
     data = {"error": {"message": "File valid"}}
     if json_request := request.get_json():
@@ -159,7 +163,7 @@ def editor_validate_txt_file():
     return data, 200
 
 
-@app.route(APIEndpoints.EDITOR_SAVE_TXT_FILE.value, methods=['POST'])
+@main_bp.route(APIEndpoints.EDITOR_SAVE_TXT_FILE.value, methods=['POST'])
 def editor_save_txt_file():
     data = {"error": {"message": "File saved"}}
     if json_request := request.get_json():
@@ -174,7 +178,7 @@ def editor_save_txt_file():
     return data, 200
 
 
-@app.route(APIEndpoints.EDITOR_LOAD_TXT_FILE.value, methods=['POST'])
+@main_bp.route(APIEndpoints.EDITOR_LOAD_TXT_FILE.value, methods=['POST'])
 def editor_load_txt_file():
     data = {}
     if json_request := request.get_json():
@@ -189,7 +193,7 @@ def editor_load_txt_file():
     return data, 200
 
 
-@app.route(APIEndpoints.DELETE_TXT_FILE.value, methods=['POST'])
+@main_bp.route(APIEndpoints.DELETE_TXT_FILE.value, methods=['POST'])
 def editor_delete_txt_file():
     data = {}
     if json_request := request.get_json():
@@ -204,7 +208,7 @@ def editor_delete_txt_file():
     return data, 200
 
 
-@app.route(APIEndpoints.EDITOR_PROCESS_TXT_FILE.value, methods=['POST'])
+@main_bp.route(APIEndpoints.EDITOR_PROCESS_TXT_FILE.value, methods=['POST'])
 def editor_process_txt_file():
     data = {}
     if json_request := request.get_json():
@@ -225,7 +229,7 @@ def editor_process_txt_file():
     return data, 200
 
 
-@app.route(APIEndpoints.EDITOR_PROCESSOR_METADATA.value, methods=['POST'])
+@main_bp.route(APIEndpoints.EDITOR_PROCESSOR_METADATA.value, methods=['POST'])
 def editor_processor_get_metadata():
     data = {}
     try:
@@ -237,95 +241,103 @@ def editor_processor_get_metadata():
     return data, 200
 
 
-@app.route(APIEndpoints.MAIN.value)
+@main_bp.route(APIEndpoints.MAIN.value)
 def main_index():
     return build_main_content()
 
 
-@app.route(APIEndpoints.TABLE.value)
+@main_bp.route(APIEndpoints.TABLE.value)
 def table_index():
     return build_main_content()
 
 
-@app.route(APIEndpoints.QUERY_DB.value, methods=["POST"])
+@main_bp.route(APIEndpoints.QUERY_DB.value, methods=["POST"])
 def query_media_db():
     media_metadata = {}
     if json_request := request.get_json():
         print(json_request)
-        with DatabaseHandlerV2() as db_getter_connection:
-            media_metadata.update(
-                db_getter_connection.query_db(json_request.get("tag_list", ["tv shows"]),
-                                              json_request.get("container_dict", {}),
-                                              json_request.get("container_txt_search"),
-                                              json_request.get("content_txt_search"))
-            )
+        db_connection = DBHandler()
+        db_connection.open()
+        media_metadata.update(
+            db_connection.query_db(json_request.get("tag_list", ["tv shows"]),
+                                   json_request.get("container_dict", {}),
+                                   json_request.get("container_txt_search"),
+                                   json_request.get("content_txt_search"))
+        )
+        db_connection.close()
+
     # print(json.dumps(media_metadata, indent=4))
     return media_metadata, 200
 
 
-@app.route("/get_tag_list", methods=["POST"])
+@main_bp.route("/get_tag_list", methods=["POST"])
 def get_tag_list():
     media_metadata = {}
-    with DatabaseHandlerV2() as db_getter_connection:
-        media_metadata["tag_list"] = db_getter_connection.get_all_tags()
+    db_connection = DBHandler()
+    db_connection.open()
+    media_metadata["tag_list"] = db_connection.get_all_tags()
+    db_connection.close()
+
     return media_metadata, 200
 
 
-@app.route("/add_new_tag", methods=["POST"])
+@main_bp.route("/add_new_tag", methods=["POST"])
 def add_new_tag():
     media_metadata = {}
     if json_request := request.get_json():
         if json_request.get("tag_title"):
-            with DBCreatorV2() as db_connection:
-                db_connection.insert_tag(json_request)
-            with DatabaseHandlerV2() as db_getter_connection:
-                media_metadata["tag_list"] = db_getter_connection.get_all_tags()
+            db_connection = DBHandler()
+            db_connection.open()
+            db_connection.insert_tag(json_request)
+            media_metadata["tag_list"] = db_connection.get_all_tags()
+            db_connection.close()
+
     return media_metadata, 200
 
 
-@app.route("/add_tag_to_content", methods=["POST"])
+@main_bp.route("/add_tag_to_content", methods=["POST"])
 def add_tag_to_content():
     media_metadata = {}
     if json_request := request.get_json():
+        db_connection = DBHandler()
+        db_connection.open()
         if json_request.get("tag_title") and json_request.get("content_id"):
-            with DBCreatorV2() as db_connection:
-                json_request["user_tags_id"] = db_connection.get_tag_id(json_request)
-                db_connection.add_tag_to_content(json_request)
-            with DatabaseHandlerV2() as db_connection:
-                media_metadata.update(db_connection.query_content_tags(json_request.get("content_id")))
+            json_request["user_tags_id"] = db_connection.get_tag_id(json_request)
+            db_connection.add_tag_to_content(json_request)
+            media_metadata.update(db_connection.query_content_tags(json_request.get("content_id")))
             media_metadata["tag_title"] = json_request.get("tag_title")
         elif json_request.get("tag_title") and json_request.get("container_id"):
-            with DBCreatorV2() as db_connection:
-                json_request["user_tags_id"] = db_connection.get_tag_id(json_request)
-                db_connection.add_tag_to_container(json_request)
-            with DatabaseHandlerV2() as db_connection:
-                media_metadata.update(db_connection.query_container_tags(json_request.get("container_id")))
+            json_request["user_tags_id"] = db_connection.get_tag_id(json_request)
+            db_connection.add_tag_to_container(json_request)
+            media_metadata.update(db_connection.query_container_tags(json_request.get("container_id")))
             media_metadata["tag_title"] = json_request.get("tag_title")
+        db_connection.close()
+
     return media_metadata, 200
 
 
-@app.route("/remove_tag_from_content", methods=["POST"])
+@main_bp.route("/remove_tag_from_content", methods=["POST"])
 def remove_tag_from_content():
     media_metadata = {}
     if json_request := request.get_json():
+        db_connection = DBHandler()
+        db_connection.open()
         if json_request.get("tag_title") and json_request.get("content_id"):
-            with DBCreatorV2() as db_connection:
-                json_request["user_tags_id"] = db_connection.get_tag_id(json_request)
-                db_connection.remove_tag_from_content(json_request)
-            with DatabaseHandlerV2() as db_connection:
-                media_metadata.update(db_connection.query_content_tags(json_request.get("content_id")))
+            json_request["user_tags_id"] = db_connection.get_tag_id(json_request)
+            db_connection.remove_tag_from_content(json_request)
+            media_metadata.update(db_connection.query_content_tags(json_request.get("content_id")))
             media_metadata["tag_title"] = json_request.get("tag_title")
         elif json_request.get("tag_title") and json_request.get("container_id"):
-            with DBCreatorV2() as db_connection:
-                json_request["user_tags_id"] = db_connection.get_tag_id(json_request)
-                db_connection.remove_tag_from_container(json_request)
-            with DatabaseHandlerV2() as db_connection:
-                media_metadata.update(db_connection.query_container_tags(json_request.get("container_id")))
+            json_request["user_tags_id"] = db_connection.get_tag_id(json_request)
+            db_connection.remove_tag_from_container(json_request)
+            media_metadata.update(db_connection.query_container_tags(json_request.get("container_id")))
             media_metadata["tag_title"] = json_request.get("tag_title")
+        db_connection.close()
+
     return media_metadata, 200
 
 
-@app.route(APIEndpoints.GET_MEDIA_CONTENT_TYPES.value, methods=['GET'])
+@main_bp.route(APIEndpoints.GET_MEDIA_CONTENT_TYPES.value, methods=['GET'])
 def get_media_content_types():
     data = {"table_url": APIEndpoints.TABLE.value}
     if system_mode == SystemMode.SERVER:
@@ -333,13 +345,13 @@ def get_media_content_types():
     return data, 200
 
 
-@app.route(APIEndpoints.GET_CHROMECAST_CONTROLS.value, methods=['GET'])
+@main_bp.route(APIEndpoints.GET_CHROMECAST_CONTROLS.value, methods=['GET'])
 def get_chromecast_controls():
     data = {"chromecast_controls": {i.name: i.value for i in CommandList}}
     return data, 200
 
 
-@app.route(APIEndpoints.SET_CURRENT_MEDIA_RUNTIME.value, methods=['POST'])
+@main_bp.route(APIEndpoints.SET_CURRENT_MEDIA_RUNTIME.value, methods=['POST'])
 def set_current_media_runtime():
     data = {}
     if json_request := request.get_json():
@@ -348,7 +360,7 @@ def set_current_media_runtime():
     return data, 200
 
 
-@app.route(APIEndpoints.GET_CURRENT_MEDIA_RUNTIME.value, methods=['GET'])
+@main_bp.route(APIEndpoints.GET_CURRENT_MEDIA_RUNTIME.value, methods=['GET'])
 def get_current_media_runtime():
     data = {}
     if media_metadata := bh.get_chromecast_media_controller_metadata():
@@ -356,7 +368,7 @@ def get_current_media_runtime():
     return data, 200
 
 
-@app.route(APIEndpoints.CONNECT_CHROMECAST.value, methods=['POST'])
+@main_bp.route(APIEndpoints.CONNECT_CHROMECAST.value, methods=['POST'])
 def connect_chromecast():
     data = {}
     if json_request := request.get_json():
@@ -366,7 +378,7 @@ def connect_chromecast():
     return data, 200
 
 
-@app.route(APIEndpoints.GET_CHROMECAST_LIST.value, methods=['POST'])
+@main_bp.route(APIEndpoints.GET_CHROMECAST_LIST.value, methods=['POST'])
 def get_chromecast_list():
     data = {
         "scanned_devices": bh.get_chromecast_scan_list(),
@@ -375,14 +387,14 @@ def get_chromecast_list():
     return data, 200
 
 
-@app.route(APIEndpoints.DISCONNECT_CHROMECAST.value, methods=['POST'])
+@main_bp.route(APIEndpoints.DISCONNECT_CHROMECAST.value, methods=['POST'])
 def disconnect_chromecast():
     data = {}
     bh.disconnect_chromecast()
     return data, 200
 
 
-@app.route(APIEndpoints.CHROMECAST_COMMAND.value, methods=['POST'])
+@main_bp.route(APIEndpoints.CHROMECAST_COMMAND.value, methods=['POST'])
 def chromecast_command():
     data = {}
     if json_request := request.get_json():
@@ -391,14 +403,16 @@ def chromecast_command():
     return data, 200
 
 
-@app.route(APIEndpoints.PLAY_MEDIA.value, methods=['POST'])
+@main_bp.route(APIEndpoints.PLAY_MEDIA.value, methods=['POST'])
 def play_media():
     data = {}
     if json_request := request.get_json():
         if json_request.get("content_id"):
             if not bh.play_media_on_chromecast(json_request):
-                with DatabaseHandlerV2() as db_connection:
-                    media_metadata = db_connection.get_content_info(json_request.get("content_id"))
+                db_connection = DBHandler()
+                db_connection.open()
+                media_metadata = db_connection.get_content_info(json_request.get("content_id"))
+                db_connection.close()
                 data["id"] = media_metadata.get("id")
                 data["parent_container_id"] = json_request.get("parent_container_id")
                 data["local_play_url"] = media_metadata.get("url")
@@ -407,7 +421,8 @@ def play_media():
             print(f"Media ID not provided: {json_request}")
     return data, 200
 
-@app.route("/play_random_container_content", methods=['POST'])
+
+@main_bp.route("/play_random_container_content", methods=['POST'])
 def play_random_container_content():
     data = {}
     if json_request := request.get_json():
@@ -419,14 +434,16 @@ def play_random_container_content():
     return data, 200
 
 
-@app.route(APIEndpoints.GET_NEXT_MEDIA.value, methods=['POST'])
+@main_bp.route(APIEndpoints.GET_NEXT_MEDIA.value, methods=['POST'])
 def get_next_media():
     data = {}
     if json_request := request.get_json():
         try:
             if json_request.get("content_id") and json_request.get("parent_container_id"):
-                with DatabaseHandlerV2() as db_connection:
-                    media_metadata = db_connection.get_next_content_in_container(json_request)
+                db_connection = DBHandler()
+                db_connection.open()
+                media_metadata = db_connection.get_next_content_in_container(json_request)
+                db_connection.close()
                 data["id"] = media_metadata.get("id")
                 data["parent_container_id"] = json_request.get("parent_container_id")
                 data["local_play_url"] = media_metadata.get("url")
@@ -440,7 +457,7 @@ def get_next_media():
     return data, 200
 
 
-@app.route(APIEndpoints.UPDATE_MEDIA_METADATA.value, methods=['POST'])
+@main_bp.route(APIEndpoints.UPDATE_MEDIA_METADATA.value, methods=['POST'])
 def update_media_metadata():
     data = {}
     # If exception, pass to error log
@@ -455,23 +472,25 @@ def update_media_metadata():
                     data = {"error": e.args[0]}
                     print(data)
             data["img_src"] = json_request.get('img_src')
-            data["img_url"] = json_request.get('img_url')
-        with DatabaseHandlerV2() as db_connection:
-            db_connection.update_metadata(json_request)
+        db_connection = DBHandler()
+        db_connection.open()
+        db_connection.update_metadata(json_request)
+        db_connection.close()
+
     return data, 200
 
 
-@app.route(APIEndpoints.GET_MEDIA_MENU_DATA.value, methods=['POST'])
+@main_bp.route(APIEndpoints.GET_MEDIA_MENU_DATA.value, methods=['POST'])
 def get_media_menu_data():
     data = {}
     print(f"Not implemented: {APIEndpoints.GET_MEDIA_MENU_DATA.value}")
     return data, 200
 
 
-@app.route(APIEndpoints.GET_DISK_SPACE.value, methods=['GET'])
+@main_bp.route(APIEndpoints.GET_DISK_SPACE.value, methods=['GET'])
 def get_disk_space():
     try:
-        data = {"free_space": backend_handler.get_free_disk_space(None)}
+        data = {"free_space": app.utils.common.get_free_disk_space(None)}
         return data, 200
     except Exception as e:
         print("Exception class: ", e.__class__)
@@ -479,10 +498,10 @@ def get_disk_space():
         print(traceback.print_exc())
 
 
-@app.route(APIEndpoints.SCAN_MEDIA_DIRECTORIES.value, methods=['POST'])
+@main_bp.route(APIEndpoints.SCAN_MEDIA_DIRECTORIES.value, methods=['POST'])
 def scan_media_directories():
     """
-        X User triggeres media scan
+        X User triggers media scan
         X media scan asses local files
         media scan asses free disk space
         X media scan checks for server
@@ -511,7 +530,7 @@ def scan_media_directories():
     return data, 200
 
 
-@app.route(APIEndpoints.SERVER_CONNECT.value, methods=['GET', 'POST'])
+@main_bp.route(APIEndpoints.SERVER_CONNECT.value, methods=['GET', 'POST'])
 def server_connect():
     data = {"error_code": 400}
     if json_request := request.get_json():
@@ -519,7 +538,7 @@ def server_connect():
     return data, data["error_code"]
 
 
-@app.route(APIEndpoints.REQUEST_ALL_CONTENT.value, methods=['GET', 'POST'])
+@main_bp.route(APIEndpoints.REQUEST_ALL_CONTENT.value, methods=['GET', 'POST'])
 def request_all_content():
     data = {"error_code": 200}
     if json_request := request.get_json():
@@ -532,7 +551,7 @@ def request_all_content():
     return data, data["error_code"]
 
 
-@app.route(APIEndpoints.REQUEST_IMAGE.value, methods=['GET', 'POST'])
+@main_bp.route(APIEndpoints.REQUEST_IMAGE.value, methods=['GET', 'POST'])
 def request_image():
     data = {"error_code": 200}
     if json_request := request.get_json():
@@ -546,7 +565,7 @@ def request_image():
     return data, data["error_code"]
 
 
-@app.route(APIEndpoints.REQUEST_CONTENT.value, methods=['GET', 'POST'])
+@main_bp.route(APIEndpoints.REQUEST_CONTENT.value, methods=['GET', 'POST'])
 def request_content():
     data = {"error_code": 400}
     if json_request := request.get_json():
@@ -566,7 +585,7 @@ def allowed_file(filename):
         filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
-@app.route(APIEndpoints.MEDIA_UPLOAD.value, methods=['GET', 'POST'])
+@main_bp.route(APIEndpoints.MEDIA_UPLOAD.value, methods=['GET', 'POST'])
 def upload_file():
     data = {"error_code": 400}
     if request.method == 'POST':
@@ -583,26 +602,15 @@ def upload_file():
                 filename = secure_filename(file.filename).replace('_', ' ')
                 print(filename)
                 try:
-                    output_path = backend_handler.build_tv_show_output_path(filename)
+                    output_path = app.utils.common.build_tv_show_output_path(filename)
                     print(output_path)
                     file.save(output_path)
                     data["message"] = "File saved"
                     data["filename"] = f"{file.filename}"
-                    error_code = 200
+                    data["error_code"] = 200
                 except (ValueError, FileExistsError) as e:
                     data["error"] = e.args[0]
     print(data)
     return data, data["error_code"]
 
-
 # content_transfer.query_server()
-
-if __name__ == "__main__":
-    print("--------------------Running Main--------------------")
-    # app.run(debug=True)
-    app.jinja_env.lstrip_blocks = True
-    app.jinja_env.trim_blocks = True
-
-    # app.config['SEND_FILE_MAX_AGE'] = 0  # Disable caching to force compression
-    # app.config['COMPRESSOR_MIMETYPES'] = ['video/mp4']
-    app.run(debug=True, host='0.0.0.0', port=5002)

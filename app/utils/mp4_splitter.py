@@ -1,18 +1,16 @@
-import json
 import queue
 import pathlib
 import subprocess
 import threading
-from json import JSONDecodeError
-
-from datetime import datetime, timedelta
 import re
+from json import JSONDecodeError
+from datetime import datetime, timedelta
 from pathvalidate import ValidationError, validate_filename
 
-import config_file_handler
-from database_handler.common_objects import ContentType
-from database_handler.db_setter import DBCreatorV2
-from database_handler.media_metadata_collector import mp4_file_ext
+from app.utils import config_file_handler
+from app.utils.common import ContentType
+from app.database.media_metadata_collector import mp4_file_ext
+from app.database.db_getter import DBHandler
 
 """
 Convert to .exe
@@ -77,7 +75,7 @@ def convert_timestamp(timestamp_str, error_list):
 
 
 def check_content_already_exists(file_name):
-    with DBCreatorV2() as db_connection:
+    with DBHandler() as db_connection:
         for media_directory in db_connection.get_all_content_directory_info():
             return pathlib.Path(f"{media_directory.get('content_src')}/{file_name}").exists()
 

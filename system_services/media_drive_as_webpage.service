@@ -6,8 +6,7 @@ After=network.target
 Type=simple
 Restart=always
 RestartSec=10
-User=INSTALL_USER
-WorkingDirectory=INSTALL_DIR
+WorkingDirectory=/media/library
 ExecStart=http-server -p 8000
 
 [Install]

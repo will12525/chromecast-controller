@@ -1,38 +1,16 @@
 import json
-import shutil
 import os
 import time
 from unittest import TestCase, mock
 import pathlib
 
-import backend_handler
-import backend_handler as bh
-import config_file_handler
-from database_handler.common_objects import ContentType
-from database_handler.db_setter import DBCreatorV2
-from . import pytest_mocks
-
-
-class TestBackEndHandler(TestCase):
-    CHROMECAST_ID = "Bedroom"
-    image_folder_path = "../images"
-
-    def setUp(self):
-        pytest_mocks.patch_update_processed_file(self)
-        pytest_mocks.patch_extract_subclip(self)
-        pytest_mocks.patch_get_file_hash(self)
-        pytest_mocks.patch_get_ffmpeg_metadata(self)
-        # pytest_mocks.patch_get_free_disk_space(self)
-
-        self.backend_handler = bh.BackEndHandler()
-        setup_thread = self.backend_handler.start()
-        # setup_thread.join()
-        while setup_thread.is_alive():
-            time.sleep(.01)
-        setup_thread.join()
-        if os.path.exists(self.image_folder_path):
-            shutil.rmtree(self.image_folder_path)
-            os.mkdir(self.image_folder_path)
+from app.utils.backend_handler import BackEndHandler, setup_db, download_image, editor_validate_txt_file
+from app.utils.common import get_free_disk_space, get_free_disk_space_percent, get_system_data, \
+    build_tv_show_output_path
+from app.utils import config_file_handler
+from app.utils.common import ContentType, get_file_hash
+from app.database.db_getter import DBHandler
+from tests import pytest_mocks
 
 
 class TestSetupDB(TestCase):
@@ -43,20 +21,22 @@ class TestSetupDB(TestCase):
         pytest_mocks.patch_get_ffmpeg_metadata(self)
         pytest_mocks.patch_extract_subclip(self)
         pytest_mocks.patch_update_processed_file(self)
-        if os.path.exists(self.DB_PATH):
-            os.remove(self.DB_PATH)
+        # if os.path.exists(self.DB_PATH):
+        #     os.remove(self.DB_PATH)
 
     def test_setup_db(self):
         assert not os.path.exists(self.DB_PATH)
-        bh.setup_db()
+        setup_db()
         assert os.path.exists(self.DB_PATH)
 
     def test_setup_db_contents(self):
         media_folders = config_file_handler.load_json_file_content().get("media_folders")
         assert not os.path.exists(self.DB_PATH)
-        bh.setup_db()
-        with DBCreatorV2() as db_connection:
-            media_metadata = db_connection.get_all_content_directory_info()
+        setup_db()
+        db_connection = DBHandler()
+        db_connection.open()
+        media_metadata = db_connection.get_all_content_directory_info()
+        db_connection.close()
         print(media_metadata)
         print(media_folders)
         assert len(media_folders) == len(media_metadata)
@@ -75,7 +55,69 @@ class TestSetupDB(TestCase):
 
             assert media_folders[i].get("content_src") == media_metadata[i].get("content_src")
             assert media_folders[i].get("content_url") == media_metadata[i].get("content_url")
+        assert get_file_hash(self.DB_PATH) == "8cf49794862dca5a5d79446b04f6d988"
+        # assert False
 
+
+class TestBackEndHandler(TestCase):
+    CHROMECAST_ID = "Family Room TV"
+
+    # image_folder_path = "../images"
+
+    def setUp(self):
+        pytest_mocks.patch_update_processed_file(self)
+        pytest_mocks.patch_extract_subclip(self)
+        pytest_mocks.patch_get_file_hash(self)
+        pytest_mocks.patch_get_ffmpeg_metadata(self)
+        # pytest_mocks.patch_get_free_disk_space(self)
+
+        self.backend_handler = BackEndHandler()
+        setup_thread = self.backend_handler.start()
+        # setup_thread.join()
+        while setup_thread.is_alive():
+            time.sleep(.01)
+        setup_thread.join()
+        # if os.path.exists(self.image_folder_path):
+        #     shutil.rmtree(self.image_folder_path)
+        #     os.mkdir(self.image_folder_path)
+
+
+# class TestBackEndChromecast(TestBackEndHandler):
+
+# def test_get_chromecast_scan_list(self):
+#     chromecast_scan_list = self.backend_handler.get_chromecast_scan_list()
+#     self.assertEqual(type(chromecast_scan_list), list)
+
+# def test_get_chromecast_connected_device_list(self):
+#     self.test_connect_chromecast()
+#     connected_devices_list = self.backend_handler.get_chromecast_connected_device_list()
+#     self.assertEqual(type(connected_devices_list), list)
+
+# def test_send_chromecast_cmd(self):
+# self.test_play_episode()
+# self.backend_handler.send_chromecast_cmd(CommandList.CMD_PAUSE)
+# Need to get way to check current state
+#     pass
+#
+# def test_connect_chromecast(self):
+#     self.backend_handler.connect_chromecast(self.CHROMECAST_ID)
+#     self.assertEqual(self.CHROMECAST_ID, self.backend_handler.get_chromecast_device_id())
+#
+# def test_disconnect_chromecast(self):
+#     self.test_connect_chromecast()
+#     self.backend_handler.disconnect_chromecast()
+#     connected_device_id = self.backend_handler.get_chromecast_device_id()
+#
+#     self.assertFalse(connected_device_id)
+
+# def test_play_media(self):
+#     self.test_connect_chromecast()
+#     # self.backend_handler.connect_chromecast(self.CHROMECAST_ID)
+#     # connected_devices_list = self.backend_handler.get_chromecast_connected_device_list()
+#     # print(connected_devices_list)
+#     # self.assertTrue(self.CHROMECAST_ID in connected_devices_list)
+#
+#     self.backend_handler.play_media()
 
 class TestBackEndFunctionCalls(TestBackEndHandler):
     def test_init(self):
@@ -86,8 +128,8 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
     def test_disk_space(self):
         media_folders = config_file_handler.load_json_file_content().get("media_folders")
         print(media_folders)
-        remaining_space = backend_handler.get_free_disk_space(dir_path=media_folders[0].get("content_src"))
-        percent_filled = backend_handler.get_free_disk_space_percent(media_folders[0].get("content_src"))
+        remaining_space = get_free_disk_space(dir_path=media_folders[0].get("content_src"))
+        percent_filled = get_free_disk_space_percent(media_folders[0].get("content_src"))
         print(percent_filled)
         print(remaining_space)
         assert remaining_space > 66.7
@@ -101,32 +143,6 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
     def test_start(self):
         # Test thread startup?
         pass
-
-    def test_get_chromecast_scan_list(self):
-        chromecast_scan_list = self.backend_handler.get_chromecast_scan_list()
-        self.assertEqual(type(chromecast_scan_list), list)
-
-    # def test_get_chromecast_connected_device_list(self):
-    #     self.test_connect_chromecast()
-    #     connected_devices_list = self.backend_handler.get_chromecast_connected_device_list()
-    #     self.assertEqual(type(connected_devices_list), list)
-
-    def test_send_chromecast_cmd(self):
-        # self.test_play_episode()
-        # self.backend_handler.send_chromecast_cmd(CommandList.CMD_PAUSE)
-        # Need to get way to check current state
-        pass
-
-    def test_connect_chromecast(self):
-        self.backend_handler.connect_chromecast(self.CHROMECAST_ID)
-        self.assertEqual(self.CHROMECAST_ID, self.backend_handler.get_chromecast_device_id())
-
-    def test_disconnect_chromecast(self):
-        self.test_connect_chromecast()
-        self.backend_handler.disconnect_chromecast()
-        connected_device_id = self.backend_handler.get_chromecast_device_id()
-
-        self.assertFalse(connected_device_id)
 
     # def test_set_episode(self):
     #     media_id = MediaID(0, 1, 2)
@@ -142,15 +158,6 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
     #     episode_url = self.backend_handler.get_episode_url()
     #     self.assertTrue(episode_url)
     #     self.assertEqual(type(episode_url), str)
-
-    # def test_play_media(self):
-    #     self.test_connect_chromecast()
-    #     # self.backend_handler.connect_chromecast(self.CHROMECAST_ID)
-    #     # connected_devices_list = self.backend_handler.get_chromecast_connected_device_list()
-    #     # print(connected_devices_list)
-    #     # self.assertTrue(self.CHROMECAST_ID in connected_devices_list)
-    #
-    #     self.backend_handler.play_media()
 
     # def test_get_tv_show_name_list(self):
     #     tv_show_count = 3
@@ -192,17 +199,17 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
         # Add test for each content type
         json_request = {'container_id': None, 'content_id': 17, 'img_src': 'http://192.168.1.175:8000/images/3.jpg',
                         'description': 'World!'}
-        bh.download_image(json_request)
+        download_image(json_request)
         print(json.dumps(json_request, indent=4))
         assert json_request.get("img_src") == "/media_folder_movie/Vampire_2/Vampire (2020).mp4.jpg"
 
-        bh.download_image(json_request)
+        download_image(json_request)
 
     def test_image_download_media(self):
         # Add test for each content type
         json_request = {'container_id': None, 'content_id': 17, 'img_src': 'http://192.168.1.175:8000/images/3.jpg',
                         'description': 'World!'}
-        bh.download_image(json_request)
+        download_image(json_request)
         print(json.dumps(json_request, indent=4))
         assert json_request.get("img_src") == "/media_folder_movie/Vampire_2/Vampire (2020).mp4.jpg"
 
@@ -210,7 +217,7 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
         # Add test for each content type
         json_request = {'container_id': 1, 'content_id': None, 'img_src': 'http://192.168.1.175:8000/images/3.jpg',
                         'description': 'World!'}
-        bh.download_image(json_request)
+        download_image(json_request)
         print(json.dumps(json_request, indent=4))
         assert json_request.get("img_src") == "/editor_raw_files/Hilda/Season 4.jpg"
 
@@ -218,7 +225,7 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
         # Add test for each content type
         json_request = {'container_id': None, 'content_id': 13, 'img_src': 'http://192.168.1.175:8000/images/3.jpg',
                         'description': 'World!'}
-        bh.download_image(json_request)
+        download_image(json_request)
         print(json.dumps(json_request, indent=4))
         assert json_request.get("img_src") == "/media_folder_modify/output/Sparkles/Sparkles - s2e3.mp4.jpg"
 
@@ -226,7 +233,7 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
         # Add test for each content type
         json_request = {'container_id': 2, 'content_id': None, 'img_src': 'http://192.168.1.175:8000/images/3.jpg',
                         'description': 'World!'}
-        bh.download_image(json_request)
+        download_image(json_request)
         print(json.dumps(json_request, indent=4))
         assert json_request.get("img_src") == "/editor_raw_files/Hilda/Hilda.jpg"
 
@@ -247,13 +254,13 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
     def test_build_tv_show_output_path(self):
         expected_str = "/Test file name/Test file name - s1e5.mp4"
         file_name_str = "Test file name - s1e5.mp4"
-        output_path = bh.build_tv_show_output_path(file_name_str)
+        output_path = build_tv_show_output_path(file_name_str)
         print(output_path)
         print(expected_str)
         assert expected_str in output_path
 
     def test_get_system_data(self):
-        system_data = backend_handler.get_system_data()
+        system_data = get_system_data()
         print(json.dumps(system_data, indent=4))
 
     def test_get_editor_metadata(self):
@@ -261,7 +268,7 @@ class TestBackEndFunctionCalls(TestBackEndHandler):
         print(json.dumps(editor_metadata, indent=4))
         assert "txt_file_list" in editor_metadata
         assert type(editor_metadata.get("txt_file_list")) is list
-        assert len(editor_metadata.get("txt_file_list")) == 14
+        assert len(editor_metadata.get("txt_file_list")) == 1
         for txt_file in editor_metadata.get("txt_file_list"):
             assert len(txt_file) == 2
             assert "file_name" in txt_file
@@ -330,7 +337,7 @@ class TestBackEndEditorValidateTextFile(TestBackEndHandler):
             'file_name': "2024-01-31_16-32-36.json",
             'media_type': ContentType.TV.name
         }
-        error_log = bh.editor_validate_txt_file(editor_metadata)
+        error_log = editor_validate_txt_file(editor_metadata)
         print(json.dumps(error_log, indent=4))
         assert not error_log
 
@@ -339,7 +346,7 @@ class TestBackEndEditorValidateTextFile(TestBackEndHandler):
             'file_name': "2024-01-31_16-32-36_invalid.json",
             'media_type': ContentType.TV.name
         }
-        error_log = bh.editor_validate_txt_file(editor_metadata)
+        error_log = editor_validate_txt_file(editor_metadata)
         print(json.dumps(error_log, indent=4))
         assert error_log
         assert len(error_log) == 3
@@ -363,7 +370,7 @@ class TestBackEndEditorValidateTextFile(TestBackEndHandler):
             'file_name': "movie.json",
             'media_type': ContentType.MOVIE.name
         }
-        error_log = bh.editor_validate_txt_file(editor_metadata)
+        error_log = editor_validate_txt_file(editor_metadata)
         print(json.dumps(error_log, indent=4))
         assert not error_log
 
@@ -372,7 +379,7 @@ class TestBackEndEditorValidateTextFile(TestBackEndHandler):
             'file_name': "2024-01-31_16-32-32.json",
             'media_type': ContentType.TV.name
         }
-        error_log = bh.editor_validate_txt_file(editor_metadata)
+        error_log = editor_validate_txt_file(editor_metadata)
         print(json.dumps(error_log, indent=4))
         assert not error_log
 
@@ -381,7 +388,7 @@ class TestBackEndEditorValidateTextFile(TestBackEndHandler):
             'file_name': "movie.json",
             'media_type': ContentType.MOVIE.name
         }
-        error_log = bh.editor_validate_txt_file(editor_metadata)
+        error_log = editor_validate_txt_file(editor_metadata)
         print(json.dumps(error_log, indent=4))
         assert not error_log
 
@@ -390,7 +397,7 @@ class TestBackEndEditorValidateTextFile(TestBackEndHandler):
             'file_name': "Hilda/Hilda - s4e8.json",
             'media_type': ContentType.RAW.name
         }
-        error_log = bh.editor_validate_txt_file(editor_metadata)
+        error_log = editor_validate_txt_file(editor_metadata)
         print(json.dumps(error_log, indent=4))
         assert not error_log
 
@@ -399,7 +406,7 @@ class TestBackEndEditorValidateTextFile(TestBackEndHandler):
             'file_name': "book.json",
             'media_type': ContentType.BOOK.name
         }
-        error_log = bh.editor_validate_txt_file(editor_metadata)
+        error_log = editor_validate_txt_file(editor_metadata)
         print(json.dumps(error_log, indent=4))
         assert not error_log
 
@@ -419,7 +426,8 @@ class TestBackEndEditorProcessTextFile(TestBackEndHandler):
             "media_type": ContentType.TV.name
         }
         with mock.patch('backend_handler.DISK_SPACE_USE_LIMIT', 100):
-            errors = self.backend_handler.editor_process_txt_file(json_request.get("media_type"), json_request.get("file_name"))
+            errors = self.backend_handler.editor_process_txt_file(json_request.get("media_type"),
+                                                                  json_request.get("file_name"))
         print(json.dumps(errors, indent=4))
         assert errors == expected_output
 
@@ -432,7 +440,7 @@ class TestBackEndEditorProcessTextFile(TestBackEndHandler):
             "media_type": ContentType.TV.name
         }
         raw_folder = config_file_handler.load_json_file_content().get('editor_raw_folder')
-        with DBCreatorV2() as db_connection:
+        with DBHandler() as db_connection:
             media_folder_path = db_connection.get_all_content_directory_info()[0]
         output_path = pathlib.Path(media_folder_path.get("content_src")).resolve()
         errors = self.backend_handler.editor_process_txt_file(json_request.get("media_type"),

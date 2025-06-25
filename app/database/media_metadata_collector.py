@@ -1,44 +1,54 @@
 import hashlib
 import pathlib
 import re
-import threading
+from enum import Enum, auto
 
 import ffmpeg
-import shutil
 
-from database_handler import common_objects
-from . import common_objects
-
-DELETE = False
-MOVE_FILE = True
 MOVIE_PATTERN = r".*/([\w\W]+) \((\d{4})\)\.mp4$"
 TV_PATTERN = r".*\/([\w\W]+) - s(\d+)e(\d+)\.mp4$"
 BOOK_PATTERN = r".*\/([\w\W]+) - ([\w\W]+).mp4$"
 
-tv_show_media_episode_index_identifier = 'e'
-mp4_index_content_index_search_string = ' - s'
 mp4_file_ext = '*.mp4'
 txt_file_ext = '*.txt'
-title_key_seperator = '_'
-empty_str = ''
-season_marker = 'S'
-season_marker_replacement = 'Season '
-episode_marker = 'E'
-season_str_index = -1
-tv_show_str_index = -2
 
-default_metadata: dict = {
-    common_objects.ID_COLUMN: None,
-    common_objects.PLAYLIST_TITLE: None,
-    common_objects.SEASON_INDEX_COLUMN: None,
-    common_objects.MEDIA_DIRECTORY_ID_COLUMN: None,
-    common_objects.PATH_COLUMN: None,
-    common_objects.MEDIA_TITLE_COLUMN: "",
-    common_objects.LIST_INDEX_COLUMN: None,
-    common_objects.MD5SUM_COLUMN: None,
-    common_objects.DURATION_COLUMN: None,
-    common_objects.EPISODE_INDEX: None
-}
+
+class ContentType(Enum):
+    MEDIA = auto()
+    MOVIE = auto()
+    SEASON = auto()
+    TV_SHOW = auto()
+    TV = auto()
+    PLAYLIST = auto()
+    PLAYLISTS = auto()
+    BOOK = auto()
+    RAW = auto()
+
+    def get_next(self):
+        if self == self.PLAYLISTS:
+            return self.PLAYLIST
+        if self == self.TV:
+            return self.TV_SHOW
+        if self == self.TV_SHOW:
+            return self.SEASON
+        if self == self.SEASON:
+            return self.MEDIA
+        if self == self.PLAYLIST:
+            return self.MEDIA
+        if self == self.MOVIE:
+            return self.MEDIA
+
+    def get_last(self):
+        if self == self.SEASON:
+            return self.TV_SHOW
+        if self == self.TV_SHOW:
+            return self.TV
+        if self == self.PLAYLIST:
+            return self.PLAYLISTS
+
+    @classmethod
+    def list(cls):
+        return list(map(lambda c: c, cls))
 
 
 # Get the new path: media_directory_info
@@ -50,24 +60,12 @@ default_metadata: dict = {
 # Move tv show mp4 files
 
 
-def get_url(media_folder_src, media_folder_remove):
-    return str(media_folder_src).replace(str(media_folder_remove), empty_str)
-
-
-def get_season_name_show_title(path):
-    return path.parts[tv_show_str_index], path.parts[season_str_index]
-
-
-def get_playlist_list_index(season_index, episode_index):
-    return (1000 * season_index) + episode_index
-
-
 def get_file_hash(extra_metadata):
     with open(extra_metadata.get("full_file_path"), 'rb') as f:
         file_hash = hashlib.md5()
         while chunk := f.read(8192):
             file_hash.update(chunk)
-    extra_metadata[common_objects.MD5SUM_COLUMN] = file_hash.hexdigest()
+    extra_metadata['md5sum'] = file_hash.hexdigest()
 
 
 def get_ffmpeg_metadata(path, content_data):
@@ -113,7 +111,8 @@ def file_exists_with_extensions(path, file_name) -> pathlib.Path:
 
     Args:
         path (Path): The base path of the file.
-        extensions (list): A list of file extensions to check.
+        file_name (str): Name of file to check.
+        # extensions (list): A list of file extensions to check.
 
     Returns:
         bool: True if the file exists with any of the given extensions, False otherwise.
@@ -190,11 +189,11 @@ def get_content_type(file_name):
     content_type = None
     mp4_file_path_posix = pathlib.Path(file_name).as_posix()
     if match := re.search(TV_PATTERN, mp4_file_path_posix):
-        content_type = common_objects.ContentType.TV
+        content_type = ContentType.TV
     elif match := re.search(MOVIE_PATTERN, mp4_file_path_posix):
-        content_type = common_objects.ContentType.MOVIE
+        content_type = ContentType.MOVIE
     elif match := re.search(BOOK_PATTERN, mp4_file_path_posix):
-        content_type = common_objects.ContentType.BOOK
+        content_type = ContentType.BOOK
     else:
         print(f"Unknown content type: {file_name}")
     return content_type, match
@@ -204,17 +203,18 @@ def collect_mp4_files(content_directory_info):
     content_directory_src = pathlib.Path(content_directory_info.get("content_src"))
     content_directory_src_posix = content_directory_src.as_posix()
     for mp4_file_path in list(content_directory_src.rglob(mp4_file_ext)):
+        print(mp4_file_path)
         mp4_file_path_posix = mp4_file_path.as_posix()
         (content_type, match) = get_content_type(mp4_file_path.as_posix())
         container_data = None
         content_data = default_content_data.copy()
         content_data['content_directory_id'] = content_directory_info['id']
         content_data['content_src'] = mp4_file_path_posix.replace(content_directory_src_posix, '')
-        if common_objects.ContentType.TV == content_type:
+        if ContentType.TV == content_type:
             container_data = build_tv_show(content_directory_src_posix, mp4_file_path, match, content_data)
-        elif common_objects.ContentType.MOVIE == content_type:
+        elif ContentType.MOVIE == content_type:
             build_movie(content_directory_src_posix, mp4_file_path, match, content_data)
-        elif common_objects.ContentType.BOOK == content_type:
+        elif ContentType.BOOK == content_type:
             build_book(content_directory_src_posix, mp4_file_path, match, content_data)
         else:
             # print(media_folder_mp4.as_posix())
