@@ -9,7 +9,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4.2.2
       - name: Set up Docker Compose
-        uses: KengoTODA/setup-compose-action@v1
+        uses: docker/setup-compose-action@v1
       - name: Build Docker Compose services
         run: docker compose -f ./compose.yaml build
 
@@ -22,12 +22,10 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4.2.2
       - name: Set up Docker Compose
-        uses: KengoTODA/setup-compose-action@v1
+        uses: docker/setup-compose-action@v1
       - name: Start services and run tests
         run: |
           docker compose -f ./compose.yaml up
-      #           replace <service_name> with your actual service name from compose.yaml
-      #          docker compose -f ./compose.yaml exec -T <service_name> sh -c "$CMD"
       - name: Publish Test Report
         uses: mikepenz/action-junit-report@v4
         if: success() || failure()
