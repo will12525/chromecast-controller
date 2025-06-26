@@ -76,6 +76,7 @@ RUN mkdir -p /media/raw_files \
     && ln -s /test_data/bbb_sunflower_1080p_30fps_normal.mp4 "/media/library_2/tv_shows/Vans/Vans - s1e1.mp4"
 
 WORKDIR /app
+RUN git config --global --add safe.directory /app
 #COPY . .
 #RUN npm install --prefix app/static
 #CMD ["python", "run.py"]
