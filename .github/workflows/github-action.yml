@@ -25,7 +25,9 @@ jobs:
         uses: docker/setup-compose-action@v1
       - name: Start services and run tests
         run: |
-          docker compose -f ./compose.yaml up
+          docker compose -f ./compose.yaml up --no-build
+          ls -alh
+          ls -alh tests/junit
       - name: Publish Test Report
         uses: mikepenz/action-junit-report@v4
         if: success() || failure()
