@@ -1,4 +1,5 @@
 #!/bin/bash
+set -x
 trap 'kill 0' SIGTERM
 
 ln -s /install/node_modules /app/app/static/

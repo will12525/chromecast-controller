@@ -3,8 +3,6 @@ on: [ push ]
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions:
-      checks: write
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4.2.2
@@ -15,6 +13,8 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
+    permissions:
+      checks: write
     needs: build
     env:
       CMD: "pytest tests/test_backend_handler.py::TestSetupDB --doctest-modules --junitxml=junit/test-results.xml --cov-report=xml --cov-report=html"
