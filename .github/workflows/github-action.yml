@@ -10,7 +10,8 @@ jobs:
         uses: docker/setup-compose-action@v1
       - name: Build Docker Compose services
         run: |
-          docker compose -f ./compose.yaml --project-name chromecast-controller build && docker tag chromecast_controller chromecast_controller:latest
+          docker compose -f ./compose.yaml --project-name chromecast-controller build
+          docker tag chromecast_controller chromecast_controller:latest
           docker images
 
   test:
@@ -25,6 +26,8 @@ jobs:
         uses: actions/checkout@v4.2.2
       - name: Set up Docker Compose
         uses: docker/setup-compose-action@v1
+      - name: Verify Image Exists
+        run: docker images
       - name: Start services and run tests
         run: |
           docker compose -f ./compose.yaml --project-name chromecast-controller up --no-build
