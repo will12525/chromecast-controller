@@ -10,6 +10,7 @@ jobs:
         uses: docker/setup-compose-action@v1
       - name: Build Docker Compose services
         run: docker compose -f ./compose.yaml build
+          docker tag chromecast_controller chromecast_controller:latest
 
   test:
     runs-on: ubuntu-latest
