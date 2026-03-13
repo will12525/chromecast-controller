@@ -202,27 +202,28 @@ def get_content_type(file_name):
 def collect_mp4_files(content_directory_info):
     content_directory_src = pathlib.Path(content_directory_info.get("content_src"))
     content_directory_src_posix = content_directory_src.as_posix()
-    for mp4_file_path in list(content_directory_src.rglob(mp4_file_ext)):
-        print(mp4_file_path)
-        mp4_file_path_posix = mp4_file_path.as_posix()
-        (content_type, match) = get_content_type(mp4_file_path.as_posix())
-        container_data = None
-        content_data = default_content_data.copy()
-        content_data['content_directory_id'] = content_directory_info['id']
-        content_data['content_src'] = mp4_file_path_posix.replace(content_directory_src_posix, '')
-        if ContentType.TV == content_type:
-            container_data = build_tv_show(content_directory_src_posix, mp4_file_path, match, content_data)
-        elif ContentType.MOVIE == content_type:
-            build_movie(content_directory_src_posix, mp4_file_path, match, content_data)
-        elif ContentType.BOOK == content_type:
-            build_book(content_directory_src_posix, mp4_file_path, match, content_data)
-        else:
-            # print(media_folder_mp4.as_posix())
-            print(f"Unknown media type: {mp4_file_path}")
-            # print(mp4_file_path.as_posix())
-            continue
+    for sub_dir in ["tv_shows", "movies", "books"]:
+        for mp4_file_path in list((content_directory_src / sub_dir).rglob(mp4_file_ext)):
+            print(mp4_file_path)
+            mp4_file_path_posix = mp4_file_path.as_posix()
+            (content_type, match) = get_content_type(mp4_file_path.as_posix())
+            container_data = None
+            content_data = default_content_data.copy()
+            content_data['content_directory_id'] = content_directory_info['id']
+            content_data['content_src'] = mp4_file_path_posix.replace(content_directory_src_posix, '')
+            if ContentType.TV == content_type:
+                container_data = build_tv_show(content_directory_src_posix, mp4_file_path, match, content_data)
+            elif ContentType.MOVIE == content_type:
+                build_movie(content_directory_src_posix, mp4_file_path, match, content_data)
+            elif ContentType.BOOK == content_type:
+                build_book(content_directory_src_posix, mp4_file_path, match, content_data)
+            else:
+                # print(media_folder_mp4.as_posix())
+                print(f"Unknown media type: {mp4_file_path}")
+                # print(mp4_file_path.as_posix())
+                continue
 
-        if container_data:
-            yield container_data
-        else:
-            yield content_data
+            if container_data:
+                yield container_data
+            else:
+                yield content_data
