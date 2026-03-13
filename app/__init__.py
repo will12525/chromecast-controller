@@ -12,10 +12,10 @@ def create_app():
     app.jinja_env.lstrip_blocks = True
     app.jinja_env.trim_blocks = True
     # Initialize database
-    db_handler = DBHandler()
-    db_handler.open()
-    db_handler.create_db()
-    db_handler.close()
+    # db_handler = DBHandler()
+    # db_handler.open()
+    # db_handler.create_db()
+    # db_handler.close()
 
     # Register blueprints
     register_blueprints(app)

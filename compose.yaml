@@ -6,6 +6,7 @@ services:
     image: chromecast_controller
     ports:
       - "5000:5000"
+      - "5001:5001"
       - "8000:8000"
       - "8001:8001"
       - "8002:8002"
@@ -16,4 +17,4 @@ services:
     pull_policy: "never"
     environment:
       CMD: ${CMD}
-    command: [ "/bin/bash", "-c", "./start_server.sh" ]
+    command: [ "/bin/bash", "-c", "./start_server_docker.sh" ]
