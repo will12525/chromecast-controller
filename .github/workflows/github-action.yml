@@ -9,7 +9,9 @@ jobs:
       - name: Set up Docker Compose
         uses: docker/setup-compose-action@v1
       - name: Build Docker Compose services
-        run: docker compose -f ./compose.yaml build && docker tag chromecast_controller chromecast_controller:latest
+        run: |
+          docker compose -f ./compose.yaml --project-name chromecast-controller build && docker tag chromecast_controller chromecast_controller:latest
+          docker images
 
   test:
     runs-on: ubuntu-latest
@@ -25,7 +27,7 @@ jobs:
         uses: docker/setup-compose-action@v1
       - name: Start services and run tests
         run: |
-          docker compose -f ./compose.yaml up --no-build
+          docker compose -f ./compose.yaml --project-name chromecast-controller up --no-build
           ls -alh
           ls -alh tests/junit
       - name: Publish Test Report
@@ -34,4 +36,4 @@ jobs:
         with:
           report_paths: '**/tests/junit/test-results.xml'
       - name: Stop Docker Compose services
-        run: docker compose -f ./compose.yaml down
+        run: docker compose -f ./compose.yaml --project-name chromecast-controller down
