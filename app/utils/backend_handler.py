@@ -1,33 +1,23 @@
-import hashlib
 import threading
 import traceback
-from enum import Enum, auto
 
 import requests  # request img from web
 import git
 import pathlib
-import re
 import shutil
 
-import config_file_handler
-import database_handler.common_objects as common_objects
-from chromecast_handler import ChromecastHandler
-from database_handler.db_setter import DBCreatorV2
-from database_handler.db_getter import DatabaseHandlerV2
-import mp4_splitter
-from database_handler.media_metadata_collector import get_content_type
+from app.utils import config_file_handler, mp4_splitter
+from app.utils.chromecast_handler import ChromecastHandler
+from app.database.db_getter import DBHandler
+from app.utils.common import get_system_data, build_editor_output_path
 
 EDITOR_PROCESSED_LOG = "editor_metadata.json"
-DISK_SPACE_USE_LIMIT = 20
-
-
-class SystemMode(Enum):
-    SERVER = auto()
-    CLIENT = auto()
 
 
 def setup_db():
-    with DBCreatorV2() as db_connection:
+    db_connection = DBHandler()
+    db_connection.open()
+    try:
         db_connection.create_db()
         for media_folder_info in config_file_handler.load_json_file_content().get("media_folders", []):
             content_path = pathlib.Path(media_folder_info.get("content_src", "")).resolve()
@@ -38,48 +28,12 @@ def setup_db():
                 db_connection.setup_content_directory(media_folder_info)
             else:
                 print(f"Config file path missing: {content_path}")
-
-
-def get_gb(value):
-    KB = 1024
-    MB = 1024 * KB
-    GB = 1024 * MB
-    return value / GB
-
-
-def get_free_disk_space(dir_path) -> int:
-    return round(get_gb(shutil.disk_usage(dir_path).free))
-
-
-def get_free_disk_space_percent(dir_path):
-    disk_usage = shutil.disk_usage(dir_path)
-    return round((disk_usage.used / disk_usage.total) * 100)
-
-
-def get_system_data():
-    disk_space = []
-    if raw_folder := config_file_handler.load_json_file_content().get('editor_raw_folder'):
-        disk_space.append({
-            "free_space": get_free_disk_space(raw_folder),
-            "unit": "G",
-            "percent_used": get_free_disk_space_percent(raw_folder),
-            "path": raw_folder
-        })
-
-    with DBCreatorV2() as db_connection:
-        media_directory_info = db_connection.get_all_content_directory_info()
-
-    for media_directory in media_directory_info:
-        media_directory_path_str = media_directory.get("content_src")
-        disk_space.append(
-            {
-                "free_space": get_free_disk_space(media_directory_path_str),
-                "unit": "G",
-                "percent_used": get_free_disk_space_percent(media_directory_path_str),
-                "path": media_directory_path_str
-            })
-
-    return disk_space
+    except Exception as e:
+        print("Exception class: ", e.__class__)
+        print(f"ERROR: {e}")
+        print(traceback.print_exc())
+    finally:
+        db_connection.close()
 
 
 def delete_splitter_file(file_name):
@@ -92,45 +46,6 @@ def delete_splitter_file(file_name):
             mp4_file_path.unlink()
             if json_file_path.exists():
                 json_file_path.unlink()
-
-
-def path_has_space(dir_path):
-    return (free_disk_space := get_free_disk_space(dir_path)) is not None and free_disk_space > DISK_SPACE_USE_LIMIT
-
-
-def get_free_media_drive():
-    with DBCreatorV2() as db_connection:
-        for media_directory in db_connection.get_all_content_directory_info():
-            if path_has_space(media_directory.get("content_src")):
-                return media_directory.get("content_src")
-
-
-def build_editor_output_path(media_type, error_log):
-    destination_dir_path = None
-    if content_src := get_free_media_drive():
-        if media_type == common_objects.ContentType.RAW.name:
-            if raw_folder := config_file_handler.load_json_file_content().get('editor_raw_folder'):
-                destination_dir_path = pathlib.Path(raw_folder).resolve()
-        elif media_type == common_objects.ContentType.MOVIE.name:
-            destination_dir_path = pathlib.Path(f"{content_src}/movies").resolve()
-        elif media_type == common_objects.ContentType.TV.name:
-            destination_dir_path = pathlib.Path(f"{content_src}/tv_shows").resolve()
-        elif media_type == common_objects.ContentType.BOOK.name:
-            destination_dir_path = pathlib.Path(f"{content_src}/books").resolve()
-        else:
-            error_log.append({"message": "Unknown media type", "value": f"{media_type}"})
-        if destination_dir_path:
-            if not destination_dir_path.exists():
-                error_log.append({"message": "Disk parent paths don't exist", "file_name": f"{destination_dir_path}"})
-            elif not path_has_space(destination_dir_path):
-                error_log.append({
-                    "message": "Disk out of space", "file_name": f"{destination_dir_path}",
-                    "value": get_free_disk_space(destination_dir_path)
-                })
-            else:
-                return destination_dir_path
-    else:
-        error_log.append({"message": "System out of space"})
 
 
 def editor_validate_txt_file(file_name, media_type):
@@ -153,26 +68,28 @@ def download_image(json_request):
             or json_request.get("img_src")[-4:] not in ['.jpg', '.png', '.webp']):
         raise ValueError({{"message": "Image url must be .jpg or .png"}})
 
-    with DatabaseHandlerV2() as db_connection:
-        if container_id := json_request.get("container_id"):
-            media_metadata = db_connection.get_container_info(container_id)
-            parent_file = media_metadata.get('container_path')
-            file_path = f"{parent_file}/{media_metadata.get('container_title')}{pathlib.Path(json_request['img_src']).suffix}"
-        elif content_id := json_request.get("content_id"):
-            media_metadata = db_connection.get_content_info(content_id)
-            parent_file = media_metadata.get('content_src')
-            file_path = f"{parent_file}{pathlib.Path(json_request['img_src']).suffix}"
+    db_connection = DBHandler()
+    db_connection.open()
+    if container_id := json_request.get("container_id"):
+        media_metadata = db_connection.get_container_info(container_id)
+        parent_file = media_metadata.get('container_path')
+        file_path = f"{parent_file}/{media_metadata.get('container_title')}{pathlib.Path(json_request['img_src']).suffix}"
+    elif content_id := json_request.get("content_id"):
+        media_metadata = db_connection.get_content_info(content_id)
+        parent_file = media_metadata.get('content_src')
+        file_path = f"{parent_file}{pathlib.Path(json_request['img_src']).suffix}"
 
     if json_request.get("img_src") == media_metadata.get("img_src"):
         return
 
     res = requests.get(json_request.get('img_src'), stream=True)
     media_directory = None
-    with DBCreatorV2() as db_connection:
-        for media_directory in db_connection.get_all_content_directory_info():
-            print(f'{media_directory.get("content_src")}{parent_file}')
-            if pathlib.Path(f'{media_directory.get("content_src")}{parent_file}').exists():
-                break
+
+    for media_directory in db_connection.get_all_content_directory_info():
+        print(f'{media_directory.get("content_src")}{parent_file}')
+        if pathlib.Path(f'{media_directory.get("content_src")}{parent_file}').exists():
+            break
+    db_connection.close()
 
     if res.status_code == 200 and media_directory:
         json_request["img_url"] = f"{media_directory.get('content_url')}/{file_path}"
@@ -190,36 +107,6 @@ def download_image(json_request):
             {"message": "requests error encountered while saving image",
              "file_name": json_request.get("img_src"),
              "string": f"{res.status_code}"})
-
-
-def build_tv_show_output_path(file_name_str):
-    error_log = []
-    output_path = None
-    destination_dir_path = None
-
-    (content_type, match_data) = get_content_type(f"/{file_name_str}")
-    if content_type:
-        destination_dir_path = build_editor_output_path(content_type.name, error_log)
-    if not error_log and destination_dir_path:
-        if content_type == common_objects.ContentType.TV:
-            if match := re.search(r"^([\w\W]+) - s(\d+)e(\d+)\.mp4$", file_name_str):
-                output_path = destination_dir_path / match[1] / file_name_str
-        else:
-            output_path = destination_dir_path / file_name_str
-        if output_path.exists():
-            raise FileExistsError({"message": "File already exists", "file_name": file_name_str})
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        return output_path.as_posix()
-    else:
-        print(error_log)
-
-
-def get_file_hash(file_path):
-    with open(file_path, 'rb') as f:
-        file_hash = hashlib.md5()
-        while chunk := f.read(8192):
-            file_hash.update(chunk)
-    return file_hash.hexdigest()
 
 
 class BackEndHandler:
@@ -275,8 +162,10 @@ class BackEndHandler:
         try:
             if not self.media_scan_in_progress:
                 self.media_scan_in_progress = True
-                with DBCreatorV2() as db_connection:
-                    db_connection.scan_content_directories()
+                db_connection = DBHandler()
+                db_connection.open()
+                db_connection.scan_content_directories()
+                db_connection.close()
                 self.media_scan_in_progress = False
             else:
                 print("Scan in progress")

@@ -7,13 +7,6 @@
           href="{{ url_for('static', filename='node_modules/bootstrap-icons/font/bootstrap-icons.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='node_modules/bootstrap/dist/css/bootstrap.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static',filename='style.css') | safe }}">
-    <script src="{{ url_for('static', filename='node_modules/jquery/dist/jquery.min.js') }}" type="text/javascript"
-            language="javascript"></script>
-    <script src="{{ url_for('static', filename='node_modules/@popperjs/core/dist/umd/popper.min.js') }}"
-            type="text/javascript" language="javascript"></script>
-    <script src="{{ url_for('static', filename='node_modules/bootstrap/dist/js/bootstrap.bundle.min.js') }}"
-            type="text/javascript" language="javascript"></script>
-    <script src="{{ url_for('static', filename='app.js') }}" type="text/javascript" language="javascript"></script>
     <link rel="shortcut icon" href="#">
 </head>
 <body>
@@ -135,5 +128,13 @@
 {% if button_dict is defined and system_mode == "SERVER" %}
 {% include 'bottom_navbar.html' %}
 {% endif %}
+<script src="{{ url_for('static', filename='node_modules/jquery/dist/jquery.min.js') }}" type="text/javascript"
+        language="javascript"></script>
+<script src="{{ url_for('static', filename='node_modules/@popperjs/core/dist/umd/popper.min.js') }}"
+        type="text/javascript" language="javascript"></script>
+<script src="{{ url_for('static', filename='node_modules/bootstrap/dist/js/bootstrap.bundle.min.js') }}"
+        type="text/javascript" language="javascript"></script>
+<script src="{{ url_for('static', filename='app.js') }}" type="text/javascript" language="javascript"></script>
+
 </body>
 </html>

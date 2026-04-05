@@ -2,7 +2,7 @@ import json
 import pathlib
 from json import JSONDecodeError
 
-CONFIG_FILE = "config.json"
+CONFIG_FILE = "app/config.json"
 
 
 def save_txt_file_content(file_path, txt_file_content):
@@ -42,3 +42,7 @@ def load_json_file_content(file_path=None):
     except JSONDecodeError as e:
         print(e)
     return {}
+
+
+def load_content_file():
+    return load_json_file_content(pathlib.Path(CONFIG_FILE).resolve())
