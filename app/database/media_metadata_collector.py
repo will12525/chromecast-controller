@@ -120,9 +120,9 @@ def file_exists_with_extensions(path, file_name) -> pathlib.Path:
     # print(path, ", ", file_name)
     for ext in [".png", ".jpg"]:
         file_path = path / f"{file_name}{ext}"
-        print(file_path)
+        # print(file_path)
         if file_path.resolve().absolute().exists():
-            print("FOUND!", file_path)
+            # print("FOUND!", file_path)
             return file_path
 
 
