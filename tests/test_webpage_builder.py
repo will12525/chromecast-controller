@@ -1,5 +1,6 @@
 import inspect
 import pathlib
+import time
 from unittest import TestCase
 
 from flask import Flask
@@ -95,6 +96,24 @@ class TestWebpageTemplates(TestWebpageBuilder):
         print_differences(main_content, html_as_string)
 
 
+class TestChromecastCommunication(TestWebpageBuilder):
+
+    def test_get_chromecast_list(self):
+        client = self.app.test_client()
+        time.sleep(10)
+        # The client handles the request context for you
+        response = client.post(
+            main_routes.APIEndpoints.GET_CHROMECAST_LIST.value
+        )
+
+        assert response.status_code == 200
+        data = response.get_json()
+        assert 'scanned_devices' in data
+        assert 'connected_device' in data
+        assert len(data['scanned_devices']) > 0
+        print(data)
+
+
 class TestQueryMediaDB(TestWebpageBuilder):
 
     def query_media_db_example(self):
@@ -104,7 +123,6 @@ class TestQueryMediaDB(TestWebpageBuilder):
             "content_txt_search": "",
             "container_dict": {}
         }
-
         # The client handles the request context for you
         response = client.post(
             main_routes.APIEndpoints.QUERY_DB.value,

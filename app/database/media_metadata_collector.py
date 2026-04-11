@@ -180,7 +180,7 @@ def build_tv_show(content_src, mp4_file_path, match, content_data):
     tv_container_content["container_content"] = [season_container_content]
     tv_container_content["container_path"] = container_path
     if img_src := file_exists_with_extensions(parent_folder, tv_show_title):
-        print(f"Image: {img_src}")
+        # print(f"Image: {img_src}")
         tv_container_content['img_src'] = img_src.as_posix().replace(content_src, '')
 
     return tv_container_content

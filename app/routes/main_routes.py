@@ -102,6 +102,7 @@ if config_file_handler.load_json_file_content().get("mode") == SystemMode.SERVER
     system_mode = SystemMode.SERVER
 
 bh = backend_handler.BackEndHandler()
+bh.start()
 error_log = queue.Queue()
 
 
