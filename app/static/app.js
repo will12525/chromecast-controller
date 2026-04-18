@@ -616,10 +616,13 @@ async function query_db_get_all_filters(event) {
 
 async function get_next_media(event) {
     var url = "/get_next_media";
-    if (event.target.dataset.content_id !== undefined && event.target.dataset.parent_container_id !== undefined) {
+    if (event.target.dataset.content_id !== undefined) {
+        const rawTags = event.target.dataset.tagList;
         let data = {
             "content_id": parseInt(event.target.dataset.content_id),
-            "parent_container_id": parseInt(event.target.dataset.parent_container_id)
+            "parent_container_id": parseInt(event.target.dataset.parent_container_id),
+            "play_mode": event.target.dataset.play_mode,
+            "tag_list": rawTags ? JSON.parse(rawTags) : []
         };
         let response = await fetch(url, {
             "method": "POST",
@@ -649,11 +652,17 @@ async function update_local_media_player(response_data) {
         if (response_data["id"] !== undefined) {
             videoPlayer.dataset.content_id = response_data['id'];
         }
-        if (response_data["content_title"] !== undefined) {
-            document.getElementById('content_title').innerHTML = response_data['content_title'];
-        }
         if (response_data["parent_container_id"] !== undefined) {
             videoPlayer.dataset.parent_container_id = response_data['parent_container_id'];
+        }
+        if (response_data["play_mode"] !== undefined) {
+            videoPlayer.dataset.play_mode = response_data['play_mode'];
+        }
+        if (response_data["tag_list"] !== undefined) {
+            videoPlayer.dataset.tagList = JSON.stringify(response_data['tag_list']);
+        }
+        if (response_data["content_title"] !== undefined) {
+            document.getElementById('content_title').innerHTML = response_data['content_title'];
         }
         videoPlayer.load();
         videoPlayer.scrollIntoView();

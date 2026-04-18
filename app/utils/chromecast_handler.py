@@ -66,6 +66,7 @@ class MyMediaDevice:
 
         if media_metadata:
             media_metadata["play_mode"] = "play_random_content_with_tag"
+            media_metadata["tag_list"] = json_request.get("tag_list")
             self.play_media_info(media_metadata)
             return media_metadata
 

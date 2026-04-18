@@ -409,23 +409,28 @@ def play_media():
     data = {}
     if json_request := request.get_json():
         if json_request.get("content_id"):
+            db_connection = DBHandler()
             try:
                 media_metadata = bh.play_media_on_chromecast(json_request)
                 if not media_metadata:
-                    db_connection = DBHandler()
                     db_connection.open()
-                    media_metadata = db_connection.get_content_info(json_request.get("content_id"))
-                    db_connection.close()
-                data["id"] = media_metadata.get("id")
-                data["parent_container_id"] = json_request.get("parent_container_id")
-                data["local_play_url"] = media_metadata.get("url")
-                data["content_title"] = media_metadata.get("content_title")
-                data["play_mode"] = media_metadata.get("play_mode")
-                data["tag_list"] = media_metadata.get("tag_list")
+                    if json_request.get("parent_container_id") is None and json_request.get("tag_list"):
+                        media_metadata = db_connection.get_content_info(json_request.get("content_id"))
+                        data["play_mode"] = "play_random_content_with_tag"
+                    else:
+                        media_metadata = db_connection.get_content_info(json_request.get("content_id"))
+                    # Only return content data if play media failed, providing for local player on browser
+                    data["id"] = media_metadata.get("id")
+                    data["parent_container_id"] = json_request.get("parent_container_id")
+                    data["local_play_url"] = media_metadata.get("url")
+                    data["content_title"] = media_metadata.get("content_title")
+                    data["tag_list"] = json_request.get("tag_list")
             except Exception as e:
                 print("Exception class: ", e.__class__)
                 print(f"ERROR: {e}")
                 print(traceback.print_exc())
+            finally:
+                db_connection.close()
         else:
             print(f"Media ID not provided: {json_request}")
     return data, 200
@@ -453,14 +458,17 @@ def get_next_media():
             db_connection.open()
             if json_request.get("content_id") and json_request.get("parent_container_id"):
                 media_metadata = db_connection.get_next_content_in_container(json_request)
-            elif json_request.get("play_mode") == "play_random_content_with_tag":
+            elif json_request.get("play_mode") == "play_random_content_with_tag" and json_request.get("tag_list"):
                 media_metadata = db_connection.get_random_content_with_tag(json_request.get("tag_list"))
+                data["play_mode"] = "play_random_content_with_tag"
             else:
                 print(f"content_id not provided: {json_request}")
+                data["error_msg"] = f"content_id or play_mode not provided: {json_request}"
             data["id"] = media_metadata.get("id")
             data["parent_container_id"] = json_request.get("parent_container_id")
             data["local_play_url"] = media_metadata.get("url")
             data["content_title"] = media_metadata.get("content_title")
+            data["tag_list"] = media_metadata.get("tag_list")
         except Exception as e:
             print("Exception class: ", e.__class__)
             print(f"ERROR: {e}")
