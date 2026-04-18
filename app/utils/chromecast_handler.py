@@ -85,7 +85,7 @@ class MyMediaDevice:
             db_connection = DBHandler()
             db_connection.open()
             if media_metadata.get("play_mode") == "play_random_content_with_tag":
-                media_info = db_connection.get_random_content_in_container(media_metadata)
+                media_info = db_connection.get_random_content_with_tag(media_metadata.get("tag_list"))
                 media_info["play_mode"] = "play_random_content_with_tag"
             else:
                 current_media_data = {"content_id": media_metadata.get("id"),

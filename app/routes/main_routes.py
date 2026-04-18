@@ -420,6 +420,8 @@ def play_media():
                 data["parent_container_id"] = json_request.get("parent_container_id")
                 data["local_play_url"] = media_metadata.get("url")
                 data["content_title"] = media_metadata.get("content_title")
+                data["play_mode"] = media_metadata.get("play_mode")
+                data["tag_list"] = media_metadata.get("tag_list")
             except Exception as e:
                 print("Exception class: ", e.__class__)
                 print(f"ERROR: {e}")
@@ -444,23 +446,27 @@ def play_random_container_content():
 @main_bp.route(APIEndpoints.GET_NEXT_MEDIA.value, methods=['POST'])
 def get_next_media():
     data = {}
+    media_metadata = {}
     if json_request := request.get_json():
+        db_connection = DBHandler()
         try:
+            db_connection.open()
             if json_request.get("content_id") and json_request.get("parent_container_id"):
-                db_connection = DBHandler()
-                db_connection.open()
                 media_metadata = db_connection.get_next_content_in_container(json_request)
-                db_connection.close()
-                data["id"] = media_metadata.get("id")
-                data["parent_container_id"] = json_request.get("parent_container_id")
-                data["local_play_url"] = media_metadata.get("url")
-                data["content_title"] = media_metadata.get("content_title")
+            elif json_request.get("play_mode") == "play_random_content_with_tag":
+                media_metadata = db_connection.get_random_content_with_tag(json_request.get("tag_list"))
             else:
                 print(f"content_id not provided: {json_request}")
+            data["id"] = media_metadata.get("id")
+            data["parent_container_id"] = json_request.get("parent_container_id")
+            data["local_play_url"] = media_metadata.get("url")
+            data["content_title"] = media_metadata.get("content_title")
         except Exception as e:
             print("Exception class: ", e.__class__)
             print(f"ERROR: {e}")
             print(traceback.print_exc())
+        finally:
+            db_connection.close()
     return data, 200
 
 
