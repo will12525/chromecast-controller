@@ -1,5 +1,6 @@
 import pathlib
 import random
+import traceback
 
 from app.database.db_access import DBConnection
 from app.database import db_queries
@@ -60,10 +61,10 @@ class DBHandler(DBConnection):
         return self.get_row_id(db_queries.GET_USER_TAGS_INFO_ID, tag)
 
     def insert_tag(self, tag):
-        if tag_id := self.add_data_to_db(db_queries.SET_USER_TAGS_INFO_TABLE, tag):
-            tag["id"] = tag_id
-        else:
+        tag["id"] = self.add_data_to_db(db_queries.SET_USER_TAGS_INFO_TABLE, tag)
+        if not tag["id"]:
             tag["id"] = self.get_tag_id(tag)
+        return tag["id"]
 
     def add_tag_to_container(self, params):
         self.add_data_to_db(db_queries.SET_USER_TAGS_CONTAINER_INFO_TABLE, params)
@@ -74,7 +75,7 @@ class DBHandler(DBConnection):
             params)
 
     def add_tag_to_content(self, params):
-        self.add_data_to_db(db_queries.SET_USER_TAGS_CONTENT_INFO_TABLE, params)
+        return self.add_data_to_db(db_queries.SET_USER_TAGS_CONTENT_INFO_TABLE, params)
 
     def remove_tag_from_content(self, params):
         self.add_data_to_db(
@@ -186,6 +187,30 @@ class DBHandler(DBConnection):
         for container in self.get_data_from_db(container_query, {"id": container_id}):
             self.collect_all_sub_content(container.get("id"), sub_content_list)
 
+    def get_all_content_with_tags(self, tags_to_find, sub_content_list):
+        # The list provided by your user
+        # 1. Generate placeholders: ":tag0, :tag1, :tag2"
+        placeholders = ", ".join([f":t{i}" for i in range(len(tags_to_find))])
+
+        # 2. Map those placeholders to the actual values in a dictionary
+        # e.g., {"t0": "Action", "t1": "Sci-Fi", ...}
+        params = {f"t{i}": tag for i, tag in enumerate(tags_to_find)}
+
+        # 3. Construct the query using the generated placeholders
+        # We use DISTINCT to ensure a piece of content isn't listed twice
+        # if it matches multiple tags in your list.
+        tag_query = f"""
+        SELECT DISTINCT c.*
+        FROM content c
+        JOIN user_tags_content utc ON c.id = utc.content_id
+        JOIN user_tags ut ON utc.user_tags_id = ut.id
+        WHERE ut.tag_title IN ({placeholders})
+        ORDER BY c.content_title ASC;
+        """
+
+        # 4. Execute using your existing helper method
+        sub_content_list.extend(self.get_data_from_db(tag_query, params))
+
     def get_next_content_in_container(self, json_request):
         sub_content_list = []
         next_content_id = None
@@ -218,6 +243,15 @@ class DBHandler(DBConnection):
             content_id = random.choice(sub_content_list).get("id")
             media_metadata = self.get_content_info(content_id)
             media_metadata["parent_container_id"] = parent_container_id
+            return media_metadata
+
+    def get_random_content_with_tag(self, tag_list):
+        sub_content_list = []
+        self.get_all_content_with_tags(tag_list, sub_content_list)
+        if sub_content_list:
+            content_id = random.choice(sub_content_list).get("id")
+            media_metadata = self.get_content_info(content_id)
+            media_metadata["tag_list"] = tag_list
             return media_metadata
 
     def get_previous_content_in_container(self, json_request):
@@ -385,9 +419,17 @@ class DBHandler(DBConnection):
             for container in ret_data.get("containers"):
                 if container.get("img_src"):
                     for media_directory in self.get_all_content_directory_info():
-                        img_path = pathlib.Path(f'{media_directory.get("content_src")}{container.get("img_src")}')
-                        if img_path.exists():
-                            container["img_url"] = f'{media_directory.get("content_url")}{container.get("img_src")}'
+                        try:
+                            img_path = pathlib.Path(f'{media_directory.get("content_src")}{container.get("img_src")}')
+                            if img_path.exists():
+                                container["img_url"] = f'{media_directory.get("content_url")}{container.get("img_src")}'
+                        except Exception as e:
+                            print("Exception class: ", e.__class__)
+                            print(f"ERROR: {e}")
+                            print(traceback.print_exc())
+                            print(container)
+                            container["img_url"] = ""
+
         if not container_txt_search:
             ret_data["content"] = self.query_content(tag_list, container_dict, content_txt_search)
         if container_id := container_dict.get("container_id"):

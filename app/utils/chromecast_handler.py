@@ -58,6 +58,17 @@ class MyMediaDevice:
             self.play_media_info(media_metadata)
             return media_metadata
 
+    def play_random_content_with_tag(self, json_request):
+        db_connection = DBHandler()
+        db_connection.open()
+        media_metadata = db_connection.get_content_info(json_request.get("content_id"))
+        db_connection.close()
+
+        if media_metadata:
+            media_metadata["play_mode"] = "play_random_content_with_tag"
+            self.play_media_info(media_metadata)
+            return media_metadata
+
     def play_random_container_content(self, json_request):
         db_connection = DBHandler()
         db_connection.open()
@@ -71,11 +82,16 @@ class MyMediaDevice:
     def play_next_episode(self):
         media_info = None
         if self.status and (media_metadata := self.status.media_metadata):
-            current_media_data = {"content_id": media_metadata.get("id"),
-                                  "parent_container_id": media_metadata.get("parent_container_id")}
             db_connection = DBHandler()
             db_connection.open()
-            media_info = db_connection.get_next_content_in_container(current_media_data)
+            if media_metadata.get("play_mode") == "play_random_content_with_tag":
+                media_info = db_connection.get_random_content_in_container(media_metadata)
+                media_info["play_mode"] = "play_random_content_with_tag"
+            else:
+                current_media_data = {"content_id": media_metadata.get("id"),
+                                      "parent_container_id": media_metadata.get("parent_container_id")}
+
+                media_info = db_connection.get_next_content_in_container(current_media_data)
             db_connection.close()
 
         if media_info:
@@ -99,7 +115,7 @@ class MyMediaDevice:
     def play_media_info(self, media_metadata):
         if media_metadata:
             self.media_controller.play_media(media_metadata.get("url"), self.DEFAULT_MEDIA_TYPE,
-                                             title=media_metadata.get("content_src"),
+                                             title=media_metadata.get("content_title"),
                                              metadata=media_metadata)
             self.media_controller.block_until_active()
 
@@ -157,7 +173,7 @@ class ChromecastHandler(threading.Thread):
     last_scanned_devices = []
     last_scan_time = 0
 
-    run_update = False
+    run_update = True
 
     def __init__(self):
         threading.Thread.__init__(self, daemon=True)
@@ -215,9 +231,10 @@ class ChromecastHandler(threading.Thread):
 
     def play_from_sql(self, content_data):
         if self.media_controller:
-            self.media_controller.play_episode_from_sql(content_data)
-            return True
-        return False
+            if content_data.get("parent_container_id") is None and content_data.get("tag_list"):
+                return self.media_controller.play_random_content_with_tag(content_data)
+            else:
+                return self.media_controller.play_episode_from_sql(content_data)
 
     def play_random_container_content(self, json_request):
         if self.media_controller:
@@ -235,8 +252,6 @@ class ChromecastHandler(threading.Thread):
                 self.disconnect_chromecast()
 
     def run(self):
-        self.run_update = True
-        self.scan_for_chromecasts()
         while self.run_update:
             try:
                 if time.time() - self.last_scan_time > self.SCAN_INTERVAL:

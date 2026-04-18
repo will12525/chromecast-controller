@@ -110,8 +110,8 @@ def download_image(json_request):
 
 
 class BackEndHandler:
+    _chromecast_handler = None
     startup_sha = None
-    chromecast_handler = None
     editor_thread = mp4_splitter.SubclipThreadHandler()
     media_scan_in_progress = False
     transfer_in_progress = False
@@ -120,7 +120,14 @@ class BackEndHandler:
         repo = git.Repo(search_parent_directories=True)
         self.startup_sha = repo.head.object.hexsha
         print(self.startup_sha)
-        self.chromecast_handler = ChromecastHandler()
+        self.chromecast = self.get_chromecast()
+
+    @classmethod
+    def get_chromecast(cls):
+        if cls._chromecast_handler is None:
+            cls._chromecast_handler = ChromecastHandler()
+            cls._chromecast_handler.start()
+        return cls._chromecast_handler
 
     def get_startup_sha(self):
         return self.startup_sha
@@ -128,35 +135,34 @@ class BackEndHandler:
     def start(self):
         setup_db_thread = threading.Thread(target=setup_db, args=(), daemon=True)
         setup_db_thread.start()
-        self.chromecast_handler.start()
         return setup_db_thread
 
     def get_chromecast_scan_list(self):
-        return self.chromecast_handler.get_scan_list()
+        return self.chromecast.get_scan_list()
 
     def get_chromecast_device_id(self):
-        return self.chromecast_handler.get_chromecast_id()
+        return self.chromecast.get_chromecast_id()
 
     def seek_media_time(self, media_time):
-        self.chromecast_handler.seek_media_time(media_time)
+        self.chromecast.seek_media_time(media_time)
 
     def send_chromecast_cmd(self, cmd):
-        self.chromecast_handler.send_command(cmd)
+        self.chromecast.send_command(cmd)
 
     def connect_chromecast(self, device_id_str):
-        return self.chromecast_handler.connect_chromecast(device_id_str)
+        return self.chromecast.connect_chromecast(device_id_str)
 
     def disconnect_chromecast(self):
-        self.chromecast_handler.disconnect_chromecast()
+        self.chromecast.disconnect_chromecast()
 
     def get_chromecast_media_controller_metadata(self):
-        return self.chromecast_handler.get_media_controller_metadata()
+        return self.chromecast.get_media_controller_metadata()
 
     def play_media_on_chromecast(self, content_data):
-        return self.chromecast_handler.play_from_sql(content_data)
+        return self.chromecast.play_from_sql(content_data)
 
     def play_random_container_content(self, json_request):
-        return self.chromecast_handler.play_random_container_content(json_request)
+        return self.chromecast.play_random_container_content(json_request)
 
     def scan_media_directories(self):
         try:

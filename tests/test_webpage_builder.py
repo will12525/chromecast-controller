@@ -61,9 +61,9 @@ class TestWebpageBuilder(TestCase):
         self.app.jinja_env.trim_blocks = True
         register_blueprints(self.app)
         bh = backend_handler.BackEndHandler()
-        setup_thread = bh.start()
+        setup_db_thread = bh.start()
         # Wait for the setup_thread to finish so the database is fully populated for testing
-        setup_thread.join()
+        setup_db_thread.join()
         assert self.DB_PATH.exists()
 
 
@@ -132,6 +132,75 @@ class TestQueryMediaDB(TestWebpageBuilder):
         assert response.status_code == 200
         data = response.get_json()
         print(data)
+
+    def test_play_media_with_tag(self):
+        client = self.app.test_client()
+        payload_add_tag = {
+            "tag_title": "turtles",
+        }
+        payload_add_media_to_tag_list = [
+            {
+                "container_id": None,
+                "content_id": 13,
+                "tag_title": "turtles"
+            },
+            {
+                "container_id": None,
+                "content_id": 8,
+                "tag_title": "turtles"
+            },
+            {
+                "container_id": None,
+                "content_id": 14,
+                "tag_title": "turtles"
+            },
+            {
+                "container_id": None,
+                "content_id": 3,
+                "tag_title": "turtles"
+            }]
+        # payload_connect_chromecast = {"chromecast_id": "Bedroom"}
+        payload_connect_chromecast = {"chromecast_id": "Family Room TV"}
+        payload = {
+            "tag_list": ["book", "turtles"],
+            "content_id": 14,
+            "content_type": None,
+            "parent_container_id": None
+        }
+        expected_response_ids = [13, 8, 14, 3]
+        response = client.post(
+            "/add_new_tag",
+            json=payload_add_tag
+        )
+        assert response.status_code == 200
+        print(f"Data Response: {response.get_json()}")
+        for element in payload_add_media_to_tag_list:
+            response = client.post(
+                "/add_tag_to_content",
+                json=element
+            )
+            assert response.status_code == 200
+            print(f"Data Response: {response.get_json()}")
+        # The client handles the request context for you
+        response = client.post(
+            main_routes.APIEndpoints.CONNECT_CHROMECAST.value,
+            json=payload_connect_chromecast
+        )
+        assert response.status_code == 200
+        response_json = response.get_json()
+        print(f"Data Response: {response_json}")
+        assert response_json == payload_connect_chromecast
+        time.sleep(5)
+        # The client handles the request context for you
+        response = client.post(
+            main_routes.APIEndpoints.PLAY_MEDIA.value,
+            json=payload
+        )
+
+        assert response.status_code == 200
+        response_json = response.get_json()
+        print(f"Data Response: {response_json}")
+        assert response_json.get("id") in expected_response_ids
 
     def test_update_media_metadata_container(self):
         client = self.app.test_client()

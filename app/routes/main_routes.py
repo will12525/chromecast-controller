@@ -282,26 +282,29 @@ def get_tag_list():
 @main_bp.route("/add_new_tag", methods=["POST"])
 def add_new_tag():
     media_metadata = {}
-    if json_request := request.get_json():
-        if json_request.get("tag_title"):
-            db_connection = DBHandler()
-            db_connection.open()
-            db_connection.insert_tag(json_request)
-            media_metadata["tag_list"] = db_connection.get_all_tags()
-            db_connection.close()
+    error_code = 422
+    if (json_request := request.get_json()) and json_request.get("tag_title"):
+        db_connection = DBHandler()
+        db_connection.open()
+        if db_connection.insert_tag(json_request):
+            error_code = 200
+        media_metadata["tag_list"] = db_connection.get_all_tags()
+        db_connection.close()
 
-    return media_metadata, 200
+    return media_metadata, error_code
 
 
 @main_bp.route("/add_tag_to_content", methods=["POST"])
 def add_tag_to_content():
     media_metadata = {}
+    error_code = 200
     if json_request := request.get_json():
         db_connection = DBHandler()
         db_connection.open()
         if json_request.get("tag_title") and json_request.get("content_id"):
             json_request["user_tags_id"] = db_connection.get_tag_id(json_request)
-            db_connection.add_tag_to_content(json_request)
+            if not db_connection.add_tag_to_content(json_request):
+                error_code = 422
             media_metadata.update(db_connection.query_content_tags(json_request.get("content_id")))
             media_metadata["tag_title"] = json_request.get("tag_title")
         elif json_request.get("tag_title") and json_request.get("container_id"):
@@ -311,7 +314,7 @@ def add_tag_to_content():
             media_metadata["tag_title"] = json_request.get("tag_title")
         db_connection.close()
 
-    return media_metadata, 200
+    return media_metadata, error_code
 
 
 @main_bp.route("/remove_tag_from_content", methods=["POST"])
@@ -406,15 +409,21 @@ def play_media():
     data = {}
     if json_request := request.get_json():
         if json_request.get("content_id"):
-            if not bh.play_media_on_chromecast(json_request):
-                db_connection = DBHandler()
-                db_connection.open()
-                media_metadata = db_connection.get_content_info(json_request.get("content_id"))
-                db_connection.close()
+            try:
+                media_metadata = bh.play_media_on_chromecast(json_request)
+                if not media_metadata:
+                    db_connection = DBHandler()
+                    db_connection.open()
+                    media_metadata = db_connection.get_content_info(json_request.get("content_id"))
+                    db_connection.close()
                 data["id"] = media_metadata.get("id")
                 data["parent_container_id"] = json_request.get("parent_container_id")
                 data["local_play_url"] = media_metadata.get("url")
                 data["content_title"] = media_metadata.get("content_title")
+            except Exception as e:
+                print("Exception class: ", e.__class__)
+                print(f"ERROR: {e}")
+                print(traceback.print_exc())
         else:
             print(f"Media ID not provided: {json_request}")
     return data, 200

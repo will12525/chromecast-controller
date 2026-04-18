@@ -668,7 +668,8 @@ async function play_media(content_id, parent_container_id=null, content_type=nul
     let data = {
         "content_id": content_id,
         "parent_container_id": parent_container_id,
-        "content_type": content_type
+        "content_type": content_type,
+        "tag_list": get_selected_checkboxes(document.getElementById("tag_list_group"))
     };
     // Send POST request
     let response = await fetch(url, {
