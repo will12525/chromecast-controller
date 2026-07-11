@@ -1,12 +1,19 @@
 {
-  "mode": "SERVER",
-  "editor_raw_folder": "/media/raw_files",
-  "editor_raw_url": "http://localhost:8002/",
-  "server_url": "http://localhost:5001/",
-  "media_folders": [
-    {
-      "content_src": "/media/library/",
-      "content_url": "http://localhost:8000"
-    }
-  ]
+    "mode": "SERVER",
+    "editor_raw_folder": "/media/ssd_splitter/splitter/raw_files/",
+    "editor_raw_url": "http://192.168.1.175:8001/",
+    "media_folders": [
+        {
+            "content_src": "/media/raid/",
+            "content_url": "http://192.168.1.175:8000/"
+        },
+        {
+            "content_src": "/media/storage_2/",
+            "content_url": "http://192.168.1.175:8002/"
+        },
+        {
+            "content_src": "/media/storage_3/",
+            "content_url": "http://192.168.1.175:8003/"
+        }
+    ]
 }

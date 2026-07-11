@@ -22,7 +22,7 @@ def print_db_traceback(error, message):
 
 
 class DBConnection:
-    VERSION = 1
+    VERSION = 2
     DB_FILE_NAME = "media_metadata.db"
 
     connection = None
@@ -109,16 +109,27 @@ class DBConnection:
     def get_row_id(self, query: str, params):
         return self.get_row_item(query, params, "id")
 
+    def table_has_column(self, table_name, column_name):
+        rows = self.get_data_from_db(f"PRAGMA table_info({table_name});")
+        return any(row.get("name") == column_name for row in rows)
+
     def check_db_version(self):
-        if not (
-                version := self.get_data_from_db_first_result(queries.version_info_query)
-        ):
+        """Return the stored schema version as an int (0 if missing)."""
+        version_row = self.get_data_from_db_first_result(queries.version_info_query)
+        if not version_row:
             self.execute_db_script([queries.sql_create_version_info_table])
             self.add_data_to_db(
-                queries.sql_insert_version_info_table, {"version_info": self.VERSION}
+                queries.sql_insert_version_info_table, {"version_info": 1}
             )
-            print(
-                f"Version: {self.get_data_from_db_first_result(queries.version_info_query)}"
-            )
-            version = self.VERSION
-        return version
+            return 1
+        version = version_row.get("version", 1)
+        try:
+            return int(version)
+        except (TypeError, ValueError):
+            return 1
+
+    def set_db_version(self, version):
+        self.add_data_to_db(
+            "UPDATE version_info SET version = :version_info;",
+            {"version_info": version},
+        )

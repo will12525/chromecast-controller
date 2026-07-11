@@ -1,6 +1,7 @@
 import pathlib
 import random
 import traceback
+from datetime import datetime, timezone
 
 from app.database.db_access import DBConnection
 from app.database import db_queries
@@ -8,6 +9,18 @@ from app.database.media_metadata_collector import collect_mp4_files
 
 SEASON_TITLE_BUILDER = f"'Season' || ' ' || season_index AS season_title"
 SORT_ALPHABETICAL = "GLOB '[A-Za-z]*'"
+
+# Library type key -> tag used by the scanner
+LIBRARY_TAG_MAP = {
+    "tv": "tv show",
+    "movies": "movie",
+    "books": "book",
+}
+LIBRARY_TITLES = {
+    "tv": "TV Shows",
+    "movies": "Movies",
+    "books": "Books",
+}
 
 
 def build_tag_clause(table_name, tag_list, params):
@@ -18,31 +31,48 @@ def build_tag_clause(table_name, tag_list, params):
     return f"INNER JOIN user_tags_content ON {table_name}.id = user_tags_content.{table_name}_id INNER JOIN user_tags ON user_tags_content.user_tags_id = user_tags.id WHERE user_tags.tag_title IN ({placeholders}) GROUP BY {table_name}.id"
 
 
+def utc_now_iso():
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+
+
 class DBHandler(DBConnection):
 
     def update_database(self, current_version):
-        """Updates the database schema to the latest version."""
-        pass
+        """Updates the database schema from current_version toward VERSION."""
+        if current_version < 2:
+            self._migrate_to_v2()
+
+    def _migrate_to_v2(self):
+        """Add playback progress columns for Continue Watching shelves."""
+        migrations = [
+            ("last_position", "ALTER TABLE content ADD COLUMN last_position REAL DEFAULT 0;"),
+            ("last_played_at", "ALTER TABLE content ADD COLUMN last_played_at text DEFAULT '';"),
+            ("last_duration", "ALTER TABLE content ADD COLUMN last_duration REAL DEFAULT 0;"),
+        ]
+        for column_name, alter_sql in migrations:
+            if not self.table_has_column("content", column_name):
+                self.execute_db_script([alter_sql])
+                print(f"Migrated content: added {column_name}")
 
     def create_db(self):
+        # Always ensure base tables exist (CREATE IF NOT EXISTS)
+        db_table_creation_script = [
+            db_queries.CREATE_CONTAINER_INFO_TABLE,
+            db_queries.CREATE_CONTENT_INFO_TABLE,
+            db_queries.CREATE_CONTAINER_CONTENT_INFO_TABLE,
+            db_queries.CREATE_CONTAINER_CONTAINER_INFO_TABLE,
+            db_queries.CREATE_CONTENT_DIRECTORY_INFO_TABLE,
+            db_queries.CREATE_USER_TAGS_INFO_TABLE,
+            db_queries.CREATE_USER_TAGS_CONTENT_INFO_TABLE,
+        ]
+        self.execute_db_script(db_table_creation_script)
+
         db_version = self.check_db_version()
         print(f"DB COMPARE: Current: {db_version}, Expected: {self.VERSION}")
-        if self.VERSION != db_version:
-            # Run db update procedure
+        if db_version < self.VERSION:
             self.update_database(db_version)
-        # elif self.VERSION == db_version:
-        #     pass
-        else:
-            db_table_creation_script = [
-                db_queries.CREATE_CONTAINER_INFO_TABLE,
-                db_queries.CREATE_CONTENT_INFO_TABLE,
-                db_queries.CREATE_CONTAINER_CONTENT_INFO_TABLE,
-                db_queries.CREATE_CONTAINER_CONTAINER_INFO_TABLE,
-                db_queries.CREATE_CONTENT_DIRECTORY_INFO_TABLE,
-                db_queries.CREATE_USER_TAGS_INFO_TABLE,
-                db_queries.CREATE_USER_TAGS_CONTENT_INFO_TABLE
-            ]
-            self.execute_db_script(db_table_creation_script)
+            self.set_db_version(self.VERSION)
+            print(f"DB migrated to version {self.VERSION}")
 
     def add_content_directory_info(self, content_directory_info):
         if media_directory_id := self.add_data_to_db(db_queries.SET_CONTENT_DIRECTORY_INFO_TABLE,
@@ -275,7 +305,113 @@ class DBHandler(DBConnection):
             return next_content_info
 
     def update_content_play_count(self, content_id):
-        self.add_data_to_db(db_queries.UPDATE_MEDIA_PLAY_COUNT, {"id": content_id})
+        self.add_data_to_db(
+            db_queries.UPDATE_CONTENT_PLAYED,
+            {"id": content_id, "last_played_at": utc_now_iso()},
+        )
+
+    def update_playback_progress(self, content_id, position, duration=None):
+        """Persist resume position for Continue Watching."""
+        if not content_id:
+            return False
+        try:
+            position = float(position or 0)
+        except (TypeError, ValueError):
+            return False
+        try:
+            duration_val = float(duration) if duration not in (None, "") else 0.0
+        except (TypeError, ValueError):
+            duration_val = 0.0
+        self.add_data_to_db(
+            db_queries.UPDATE_CONTENT_PLAYBACK_PROGRESS,
+            {
+                "id": content_id,
+                "last_position": position,
+                "last_duration": duration_val,
+                "last_played_at": utc_now_iso(),
+            },
+        )
+        return True
+
+    def _resolve_content_img_urls(self, items):
+        """Fill img_url from content_directory when missing or empty."""
+        directories = self.get_all_content_directory_info()
+        for item in items:
+            if item.get("img_url") and item.get("img_src"):
+                # Prefer filesystem-verified URL when img_src is relative
+                pass
+            img_src = item.get("img_src") or ""
+            if not img_src:
+                item["img_url"] = item.get("img_url") or ""
+                continue
+            for media_directory in directories:
+                try:
+                    img_path = pathlib.Path(
+                        f'{media_directory.get("content_src")}{img_src}'
+                    )
+                    if img_path.exists():
+                        item["img_url"] = f'{media_directory.get("content_url")}{img_src}'
+                        break
+                except Exception:
+                    continue
+            if not item.get("img_url") and img_src:
+                # Fall back to directory join from content row if present
+                for media_directory in directories:
+                    item["img_url"] = f'{media_directory.get("content_url")}/{img_src}'.replace(
+                        "//", "/"
+                    ).replace(":/", "://")
+                    break
+        return items
+
+    def list_continue_watching(self, limit=20):
+        items = self.get_data_from_db(
+            db_queries.LIST_CONTINUE_WATCHING, {"limit": limit}
+        )
+        return self._resolve_content_img_urls(items)
+
+    def list_recently_played(self, limit=20):
+        items = self.get_data_from_db(
+            db_queries.LIST_RECENTLY_PLAYED, {"limit": limit}
+        )
+        return self._resolve_content_img_urls(items)
+
+    def list_recently_added(self, limit=20):
+        items = self.get_data_from_db(
+            db_queries.LIST_RECENTLY_ADDED, {"limit": limit}
+        )
+        return self._resolve_content_img_urls(items)
+
+    def count_by_tag(self, tag_title, for_containers=False):
+        query = (
+            db_queries.COUNT_CONTAINERS_WITH_TAG
+            if for_containers
+            else db_queries.COUNT_CONTENT_WITH_TAG
+        )
+        row = self.get_data_from_db_first_result(query, {"tag_title": tag_title})
+        return int(row.get("count") or 0)
+
+    def get_library_summaries(self):
+        libraries = []
+        for key, tag in LIBRARY_TAG_MAP.items():
+            # TV is container-oriented; movies/books are content
+            for_containers = key == "tv"
+            libraries.append(
+                {
+                    "key": key,
+                    "title": LIBRARY_TITLES[key],
+                    "tag": tag,
+                    "count": self.count_by_tag(tag, for_containers=for_containers),
+                }
+            )
+        return libraries
+
+    def get_library_home(self, limit=20):
+        return {
+            "continue_watching": self.list_continue_watching(limit=limit),
+            "recently_added": self.list_recently_added(limit=limit),
+            "recently_played": self.list_recently_played(limit=limit),
+            "libraries": self.get_library_summaries(),
+        }
 
     def update_metadata(self, container_dict):
         if container_dict.get("container_id"):
@@ -412,32 +548,49 @@ class DBHandler(DBConnection):
             params
         )
 
+    def _attach_container_img_urls(self, containers):
+        directories = self.get_all_content_directory_info()
+        for container in containers or []:
+            if not container.get("img_src"):
+                container["img_url"] = container.get("img_url") or ""
+                continue
+            for media_directory in directories:
+                try:
+                    img_path = pathlib.Path(
+                        f'{media_directory.get("content_src")}{container.get("img_src")}'
+                    )
+                    if img_path.exists():
+                        container["img_url"] = (
+                            f'{media_directory.get("content_url")}{container.get("img_src")}'
+                        )
+                        break
+                except Exception as e:
+                    print("Exception class: ", e.__class__)
+                    print(f"ERROR: {e}")
+                    print(traceback.print_exc())
+                    print(container)
+                    container["img_url"] = ""
+        return containers
+
     def query_db(self, tag_list, container_dict, container_txt_search, content_txt_search):
         ret_data = {}
-        if not content_txt_search:
-            ret_data["containers"] = self.query_container(tag_list, container_dict, container_txt_search)
-            for container in ret_data.get("containers"):
-                if container.get("img_src"):
-                    for media_directory in self.get_all_content_directory_info():
-                        try:
-                            img_path = pathlib.Path(f'{media_directory.get("content_src")}{container.get("img_src")}')
-                            if img_path.exists():
-                                container["img_url"] = f'{media_directory.get("content_url")}{container.get("img_src")}'
-                        except Exception as e:
-                            print("Exception class: ", e.__class__)
-                            print(f"ERROR: {e}")
-                            print(traceback.print_exc())
-                            print(container)
-                            container["img_url"] = ""
+        # When only one search field is set, keep legacy single-dimension browse.
+        # When both are set (unified search) or neither is, return both kinds.
+        include_containers = (not content_txt_search) or bool(container_txt_search)
+        include_content = (not container_txt_search) or bool(content_txt_search)
 
-        if not container_txt_search:
-            ret_data["content"] = self.query_content(tag_list, container_dict, content_txt_search)
+        if include_containers:
+            ret_data["containers"] = self.query_container(
+                tag_list, container_dict, container_txt_search
+            )
+            self._attach_container_img_urls(ret_data.get("containers"))
+
+        if include_content:
+            ret_data["content"] = self.query_content(
+                tag_list, container_dict, content_txt_search
+            )
         if container_id := container_dict.get("container_id"):
             ret_data["parent_containers"] = self.get_top_container(container_id)
-            for container in ret_data["parent_containers"]:
-                if container.get("img_src"):
-                    for media_directory in self.get_all_content_directory_info():
-                        if pathlib.Path(f'{media_directory.get("content_src")}{container.get("img_src")}').exists():
-                            container["img_url"] = f'{media_directory.get("content_url")}{container.get("img_src")}'
+            self._attach_container_img_urls(ret_data.get("parent_containers"))
 
         return ret_data

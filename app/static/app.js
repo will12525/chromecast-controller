@@ -5,6 +5,20 @@ let modal_metadata_save_click_handler = (event) => {
 let modal_metadata_select_tag_click_handler = (event) => {
 };
 
+/** Active library key: null = home, or tv|movies|books */
+let currentLibraryKey = null;
+let librarySearchDebounce = null;
+let lastProgressPostAt = 0;
+const PROGRESS_POST_INTERVAL_MS = 10000;
+const RESUME_MIN_SECONDS = 30;
+const RESUME_MAX_FRACTION = 0.9;
+
+const LIBRARY_TAG_MAP = {
+    tv: "tv show",
+    movies: "movie",
+    books: "book",
+};
+
 String.prototype.toHHMMSS = function () {
     var sec_num = parseInt(this, 10);
     var hours   = Math.floor(sec_num / 3600);
@@ -83,29 +97,45 @@ async function getChromecastList() {
         let response_data = await response.json();
         if (response_data["scanned_devices"] !== undefined)
         {
-            const chromecasts = [];
+            const scanned = response_data["scanned_devices"] || [];
             const dropdown_list = document.getElementById("dropdown_scanned_chromecasts");
-            const listItems = dropdown_list.getElementsByTagName('li');
-            // The dropdown list has a divider and disconnect button
-            for (let i = 0; i <= listItems.length - 3; i++) {
-                chromecasts.push(listItems[i].textContent);
+            // Remove prior device entries; keep trailing divider / disconnect / local controls
+            const keepFrom = Array.from(dropdown_list.children).findIndex(
+                (li) => li.querySelector("hr.dropdown-divider") !== null
+            );
+            if (keepFrom > 0) {
+                while (keepFrom > 0 && dropdown_list.children.length > keepFrom) {
+                    // children before first divider are devices
+                    break;
+                }
             }
-            for (const device of response_data["scanned_devices"]) {
-               if (!chromecasts.includes(device)) {
-                   var li = document.createElement("li");
-                   var a_element = document.createElement("a");
-                   a_element.appendChild(document.createTextNode(device));
-                   a_element.setAttribute("class", "dropdown-item")
-                   a_element.setAttribute("value", device)
-                   a_element.addEventListener("click", connectChromecast.bind(null, device));
-                   li.appendChild(a_element)
-                   dropdown_list.prepend(li);
-               }
+            // Rebuild device list: strip items before the first divider
+            const staticItems = [];
+            let hitDivider = false;
+            Array.from(dropdown_list.children).forEach((li) => {
+                if (!hitDivider && li.querySelector("hr.dropdown-divider")) {
+                    hitDivider = true;
+                }
+                if (hitDivider) {
+                    staticItems.push(li);
+                }
+            });
+            dropdown_list.innerHTML = "";
+            for (const device of scanned) {
+                var li = document.createElement("li");
+                var a_element = document.createElement("a");
+                a_element.appendChild(document.createTextNode(device));
+                a_element.setAttribute("class", "dropdown-item");
+                a_element.setAttribute("value", device);
+                a_element.addEventListener("click", connectChromecast.bind(null, device));
+                li.appendChild(a_element);
+                dropdown_list.appendChild(li);
             }
+            staticItems.forEach((li) => dropdown_list.appendChild(li));
         }
         if (response_data["connected_device"] !== undefined)
         {
-            document.getElementById("connected_chromecast_id").innerHTML = response_data["connected_device"];
+            document.getElementById("connected_chromecast_id").innerHTML = response_data["connected_device"] || "Local";
         }
     }
 };
@@ -605,10 +635,20 @@ function get_selected_checkboxes(listGroup) {
 }
 
 async function query_db_get_all_filters(event) {
+    const searchEl = document.getElementById("library_search");
+    const search = searchEl ? searchEl.value.trim() : "";
+    const containerSearch = document.getElementById("container_txt_search");
+    const contentSearch = document.getElementById("content_txt_search");
+    if (containerSearch) {
+        containerSearch.value = search;
+    }
+    if (contentSearch) {
+        contentSearch.value = search;
+    }
     let data = {
         "tag_list": get_selected_checkboxes(document.getElementById("tag_list_group")),
-        "container_txt_search": document.getElementById("container_txt_search").value,
-        "content_txt_search": document.getElementById("content_txt_search").value,
+        "container_txt_search": search || null,
+        "content_txt_search": search || null,
         "container_dict": {}
     };
     queryDB(data)
@@ -640,6 +680,42 @@ async function get_next_media(event) {
         }
     }
 };
+function shouldResume(position, duration) {
+    const pos = parseFloat(position) || 0;
+    const dur = parseFloat(duration) || 0;
+    if (pos <= RESUME_MIN_SECONDS) {
+        return false;
+    }
+    if (dur > 0 && pos / dur >= RESUME_MAX_FRACTION) {
+        return false;
+    }
+    return true;
+}
+
+async function postPlaybackProgress(contentId, position, duration) {
+    if (!contentId) {
+        return;
+    }
+    const now = Date.now();
+    if (now - lastProgressPostAt < PROGRESS_POST_INTERVAL_MS) {
+        return;
+    }
+    lastProgressPostAt = now;
+    try {
+        await fetch("/playback_progress", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                content_id: parseInt(contentId, 10),
+                position: position,
+                duration: duration || 0,
+            }),
+        });
+    } catch (error) {
+        console.error("progress post failed", error);
+    }
+}
+
 async function update_local_media_player(response_data) {
     const videoPlayer = document.getElementById('local_video_player');
     const videoSource = document.getElementById('local_video_player_src');
@@ -664,9 +740,27 @@ async function update_local_media_player(response_data) {
         if (response_data["content_title"] !== undefined) {
             document.getElementById('content_title').innerHTML = response_data['content_title'];
         }
+        const resumeAt = response_data["last_position"];
+        const resumeDuration = response_data["last_duration"];
+        videoPlayer.dataset.resumeAt = shouldResume(resumeAt, resumeDuration) ? String(resumeAt) : "";
         videoPlayer.load();
         videoPlayer.scrollIntoView();
-        videoPlayer.play();
+        const onLoaded = () => {
+            videoPlayer.removeEventListener("loadedmetadata", onLoaded);
+            if (videoPlayer.dataset.resumeAt) {
+                try {
+                    videoPlayer.currentTime = parseFloat(videoPlayer.dataset.resumeAt);
+                } catch (e) {
+                    console.warn("resume seek failed", e);
+                }
+            }
+            videoPlayer.play();
+        };
+        videoPlayer.addEventListener("loadedmetadata", onLoaded);
+        // Fallback if metadata already available
+        if (videoPlayer.readyState >= 1) {
+            onLoaded();
+        }
     } catch (error) {
         console.error('Error playing video:', error);
     }
@@ -809,6 +903,20 @@ function edit_metadata_modal_open(data, title, img_src, description, tags, refer
     save_button.addEventListener('click', modal_metadata_save_click_handler);
 }
 
+function showScanToast(message, isError) {
+    const toast = document.getElementById("scan_toast");
+    if (!toast) {
+        return;
+    }
+    toast.hidden = false;
+    toast.classList.toggle("alert-success", !isError);
+    toast.classList.toggle("alert-danger", !!isError);
+    toast.textContent = message;
+    setTimeout(() => {
+        toast.hidden = true;
+    }, 4000);
+}
+
 async function scan_media_directories() {
     var url = "/scan_media_directories";
     let data = {};
@@ -817,12 +925,32 @@ async function scan_media_directories() {
     var button_element = document.getElementById(button_id);
 
     button_element.classList.add(disable_class);
-    // Send POST request
-    let response = await fetch(url, {
-        "method": "POST",
-        "headers": {"Content-Type": "application/json"},
-        "body": JSON.stringify(data),
-    });
+    try {
+        let response = await fetch(url, {
+            "method": "POST",
+            "headers": {"Content-Type": "application/json"},
+            "body": JSON.stringify(data),
+        });
+        let response_data = {};
+        try {
+            response_data = await response.json();
+        } catch (e) {
+            response_data = {};
+        }
+        if (response.ok) {
+            showScanToast(response_data.message || "Scan complete", false);
+            if (currentLibraryKey) {
+                load_library(currentLibraryKey);
+            } else {
+                load_library_home();
+            }
+        } else {
+            showScanToast(response_data.message || "Scan failed", true);
+        }
+    } catch (error) {
+        console.error(error);
+        showScanToast("Scan failed", true);
+    }
     button_element.classList.remove(disable_class);
 }
 
@@ -847,6 +975,13 @@ async function updateSeekSelector() {
 
                     mediaTimeOutputId.value = media_runtime + "  " + response_data?.media_title
 
+                    if (response_data.content_id && response_data.media_runtime != null) {
+                        postPlaybackProgress(
+                            response_data.content_id,
+                            response_data.media_runtime,
+                            response_data.media_duration
+                        );
+                    }
                 }
             }
         }
@@ -900,6 +1035,7 @@ async function setMediaControlButtons() {
 }
 
 async function load_container(container_id) {
+    currentLibraryKey = null;
     let data = {
         "tag_list": [],
         "container_dict": {"container_id": container_id}
@@ -908,20 +1044,220 @@ async function load_container(container_id) {
 }
 
 async function load_tv_shows() {
-    let data = {
-        "tag_list": ["tv show"],
-        "container_txt_search": document.getElementById("container_txt_search").value,
-        "container_dict": {}
-    };
-    queryDB(data)
+    load_library("tv");
 }
 async function load_movies() {
+    load_library("movies");
+}
+
+function load_library(libraryKey) {
+    currentLibraryKey = libraryKey;
+    const tag = LIBRARY_TAG_MAP[libraryKey] || libraryKey;
+    const searchEl = document.getElementById("library_search");
+    const search = searchEl ? searchEl.value.trim() : "";
+    const containerSearch = document.getElementById("container_txt_search");
+    const contentSearch = document.getElementById("content_txt_search");
+    if (containerSearch) {
+        containerSearch.value = search;
+    }
+    if (contentSearch) {
+        contentSearch.value = search;
+    }
+    // TV is container-first; movies/books are content-first. Pass both search fields.
     let data = {
-        "tag_list": ["movie"],
-        "content_txt_search": document.getElementById("content_txt_search").value,
+        "tag_list": [tag],
+        "container_txt_search": libraryKey === "tv" ? search : (search || null),
+        "content_txt_search": libraryKey !== "tv" ? search : (search || null),
         "container_dict": {}
     };
-    queryDB(data)
+    // For unified search inside a library, search both dimensions lightly
+    if (search) {
+        data.container_txt_search = search;
+        data.content_txt_search = search;
+    }
+    queryDB(data);
+}
+
+async function generate_media_container_for_shelf(content_data, media_card_template) {
+    const wrapper = document.createElement("div");
+    wrapper.className = "library-shelf-card";
+    wrapper.innerHTML = media_card_template;
+    const cardRoot = wrapper.querySelector("#content_container") || wrapper.firstElementChild;
+
+    if ("container_title" in content_data) {
+        cardRoot.dataset.containerId = content_data.container_id || content_data.id;
+        const nav = wrapper.querySelector("#content_navigator");
+        nav.textContent = content_data.container_title;
+        nav.setAttribute("href", "javascript:load_container(" + content_data.id + ")");
+    } else if ("content_title" in content_data) {
+        cardRoot.dataset.contentId = content_data.content_id || content_data.id;
+        const nav = wrapper.querySelector("#content_navigator");
+        nav.textContent = content_data.content_title;
+        nav.setAttribute(
+            "href",
+            "javascript:play_media(" + content_data.id + ", " + (content_data.parent_container_id || "null") + ")"
+        );
+    }
+    if ("play_count" in content_data && content_data.play_count == 0) {
+        wrapper.querySelector("#new_tag").hidden = false;
+    }
+    if ("user_tags" in content_data && content_data.user_tags) {
+        wrapper.querySelector("#card_tags").textContent = "Tags: " + content_data.user_tags;
+    }
+    if ("content_index" in content_data && content_data.content_index !== "" && content_data.content_index != null) {
+        wrapper.querySelector("#content_index").hidden = false;
+        wrapper.querySelector("#content_index").textContent = "Index: " + content_data.content_index;
+    }
+    wrapper.querySelector("#card_description").textContent = content_data.description || "";
+    if (content_data.img_src && content_data.img_url) {
+        wrapper.querySelector("#content_img").src = content_data.img_url;
+    }
+    wrapper.querySelector("#content_img").dataset.img_src = content_data.img_src || "";
+
+    // Progress bar for continue watching
+    const pos = parseFloat(content_data.last_position) || 0;
+    const dur = parseFloat(content_data.last_duration) || 0;
+    if (pos > 0) {
+        const pct = dur > 0 ? Math.min(100, (pos / dur) * 100) : 10;
+        const barWrap = document.createElement("div");
+        barWrap.className = "library-progress";
+        const bar = document.createElement("div");
+        bar.className = "library-progress-bar";
+        bar.style.width = pct + "%";
+        barWrap.appendChild(bar);
+        const body = wrapper.querySelector(".card-body");
+        if (body) {
+            body.appendChild(barWrap);
+        }
+    }
+    return wrapper;
+}
+
+function build_shelf_section(title, emptyMessage) {
+    const section = document.createElement("div");
+    section.className = "library-shelf col-md-12";
+    const heading = document.createElement("div");
+    heading.className = "library-shelf-title";
+    heading.textContent = title;
+    const row = document.createElement("div");
+    row.className = "library-shelf-row";
+    section.appendChild(heading);
+    section.appendChild(row);
+    section._row = row;
+    section._emptyMessage = emptyMessage;
+    return section;
+}
+
+async function render_library_home(homeData) {
+    const card_res = await fetch("static/media_card.html");
+    const media_card_template = await card_res.text();
+    const fragment = document.createDocumentFragment();
+
+    // Libraries shortcut shelf
+    const libSection = build_shelf_section("Libraries", "No libraries configured");
+    (homeData.libraries || []).forEach((lib) => {
+        const tile = document.createElement("div");
+        tile.className = "library-tile";
+        tile.innerHTML =
+            '<div class="card" style="background-color:Linen;"><div class="card-body">' +
+            '<h5 class="card-title"></h5><p class="card-text text-muted library-count"></p></div></div>';
+        tile.querySelector(".card-title").textContent = lib.title;
+        tile.querySelector(".library-count").textContent = (lib.count || 0) + " items";
+        tile.addEventListener("click", () => load_library(lib.key));
+        libSection._row.appendChild(tile);
+    });
+    fragment.appendChild(libSection);
+
+    const shelves = [
+        {key: "continue_watching", title: "Continue Watching", empty: "Nothing in progress"},
+        {key: "recently_added", title: "Recently Added", empty: "Library is empty — try Scan Media"},
+        {key: "recently_played", title: "Recently Played", empty: "Nothing played yet"},
+    ];
+
+    for (const shelf of shelves) {
+        const section = build_shelf_section(shelf.title, shelf.empty);
+        const items = homeData[shelf.key] || [];
+        if (!items.length) {
+            const empty = document.createElement("div");
+            empty.className = "library-empty";
+            empty.textContent = shelf.empty;
+            section._row.appendChild(empty);
+        } else {
+            for (const item of items) {
+                section._row.appendChild(
+                    await generate_media_container_for_shelf(item, media_card_template)
+                );
+            }
+        }
+        fragment.appendChild(section);
+    }
+
+    const mainContent = document.getElementById("mediaContentSelectDiv");
+    mainContent.innerHTML = "";
+    mainContent.appendChild(fragment);
+    const loading = document.getElementById("rainbow_loading_bar");
+    if (loading) {
+        loading.hidden = true;
+    }
+}
+
+async function load_library_home() {
+    currentLibraryKey = null;
+    const loading = document.getElementById("rainbow_loading_bar");
+    if (loading) {
+        loading.hidden = false;
+    }
+    try {
+        const response = await fetch("/library/home");
+        if (!response.ok) {
+            throw new Error("HTTP status library home: " + response.status);
+        }
+        const homeData = await response.json();
+        await render_library_home(homeData);
+    } catch (error) {
+        console.error(error);
+        if (loading) {
+            loading.hidden = true;
+        }
+    }
+}
+
+function onLibrarySearchInput() {
+    clearTimeout(librarySearchDebounce);
+    librarySearchDebounce = setTimeout(() => {
+        const searchEl = document.getElementById("library_search");
+        const search = searchEl ? searchEl.value.trim() : "";
+        if (!search) {
+            if (currentLibraryKey) {
+                load_library(currentLibraryKey);
+            } else {
+                load_library_home();
+            }
+            return;
+        }
+        // Unified search across containers + content (and optional current tags)
+        const containerSearch = document.getElementById("container_txt_search");
+        const contentSearch = document.getElementById("content_txt_search");
+        if (containerSearch) {
+            containerSearch.value = search;
+        }
+        if (contentSearch) {
+            contentSearch.value = search;
+        }
+        const tagListEl = document.getElementById("tag_list_group");
+        let tags = tagListEl ? get_selected_checkboxes(tagListEl) : [];
+        if (currentLibraryKey && LIBRARY_TAG_MAP[currentLibraryKey]) {
+            if (!tags.length) {
+                tags = [LIBRARY_TAG_MAP[currentLibraryKey]];
+            }
+        }
+        queryDB({
+            tag_list: tags,
+            container_txt_search: search,
+            content_txt_search: search,
+            container_dict: {},
+        });
+    }, 300);
 }
 
 function setup_media_page() {
@@ -939,7 +1275,42 @@ function setup_media_page() {
     {
         modal_metadata_save.addEventListener('click', modal_metadata_save_click_handler);
     }
-    load_tv_shows()
+    const librarySearch = document.getElementById("library_search");
+    if (librarySearch) {
+        librarySearch.addEventListener("input", onLibrarySearchInput);
+    }
+    const shortcuts = document.getElementById("library_shortcuts");
+    if (shortcuts) {
+        shortcuts.querySelectorAll("[data-library]").forEach((btn) => {
+            btn.addEventListener("click", () => load_library(btn.dataset.library));
+        });
+    }
+    const navHome = document.getElementById("nav_home");
+    if (navHome) {
+        navHome.addEventListener("click", (e) => {
+            if (new URL(window.location.href).pathname === "/" || new URL(window.location.href).pathname === "") {
+                e.preventDefault();
+                load_library_home();
+            }
+        });
+    }
+    ["tv", "movies", "books"].forEach((key) => {
+        const el = document.getElementById("nav_library_" + key);
+        if (el) {
+            el.addEventListener("click", (e) => {
+                e.preventDefault();
+                // If on table page, still use query path
+                load_library(key);
+            });
+        }
+    });
+
+    const pathname = new URL(window.location.href).pathname;
+    if (pathname === "/table") {
+        load_tv_shows();
+    } else {
+        load_library_home();
+    }
     get_tag_list().then(tagTitles => {
         createTagElements(tagTitles)
     });
@@ -1014,7 +1385,30 @@ document.addEventListener("DOMContentLoaded", function(event){
         setup_media_page()
     }
     if(document.getElementById('local_video_player') !== null) {
-        document.getElementById('local_video_player').addEventListener('ended', get_next_media)
+        const localPlayer = document.getElementById('local_video_player');
+        localPlayer.addEventListener('ended', get_next_media);
+        localPlayer.addEventListener('timeupdate', () => {
+            if (!localPlayer.dataset.content_id) {
+                return;
+            }
+            postPlaybackProgress(
+                localPlayer.dataset.content_id,
+                localPlayer.currentTime,
+                localPlayer.duration
+            );
+        });
+        localPlayer.addEventListener('pause', () => {
+            if (!localPlayer.dataset.content_id) {
+                return;
+            }
+            // Force flush on pause
+            lastProgressPostAt = 0;
+            postPlaybackProgress(
+                localPlayer.dataset.content_id,
+                localPlayer.currentTime,
+                localPlayer.duration
+            );
+        });
     }
 
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')

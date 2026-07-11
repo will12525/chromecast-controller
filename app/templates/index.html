@@ -66,38 +66,34 @@
                             Filters
                         </div>
                         <div class="card-body">
-                            <h5 class="card-title">Search TV Shows</h5>
+                            <h5 class="card-title">Search</h5>
                             <div class="input-group mb-3">
-                                <input type="text" class="form-control" placeholder="Avatar The Last Airbender"
-                                       aria-label="Search Containers" aria-describedby="button-addon2"
-                                       id="container_txt_search" onclick="javascript:this.select()"
-                                       onchange="javascript:load_tv_shows()">
+                                <input type="text" class="form-control" placeholder="Search library…"
+                                       aria-label="Search library"
+                                       id="library_search" onclick="javascript:this.select()">
                             </div>
+                            <!-- Kept for table-view / legacy filter helpers -->
+                            <input type="hidden" id="container_txt_search" value="">
+                            <input type="hidden" id="content_txt_search" value="">
                         </div>
-                        <ul class="list-group list-group-flush">
-                        </ul>
                         <div class="card-body">
-                            <h5 class="card-title">Search Movies</h5>
-                            <div class="input-group mb-3">
-                                <input type="text" class="form-control" placeholder="Shrek"
-                                       aria-label="Search Content" aria-describedby="button-addon2"
-                                       id="content_txt_search" onclick="javascript:this.select()"
-                                       onchange="javascript:load_movies()">
+                            <h5 class="card-title">Libraries</h5>
+                            <div class="d-grid gap-2" id="library_shortcuts">
+                                <button type="button" class="btn btn-outline-secondary btn-sm" data-library="tv">TV Shows</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" data-library="movies">Movies</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" data-library="books">Books</button>
                             </div>
                         </div>
-                        <ul class="list-group list-group-flush">
-                        </ul>
                         <div class="card-body">
                             <h5 class="card-title">Tags</h5>
                             <ul class="list-group" id="tag_list_group"></ul>
                         </div>
-                        <ul class="list-group list-group-flush">
-                        </ul>
                     </div>
                 </div>
                 <div class="col-sm-10">
+                    <div id="scan_toast" class="alert alert-success py-2 px-3" role="status" hidden></div>
                     <div class="row">
-                        <div class="col-md-12" id="rainbow_loading_bar">
+                        <div class="col-md-12" id="rainbow_loading_bar" hidden>
                             <div class="spinner-grow" role="status" style="color: red;">
                             </div>
                             <div class="spinner-grow" role="status" style="color: orange;">

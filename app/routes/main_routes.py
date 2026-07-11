@@ -78,6 +78,9 @@ class APIEndpoints(Enum):
     REQUEST_IMAGE = "/request_image"
     SERVER_CONNECT = "/server_connect"
     REQUEST_CONTENT = "/request_content"
+    LIBRARY_HOME = "/library/home"
+    PLAYBACK_PROGRESS = "/playback_progress"
+    CONNECT_LOCAL_PLAYER = "/connect_local_player"
 
 
 media_controller_button_dict = {
@@ -404,6 +407,20 @@ def chromecast_command():
     return data, 200
 
 
+def _play_response_from_metadata(media_metadata, json_request, data):
+    """Populate play API response including resume fields."""
+    if not media_metadata:
+        return data
+    data["id"] = media_metadata.get("id")
+    data["parent_container_id"] = json_request.get("parent_container_id")
+    data["local_play_url"] = media_metadata.get("url")
+    data["content_title"] = media_metadata.get("content_title")
+    data["tag_list"] = json_request.get("tag_list")
+    data["last_position"] = media_metadata.get("last_position") or 0
+    data["last_duration"] = media_metadata.get("last_duration") or 0
+    return data
+
+
 @main_bp.route(APIEndpoints.PLAY_MEDIA.value, methods=['POST'])
 def play_media():
     data = {}
@@ -413,24 +430,32 @@ def play_media():
             try:
                 media_metadata = bh.play_media_on_chromecast(json_request)
                 if not media_metadata:
+                    # Cast not connected / failed — serve local browser player
                     db_connection.open()
                     if json_request.get("parent_container_id") is None and json_request.get("tag_list"):
                         media_metadata = db_connection.get_content_info(json_request.get("content_id"))
                         data["play_mode"] = "play_random_content_with_tag"
                     else:
                         media_metadata = db_connection.get_content_info(json_request.get("content_id"))
-                    # Only return content data if play media failed, providing for local player on browser
+                    if media_metadata.get("id"):
+                        db_connection.update_content_play_count(media_metadata.get("id"))
+                    _play_response_from_metadata(media_metadata, json_request, data)
+                else:
+                    # Cast succeeded — do not set local_play_url (avoids dual playback).
+                    # Still return ids/title for UI and progress tracking.
                     data["id"] = media_metadata.get("id")
                     data["parent_container_id"] = json_request.get("parent_container_id")
-                    data["local_play_url"] = media_metadata.get("url")
                     data["content_title"] = media_metadata.get("content_title")
                     data["tag_list"] = json_request.get("tag_list")
+                    data["last_position"] = media_metadata.get("last_position") or 0
+                    data["last_duration"] = media_metadata.get("last_duration") or 0
             except Exception as e:
                 print("Exception class: ", e.__class__)
                 print(f"ERROR: {e}")
                 print(traceback.print_exc())
             finally:
                 db_connection.close()
+
         else:
             print(f"Media ID not provided: {json_request}")
     return data, 200
@@ -464,11 +489,10 @@ def get_next_media():
             else:
                 print(f"content_id not provided: {json_request}")
                 data["error_msg"] = f"content_id or play_mode not provided: {json_request}"
-            data["id"] = media_metadata.get("id")
-            data["parent_container_id"] = json_request.get("parent_container_id")
-            data["local_play_url"] = media_metadata.get("url")
-            data["content_title"] = media_metadata.get("content_title")
-            data["tag_list"] = media_metadata.get("tag_list")
+            if media_metadata:
+                _play_response_from_metadata(media_metadata, json_request, data)
+                if media_metadata.get("tag_list"):
+                    data["tag_list"] = media_metadata.get("tag_list")
         except Exception as e:
             print("Exception class: ", e.__class__)
             print(f"ERROR: {e}")
@@ -534,21 +558,75 @@ def scan_media_directories():
 
         :return:
     """
-    data = {}
-    bh.scan_media_directories()
+    data = {"status": "ok", "message": "Scan complete"}
     try:
+        bh.scan_media_directories()
         print("Server scan triggered")
         if system_mode == SystemMode.CLIENT and not bh.transfer_in_progress:
             print("Starting server scan")
             bh.transfer_in_progress = True
             content_transfer.query_server()
             bh.transfer_in_progress = False
+        bh.scan_media_directories()
     except Exception as e:
         print(e)
-    finally:
-        bh.scan_media_directories()
-
+        data = {"status": "error", "message": str(e)}
     return data, 200
+
+
+@main_bp.route(APIEndpoints.LIBRARY_HOME.value, methods=['GET'])
+def library_home():
+    data = {
+        "continue_watching": [],
+        "recently_added": [],
+        "recently_played": [],
+        "libraries": [],
+    }
+    db_connection = DBHandler()
+    try:
+        db_connection.open()
+        data = db_connection.get_library_home(limit=20)
+    except Exception as e:
+        print("Exception class: ", e.__class__)
+        print(f"ERROR: {e}")
+        print(traceback.print_exc())
+        data["error"] = str(e)
+    finally:
+        db_connection.close()
+    return data, 200
+
+
+@main_bp.route(APIEndpoints.PLAYBACK_PROGRESS.value, methods=['POST'])
+def playback_progress():
+    data = {"status": "ok"}
+    if json_request := request.get_json():
+        content_id = json_request.get("content_id")
+        position = json_request.get("position")
+        duration = json_request.get("duration")
+        if content_id is None or position is None:
+            return {"status": "error", "message": "content_id and position required"}, 400
+        db_connection = DBHandler()
+        try:
+            db_connection.open()
+            if not db_connection.update_playback_progress(content_id, position, duration):
+                data = {"status": "error", "message": "invalid progress"}
+        except Exception as e:
+            print("Exception class: ", e.__class__)
+            print(f"ERROR: {e}")
+            print(traceback.print_exc())
+            data = {"status": "error", "message": str(e)}
+        finally:
+            db_connection.close()
+    else:
+        return {"status": "error", "message": "JSON body required"}, 400
+    return data, 200
+
+
+@main_bp.route(APIEndpoints.CONNECT_LOCAL_PLAYER.value, methods=['POST'])
+def connect_local_player():
+    """Switch UI to local HTML5 playback (disconnect Chromecast if connected)."""
+    bh.disconnect_chromecast()
+    return {"player": "local", "chromecast_id": None}, 200
 
 
 @main_bp.route(APIEndpoints.SERVER_CONNECT.value, methods=['GET', 'POST'])

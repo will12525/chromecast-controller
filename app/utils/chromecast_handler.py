@@ -115,9 +115,30 @@ class MyMediaDevice:
 
     def play_media_info(self, media_metadata):
         if media_metadata:
-            self.media_controller.play_media(media_metadata.get("url"), self.DEFAULT_MEDIA_TYPE,
-                                             title=media_metadata.get("content_title"),
-                                             metadata=media_metadata)
+            # Resume if position is past 30s and under 90% of duration
+            start_seconds = None
+            try:
+                last_position = float(media_metadata.get("last_position") or 0)
+                last_duration = float(media_metadata.get("last_duration") or 0)
+                if last_position > 30 and (
+                    last_duration <= 0 or last_position / last_duration < 0.9
+                ):
+                    start_seconds = last_position
+            except (TypeError, ValueError):
+                start_seconds = None
+
+            play_kwargs = {
+                "title": media_metadata.get("content_title"),
+                "metadata": media_metadata,
+            }
+            if start_seconds is not None:
+                play_kwargs["current_time"] = start_seconds
+
+            self.media_controller.play_media(
+                media_metadata.get("url"),
+                self.DEFAULT_MEDIA_TYPE,
+                **play_kwargs,
+            )
             self.media_controller.block_until_active()
 
             db_connection = DBHandler()
@@ -127,11 +148,18 @@ class MyMediaDevice:
 
     def get_media_controller_metadata(self):
         if self.status:
-            return {
+            meta = {
                 "media_runtime": self.status.adjusted_current_time,
                 "media_duration": self.status.duration,
-                "media_title": self.status.title
+                "media_title": self.status.title,
             }
+            # Custom metadata passed at play time (includes content id)
+            if self.status.media_metadata:
+                meta["content_id"] = self.status.media_metadata.get("id")
+                meta["parent_container_id"] = self.status.media_metadata.get(
+                    "parent_container_id"
+                )
+            return meta
 
     def append_queue_url(self, url):
         pass

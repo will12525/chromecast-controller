@@ -43,9 +43,81 @@ CREATE_CONTENT_INFO_TABLE = f'''CREATE TABLE IF NOT EXISTS content (
                                     description text DEFAULT "",
                                     img_src text DEFAULT "",
                                     play_count integer DEFAULT 0,
+                                    last_position REAL DEFAULT 0,
+                                    last_played_at text DEFAULT "",
+                                    last_duration REAL DEFAULT 0,
                                     FOREIGN KEY (content_directory_id) REFERENCES content_directory (id)
                                 );'''
 SET_CONTENT_INFO_TABLE = f'{INSERT_IGNORE} content (content_directory_id, content_title, content_src, description, img_src) VALUES (:content_directory_id, :content_title, :content_src, :description, :img_src);'
+
+# Playback progress (schema v2)
+UPDATE_CONTENT_PLAYBACK_PROGRESS = (
+    "UPDATE content SET last_position = :last_position, last_duration = :last_duration, "
+    "last_played_at = :last_played_at WHERE id = :id;"
+)
+UPDATE_CONTENT_PLAYED = (
+    "UPDATE content SET play_count = play_count + 1, last_played_at = :last_played_at WHERE id = :id;"
+)
+LIST_CONTINUE_WATCHING = """
+SELECT content.*,
+       content_directory.content_url || '/' || content.content_src AS url,
+       content_directory.content_src || content.content_src AS path,
+       content_directory.content_url || '/' || content.img_src AS img_url,
+       GROUP_CONCAT(user_tags.tag_title) AS user_tags
+FROM content
+INNER JOIN content_directory ON content.content_directory_id = content_directory.id
+LEFT JOIN user_tags_content ON content.id = user_tags_content.content_id
+LEFT JOIN user_tags ON user_tags_content.user_tags_id = user_tags.id
+WHERE content.last_position > 30
+  AND (content.last_duration IS NULL OR content.last_duration = 0
+       OR content.last_position / content.last_duration < 0.9)
+GROUP BY content.id
+ORDER BY content.last_played_at DESC
+LIMIT :limit;
+"""
+LIST_RECENTLY_PLAYED = """
+SELECT content.*,
+       content_directory.content_url || '/' || content.content_src AS url,
+       content_directory.content_src || content.content_src AS path,
+       content_directory.content_url || '/' || content.img_src AS img_url,
+       GROUP_CONCAT(user_tags.tag_title) AS user_tags
+FROM content
+INNER JOIN content_directory ON content.content_directory_id = content_directory.id
+LEFT JOIN user_tags_content ON content.id = user_tags_content.content_id
+LEFT JOIN user_tags ON user_tags_content.user_tags_id = user_tags.id
+WHERE content.last_played_at IS NOT NULL AND content.last_played_at != ''
+GROUP BY content.id
+ORDER BY content.last_played_at DESC
+LIMIT :limit;
+"""
+LIST_RECENTLY_ADDED = """
+SELECT content.*,
+       content_directory.content_url || '/' || content.content_src AS url,
+       content_directory.content_src || content.content_src AS path,
+       content_directory.content_url || '/' || content.img_src AS img_url,
+       GROUP_CONCAT(user_tags.tag_title) AS user_tags
+FROM content
+INNER JOIN content_directory ON content.content_directory_id = content_directory.id
+LEFT JOIN user_tags_content ON content.id = user_tags_content.content_id
+LEFT JOIN user_tags ON user_tags_content.user_tags_id = user_tags.id
+GROUP BY content.id
+ORDER BY content.id DESC
+LIMIT :limit;
+"""
+COUNT_CONTENT_WITH_TAG = """
+SELECT COUNT(DISTINCT content.id) AS count
+FROM content
+INNER JOIN user_tags_content ON content.id = user_tags_content.content_id
+INNER JOIN user_tags ON user_tags_content.user_tags_id = user_tags.id
+WHERE user_tags.tag_title = :tag_title;
+"""
+COUNT_CONTAINERS_WITH_TAG = """
+SELECT COUNT(DISTINCT container.id) AS count
+FROM container
+INNER JOIN user_tags_content ON container.id = user_tags_content.container_id
+INNER JOIN user_tags ON user_tags_content.user_tags_id = user_tags.id
+WHERE user_tags.tag_title = :tag_title;
+"""
 
 CREATE_CONTAINER_CONTENT_INFO_TABLE = f'''CREATE TABLE IF NOT EXISTS container_content (
                                              id integer PRIMARY KEY,
@@ -96,3 +168,4 @@ SET_USER_TAGS_CONTAINER_INFO_TABLE = f'{INSERT_IGNORE} user_tags_content (user_t
 MEDIA UPDATE QUERIES
 """
 UPDATE_MEDIA_PLAY_COUNT = f"UPDATE content SET play_count = play_count + 1 WHERE id=:id;"
+

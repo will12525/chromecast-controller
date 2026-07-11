@@ -103,7 +103,7 @@ install_system_services() {
 }
 
 if [ $EXIT_CODE -eq 0 ]; then
-    install_packages
+    #install_packages
     EXIT_CODE=$?
 fi
 if [ $EXIT_CODE -eq 0 ]; then
@@ -119,7 +119,7 @@ if [ $EXIT_CODE -eq 0 ]; then
     EXIT_CODE=$?
 fi
 if [ $EXIT_CODE -eq 0 ]; then
-    install_system_services
+#    install_system_services
     EXIT_CODE=$?
 fi
 if [ $EXIT_CODE -ne 0 ]; then
