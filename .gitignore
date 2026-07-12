@@ -13,6 +13,7 @@ sync_changes.sh
 #media_folder_movie/
 media_folder*/
 tests/static/
+tests/junit/
 editor_raw_files/
 images/
 node_modules/

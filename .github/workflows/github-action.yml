@@ -1,28 +1,51 @@
 name: Python package
-on: [push]
+
+on:
+  push:
+  pull_request:
+
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions: 
+    permissions:
+      contents: read
       checks: write
+    defaults:
+      run:
+        working-directory: ${{ github.workspace }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
-          cache: 'pip'
-          architecture: 'x64'
-      - run: python -m pip install --upgrade pip
-      - run: pip install -r requirements.txt
-      - run: pip install pytest pytest-cov pytest-mock
+          python-version: "3.10"
+          cache: "pip"
+          architecture: "x64"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov pytest-mock
+
       - name: Test with pytest
+        env:
+          # Ensure `app` package imports resolve from the repo root on the runner
+          PYTHONPATH: ${{ github.workspace }}
         run: |
           mkdir -p tests/junit
-          pytest tests/test_library_home.py -q --junitxml=tests/junit/test-results.xml
-          ls tests/junit
+          # Library home / schema-v2 suite is the maintained green suite for this branch.
+          # (Legacy modules under tests/ still use pre-refactor import paths.)
+          python -m pytest tests/test_library_home.py -q \
+            --junitxml=tests/junit/test-results.xml
+          test -f tests/junit/test-results.xml
+          ls -la tests/junit
+
       - name: Publish Test Report
         uses: mikepenz/action-junit-report@v4
-        if: success() || failure() # always run even if the previous step fails
+        if: success() || failure()
         with:
-          report_paths: '**/tests/junit/test-results.xml'
+          report_paths: "**/tests/junit/test-results.xml"
+          check_name: pytest results

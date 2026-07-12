@@ -1,0 +1,252 @@
+name: Changelog Summary
+
+# Generate a changelog/dispatch summary on push or release and email the
+# primary repository owner. Integrates with Entire session telemetry and
+# the entire/checkpoints/v1 checkpoint branch when available.
+on:
+  push:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  changelog-summary:
+    runs-on: ubuntu-latest
+    env:
+      # Map secrets to env so steps can safely branch (secrets cannot be used
+      # directly in `if:` conditionals).
+      OWNER_EMAIL_SECRET: ${{ secrets.OWNER_EMAIL }}
+      SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
+      SMTP_PORT: ${{ secrets.SMTP_PORT }}
+      SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+      SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+      SMTP_FROM: ${{ secrets.SMTP_FROM }}
+      ENTIRE_API_TOKEN: ${{ secrets.ENTIRE_API_TOKEN }}
+      ENTIRE_TOKEN: ${{ secrets.ENTIRE_TOKEN }}
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          # Full history for git changelog + Entire checkpoint correlation
+          fetch-depth: 0
+
+      - name: Fetch Entire checkpoint branch (if present)
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          # Entire stores agent session/checkpoint metadata on this branch by default.
+          # See: https://docs.entire.io/guides/checkpoints/store-checkpoint-data
+          if git ls-remote --exit-code --heads origin entire/checkpoints/v1 >/dev/null 2>&1; then
+            git fetch origin refs/heads/entire/checkpoints/v1:refs/heads/entire/checkpoints/v1
+            echo "Fetched entire/checkpoints/v1"
+          else
+            echo "No remote entire/checkpoints/v1 branch (local-only or not yet pushed)."
+          fi
+
+      - name: Resolve recipient (primary repository owner)
+        id: owner
+        run: |
+          set -euo pipefail
+          # Prefer explicit secret; otherwise use the dominant git author email for this repo.
+          if [ -n "${OWNER_EMAIL_SECRET:-}" ]; then
+            EMAIL="$OWNER_EMAIL_SECRET"
+          else
+            EMAIL="$(git log --format='%ae' | sort | uniq -c | sort -rn | head -1 | awk '{print $2}')"
+          fi
+          if [ -z "$EMAIL" ]; then
+            EMAIL="willowlaw525@gmail.com"
+          fi
+          echo "email=$EMAIL" >> "$GITHUB_OUTPUT"
+          echo "Resolved owner email: $EMAIL"
+
+      - name: Install Entire CLI
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          curl -fsSL https://entire.io/install.sh | bash
+          # install.sh typically places the binary under ~/.local/bin
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          if [ -x /usr/local/bin/entire ]; then
+            echo "/usr/local/bin" >> "$GITHUB_PATH"
+          fi
+          export PATH="$HOME/.local/bin:/usr/local/bin:$PATH"
+          command -v entire && entire version || echo "Entire CLI not on PATH after install"
+
+      - name: Generate changelog + Entire telemetry summary
+        id: summary
+        run: |
+          set -euo pipefail
+          OUT=changelog-summary.md
+          {
+            echo "# Changelog summary"
+            echo
+            echo "- **Repository:** ${{ github.repository }}"
+            echo "- **Ref:** \`${{ github.ref }}\`"
+            echo "- **SHA:** \`${{ github.sha }}\`"
+            echo "- **Event:** \`${{ github.event_name }}\`"
+            echo "- **Actor:** \`${{ github.actor }}\`"
+            echo "- **Generated (UTC):** $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+            echo
+          } > "$OUT"
+
+          # --- Git changelog (always available) ---
+          {
+            echo "## Recent commits"
+            echo
+            if [ "${{ github.event_name }}" = "release" ]; then
+              TAG="${{ github.event.release.tag_name }}"
+              PREV="$(git describe --tags --abbrev=0 "${TAG}^" 2>/dev/null || true)"
+              if [ -n "$PREV" ]; then
+                echo "Changes since \`$PREV\` for release \`$TAG\`:"
+                echo
+                git log --pretty=format:'- %h %s (%an, %ad)' --date=short "${PREV}..${TAG}"
+              else
+                echo "Release \`$TAG\` (no previous tag found):"
+                echo
+                git log --pretty=format:'- %h %s (%an, %ad)' --date=short -30
+              fi
+            else
+              # Push: show range when possible, else last 20 commits on this ref
+              BEFORE="${{ github.event.before }}"
+              if [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ] \
+                 && git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
+                echo "Commits in this push (\`${BEFORE:0:7}..${GITHUB_SHA:0:7}\`):"
+                echo
+                git log --pretty=format:'- %h %s (%an, %ad)' --date=short "${BEFORE}..${GITHUB_SHA}"
+              else
+                echo "Latest commits on \`${GITHUB_REF_NAME}\`:"
+                echo
+                git log --pretty=format:'- %h %s (%an, %ad)' --date=short -20
+              fi
+            fi
+            echo
+            echo
+          } >> "$OUT"
+
+          # --- Entire status / checkpoints / dispatch (best-effort) ---
+          {
+            echo "## Entire session telemetry"
+            echo
+          } >> "$OUT"
+
+          if command -v entire >/dev/null 2>&1; then
+            {
+              echo "### \`entire status\`"
+              echo
+              echo '```'
+              entire status 2>&1 || echo "(entire status unavailable)"
+              echo '```'
+              echo
+              echo "### Checkpoints on this branch"
+              echo
+              echo '```'
+              entire checkpoint list 2>&1 || echo "(no checkpoints listed)"
+              echo '```'
+              echo
+            } >> "$OUT"
+
+            # Prefer cloud dispatch when authenticated; fall back to local.
+            {
+              echo "### Dispatch summary"
+              echo
+            } >> "$OUT"
+            DISPATCH_FILE=entire-dispatch.md
+            set +e
+            if [ -n "${ENTIRE_API_TOKEN:-}${ENTIRE_TOKEN:-}" ]; then
+              entire dispatch --since 7d --voice "Audience: repository owner. Focus on user-visible and CI-relevant changes." \
+                > "$DISPATCH_FILE" 2>entire-dispatch.err
+              RC=$?
+            else
+              entire dispatch --local --since 7d --voice "Audience: repository owner. Focus on user-visible and CI-relevant changes." \
+                > "$DISPATCH_FILE" 2>entire-dispatch.err
+              RC=$?
+            fi
+            set -e
+            if [ "$RC" -eq 0 ] && [ -s "$DISPATCH_FILE" ]; then
+              cat "$DISPATCH_FILE" >> "$OUT"
+              echo >> "$OUT"
+            else
+              {
+                echo "_Entire dispatch could not be generated in CI (auth, empty history, or CLI mode)._"
+                echo
+                if [ -s entire-dispatch.err ]; then
+                  echo "<details><summary>dispatch stderr</summary>"
+                  echo
+                  echo '```'
+                  cat entire-dispatch.err
+                  echo '```'
+                  echo
+                  echo "</details>"
+                fi
+                echo
+              } >> "$OUT"
+            fi
+
+            {
+              echo "### Checkpoint branch tip"
+              echo
+              if git rev-parse --verify entire/checkpoints/v1 >/dev/null 2>&1; then
+                echo "\`entire/checkpoints/v1\` → \`$(git rev-parse --short entire/checkpoints/v1)\`"
+                echo
+                echo '```'
+                git log --oneline -5 entire/checkpoints/v1
+                echo '```'
+              else
+                echo "_Checkpoint branch not available in this workspace._"
+              fi
+              echo
+            } >> "$OUT"
+          else
+            {
+              echo "_Entire CLI not installed on the runner; git changelog only._"
+              echo
+            } >> "$OUT"
+          fi
+
+          {
+            echo "---"
+            echo "_Generated by \`.github/workflows/changelog-summary.yml\`._"
+          } >> "$OUT"
+
+          echo "Wrote $OUT ($(wc -l < "$OUT") lines)"
+          echo "path=$OUT" >> "$GITHUB_OUTPUT"
+
+      - name: Upload summary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: changelog-summary
+          path: changelog-summary.md
+          if-no-files-found: error
+
+      - name: Email summary to primary owner
+        # Requires repository secrets (Settings → Secrets and variables → Actions):
+        #   OWNER_EMAIL   – optional override for recipient
+        #   SMTP_SERVER   – e.g. smtp.gmail.com
+        #   SMTP_PORT     – e.g. 465
+        #   SMTP_USERNAME
+        #   SMTP_PASSWORD – app password / SMTP credential
+        #   SMTP_FROM     – optional From address (defaults to SMTP_USERNAME)
+        # Optional Entire cloud auth: ENTIRE_API_TOKEN or ENTIRE_TOKEN
+        if: ${{ env.SMTP_SERVER != '' && env.SMTP_USERNAME != '' && env.SMTP_PASSWORD != '' }}
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ env.SMTP_SERVER }}
+          server_port: ${{ env.SMTP_PORT != '' && env.SMTP_PORT || 465 }}
+          username: ${{ env.SMTP_USERNAME }}
+          password: ${{ env.SMTP_PASSWORD }}
+          secure: true
+          subject: "[${{ github.repository }}] Changelog summary (${{ github.ref_name }})"
+          to: ${{ steps.owner.outputs.email }}
+          from: ${{ env.SMTP_FROM != '' && env.SMTP_FROM || env.SMTP_USERNAME }}
+          body: file://changelog-summary.md
+          content_type: text/plain
+          convert_markdown: true
+
+      - name: Note when email was skipped
+        if: ${{ env.SMTP_SERVER == '' || env.SMTP_USERNAME == '' || env.SMTP_PASSWORD == '' }}
+        run: |
+          echo "::notice::SMTP secrets not fully configured; summary was uploaded as an artifact only."
+          echo "Recipient would have been: ${{ steps.owner.outputs.email }}"
+          echo "Set SMTP_SERVER, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD (and optional OWNER_EMAIL, SMTP_FROM)."
