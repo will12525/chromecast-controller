@@ -17,33 +17,8 @@ from app.utils import content_transfer
 
 main_bp = Blueprint("main", __name__)
 
-# TODO: UI
-# TODO: Notify user when media scan completes
-# TODO: All content containers shall be playable
-# TODO: The user shall have the ability to quickly play a random content
-
-# TODO: Application split
-# TODO: Create server client connections
-# TODO: Enable db content sharing
-# TODO: Enable media_content distribution
-# TODO: Isolate editor from player
-# TODO: Remove editor from client
-
-# TODO: PLAYER
-# TODO: Make local media player: https://www.tutorialspoint.com/opencv_python/opencv_python_play_video_file.htm
-# TODO: Prevent additional scans from occurring while scan in progress
-
-# TODO: EDITOR
-# TODO: Enable user to view remaining storage space
-# TODO: Prevent media additions if space is low
-
-# TODO: TAGS
-# TODO: UI: DB: Enable user to search by media_title
-
-# TODO: Cleanup
-# TODO: Convert all js functions calls embedded in html to event listeners in app.js
-# TODO: Convert chromecast name strings to IDs and use IDs to refer to chromecast
-# TODO: The chromecast select menu shall never contain chromecast that no longer exist
+# Backlog (Phase 2+): route split, content_transfer harden, Chromecast UUID ids,
+# editor low-storage guards, richer scan progress polling.
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', "mp4"}
 
@@ -546,32 +521,33 @@ def get_disk_space():
 @main_bp.route(APIEndpoints.SCAN_MEDIA_DIRECTORIES.value, methods=['POST'])
 def scan_media_directories():
     """
-        X User triggers media scan
-        X media scan asses local files
-        media scan asses free disk space
-        X media scan checks for server
-        media scan submits all local paths to server
-        server begins distributing missing paths to client
-        media client asses free disk space
-        media client stores new paths in disk with free space
-        media client rejects distribution if out of disk space
-
-        :return:
+    Trigger a media directory scan. Concurrent scans return status=busy.
+    CLIENT mode may also pull missing content from the server after a successful scan.
     """
     data = {"status": "ok", "message": "Scan complete"}
     try:
-        bh.scan_media_directories()
-        print("Server scan triggered")
-        if system_mode == SystemMode.CLIENT and not bh.transfer_in_progress:
-            print("Starting server scan")
+        result = bh.scan_media_directories()
+        if isinstance(result, dict):
+            data.update(result)
+        print("Server scan triggered:", data.get("status"))
+        if data.get("status") == "ok" and system_mode == SystemMode.CLIENT and not bh.transfer_in_progress:
+            print("Starting server content pull")
             bh.transfer_in_progress = True
-            content_transfer.query_server()
-            bh.transfer_in_progress = False
-        bh.scan_media_directories()
+            try:
+                content_transfer.query_server()
+            finally:
+                bh.transfer_in_progress = False
+            # Rescan after transfer so newly pulled files appear in the catalog
+            result = bh.scan_media_directories()
+            if isinstance(result, dict):
+                data.update(result)
+                if data.get("status") == "ok":
+                    data["message"] = "Scan complete (synced from server)"
     except Exception as e:
         print(e)
         data = {"status": "error", "message": str(e)}
-    return data, 200
+    http_status = 200 if data.get("status") in ("ok", "busy") else 500
+    return data, http_status
 
 
 @main_bp.route(APIEndpoints.LIBRARY_HOME.value, methods=['GET'])

@@ -165,20 +165,28 @@ class BackEndHandler:
         return self.chromecast.play_random_container_content(json_request)
 
     def scan_media_directories(self):
+        """
+        Scan content directories once.
+
+        Returns:
+            dict: {"status": "ok"|"busy"|"error", "message": str}
+        """
+        if self.media_scan_in_progress:
+            print("Scan in progress")
+            return {"status": "busy", "message": "Scan already in progress"}
         try:
-            if not self.media_scan_in_progress:
-                self.media_scan_in_progress = True
-                db_connection = DBHandler()
-                db_connection.open()
-                db_connection.scan_content_directories()
-                db_connection.close()
-                self.media_scan_in_progress = False
-            else:
-                print("Scan in progress")
+            self.media_scan_in_progress = True
+            db_connection = DBHandler()
+            db_connection.open()
+            db_connection.scan_content_directories()
+            db_connection.close()
+            return {"status": "ok", "message": "Scan complete"}
         except Exception as e:
             print("Exception class: ", e.__class__)
             print(f"ERROR: {e}")
             print(traceback.print_exc())
+            return {"status": "error", "message": str(e)}
+        finally:
             self.media_scan_in_progress = False
 
     def get_editor_metadata(self, selected_txt_file=None):

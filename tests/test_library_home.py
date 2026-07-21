@@ -2,9 +2,11 @@
 import os
 import tempfile
 import unittest
+from unittest import mock
 
 from app.database.db_access import DBType
 from app.database.db_getter import DBHandler, LIBRARY_TAG_MAP
+from app.utils import backend_handler
 
 
 class TestLibraryHomeAndProgress(unittest.TestCase):
@@ -78,11 +80,25 @@ class TestLibraryHomeAndProgress(unittest.TestCase):
         self.assertIn(self.content_1_id, ids)
 
     def test_finished_item_excluded_from_continue_watching(self):
-        # 95% watched should drop off Continue Watching
+        # 95% watched should drop off Continue Watching (position cleared to 0)
         self.db.update_playback_progress(self.content_2_id, 570, 600)
         watching = self.db.list_continue_watching(limit=10)
         ids = [row["id"] for row in watching]
         self.assertNotIn(self.content_2_id, ids)
+        row = self.db.get_data_from_db_first_result(
+            "SELECT last_position, last_duration FROM content WHERE id = :id;",
+            {"id": self.content_2_id},
+        )
+        self.assertEqual(float(row["last_position"] or 0), 0.0)
+        self.assertEqual(float(row["last_duration"] or 0), 600.0)
+
+    def test_mid_progress_kept_for_resume(self):
+        self.db.update_playback_progress(self.content_1_id, 120, 600)
+        row = self.db.get_data_from_db_first_result(
+            "SELECT last_position FROM content WHERE id = :id;",
+            {"id": self.content_1_id},
+        )
+        self.assertEqual(float(row["last_position"]), 120.0)
 
     def test_recently_played(self):
         self.db.update_content_play_count(self.content_3_id)
@@ -137,6 +153,41 @@ class TestLibraryHomeAndProgress(unittest.TestCase):
         self.assertTrue(legacy.table_has_column("content", "last_position"))
         self.assertEqual(legacy.check_db_version(), 2)
         legacy.close()
+
+
+class TestScanMediaGuard(unittest.TestCase):
+    """Concurrent scan returns busy without starting a second walk."""
+
+    def test_scan_busy_when_already_running(self):
+        handler = object.__new__(backend_handler.BackEndHandler)
+        handler.media_scan_in_progress = True
+        result = handler.scan_media_directories()
+        self.assertEqual(result["status"], "busy")
+        self.assertIn("progress", result["message"].lower())
+
+    def test_scan_ok_returns_status_dict(self):
+        handler = object.__new__(backend_handler.BackEndHandler)
+        handler.media_scan_in_progress = False
+        mock_db = mock.MagicMock()
+        with mock.patch.object(backend_handler, "DBHandler", return_value=mock_db):
+            result = handler.scan_media_directories()
+        self.assertEqual(result["status"], "ok")
+        self.assertEqual(result["message"], "Scan complete")
+        mock_db.open.assert_called_once()
+        mock_db.scan_content_directories.assert_called_once()
+        mock_db.close.assert_called_once()
+        self.assertFalse(handler.media_scan_in_progress)
+
+    def test_scan_error_clears_flag(self):
+        handler = object.__new__(backend_handler.BackEndHandler)
+        handler.media_scan_in_progress = False
+        mock_db = mock.MagicMock()
+        mock_db.scan_content_directories.side_effect = RuntimeError("disk gone")
+        with mock.patch.object(backend_handler, "DBHandler", return_value=mock_db):
+            result = handler.scan_media_directories()
+        self.assertEqual(result["status"], "error")
+        self.assertIn("disk gone", result["message"])
+        self.assertFalse(handler.media_scan_in_progress)
 
 
 if __name__ == "__main__":

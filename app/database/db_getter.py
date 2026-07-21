@@ -311,7 +311,12 @@ class DBHandler(DBConnection):
         )
 
     def update_playback_progress(self, content_id, position, duration=None):
-        """Persist resume position for Continue Watching."""
+        """Persist resume position for Continue Watching.
+
+        When position is past 90% of duration (or caller passes a finished flag
+        via position >= duration), reset last_position to 0 so the item drops
+        off Continue Watching while still updating last_played_at.
+        """
         if not content_id:
             return False
         try:
@@ -322,6 +327,9 @@ class DBHandler(DBConnection):
             duration_val = float(duration) if duration not in (None, "") else 0.0
         except (TypeError, ValueError):
             duration_val = 0.0
+        # Finished: clear resume point so Continue Watching drops the item
+        if duration_val > 0 and position / duration_val >= 0.9:
+            position = 0.0
         self.add_data_to_db(
             db_queries.UPDATE_CONTENT_PLAYBACK_PROGRESS,
             {

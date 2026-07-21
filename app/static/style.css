@@ -182,6 +182,19 @@ body {
     text-align: center;
 }
 
+/* Active library nav + sidebar shortcuts */
+.navbar .nav-link.active {
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 0.25rem;
+}
+
+#library_shortcuts .btn.active {
+    background-color: #6c757d;
+    color: #fff;
+    border-color: #6c757d;
+}
+
 .library-tile .card-body {
     display: flex;
     flex-direction: column;

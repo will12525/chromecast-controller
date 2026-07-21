@@ -92,24 +92,18 @@ async function getChromecastList() {
     });
 
     if (!response.ok) {
-        throw new Error("HTTP status disconnectChromecast: " + response.status);
+        throw new Error("HTTP status getChromecastList: " + response.status);
     } else {
         let response_data = await response.json();
         if (response_data["scanned_devices"] !== undefined)
         {
             const scanned = response_data["scanned_devices"] || [];
             const dropdown_list = document.getElementById("dropdown_scanned_chromecasts");
-            // Remove prior device entries; keep trailing divider / disconnect / local controls
-            const keepFrom = Array.from(dropdown_list.children).findIndex(
-                (li) => li.querySelector("hr.dropdown-divider") !== null
-            );
-            if (keepFrom > 0) {
-                while (keepFrom > 0 && dropdown_list.children.length > keepFrom) {
-                    // children before first divider are devices
-                    break;
-                }
+            if (!dropdown_list) {
+                return;
             }
-            // Rebuild device list: strip items before the first divider
+            // Keep static controls (divider / disconnect / local); rebuild devices only.
+            // Dead devices from prior scans are dropped by replacing the prefix list.
             const staticItems = [];
             let hitDivider = false;
             Array.from(dropdown_list.children).forEach((li) => {
@@ -131,7 +125,14 @@ async function getChromecastList() {
                 li.appendChild(a_element);
                 dropdown_list.appendChild(li);
             }
-            staticItems.forEach((li) => dropdown_list.appendChild(li));
+            // If template had no static divider section, ensure disconnect/local remain
+            if (!staticItems.length) {
+                const divider = document.createElement("li");
+                divider.innerHTML = '<hr class="dropdown-divider">';
+                dropdown_list.appendChild(divider);
+            } else {
+                staticItems.forEach((li) => dropdown_list.appendChild(li));
+            }
         }
         if (response_data["connected_device"] !== undefined)
         {
@@ -923,6 +924,9 @@ async function scan_media_directories() {
     var disable_class = "disabled";
     var button_id = "scan_media_button";
     var button_element = document.getElementById(button_id);
+    if (!button_element || button_element.classList.contains(disable_class)) {
+        return;
+    }
 
     button_element.classList.add(disable_class);
     try {
@@ -937,13 +941,16 @@ async function scan_media_directories() {
         } catch (e) {
             response_data = {};
         }
-        if (response.ok) {
+        const status = response_data.status || (response.ok ? "ok" : "error");
+        if (status === "ok") {
             showScanToast(response_data.message || "Scan complete", false);
             if (currentLibraryKey) {
                 load_library(currentLibraryKey);
             } else {
                 load_library_home();
             }
+        } else if (status === "busy") {
+            showScanToast(response_data.message || "Scan already in progress", true);
         } else {
             showScanToast(response_data.message || "Scan failed", true);
         }
@@ -1052,6 +1059,7 @@ async function load_movies() {
 
 function load_library(libraryKey) {
     currentLibraryKey = libraryKey;
+    setActiveLibraryNav(libraryKey);
     const tag = LIBRARY_TAG_MAP[libraryKey] || libraryKey;
     const searchEl = document.getElementById("library_search");
     const search = searchEl ? searchEl.value.trim() : "";
@@ -1201,8 +1209,38 @@ async function render_library_home(homeData) {
     }
 }
 
+function setActiveLibraryNav(activeKey) {
+    // activeKey: null = home, or tv|movies|books
+    const navMap = {
+        home: document.getElementById("nav_home"),
+        tv: document.getElementById("nav_library_tv"),
+        movies: document.getElementById("nav_library_movies"),
+        books: document.getElementById("nav_library_books"),
+    };
+    Object.entries(navMap).forEach(([key, el]) => {
+        if (!el) {
+            return;
+        }
+        const isActive = (activeKey === null && key === "home") || key === activeKey;
+        el.classList.toggle("active", isActive);
+        if (isActive) {
+            el.setAttribute("aria-current", "page");
+        } else {
+            el.removeAttribute("aria-current");
+        }
+    });
+    // Mirror active state on sidebar library shortcuts
+    const shortcuts = document.getElementById("library_shortcuts");
+    if (shortcuts) {
+        shortcuts.querySelectorAll("[data-library]").forEach((btn) => {
+            btn.classList.toggle("active", btn.dataset.library === activeKey);
+        });
+    }
+}
+
 async function load_library_home() {
     currentLibraryKey = null;
+    setActiveLibraryNav(null);
     const loading = document.getElementById("rainbow_loading_bar");
     if (loading) {
         loading.hidden = false;
@@ -1386,7 +1424,19 @@ document.addEventListener("DOMContentLoaded", function(event){
     }
     if(document.getElementById('local_video_player') !== null) {
         const localPlayer = document.getElementById('local_video_player');
-        localPlayer.addEventListener('ended', get_next_media);
+        localPlayer.addEventListener('ended', () => {
+            if (localPlayer.dataset.content_id) {
+                // Force flush finished state so Continue Watching drops this item
+                lastProgressPostAt = 0;
+                const duration = localPlayer.duration || 0;
+                postPlaybackProgress(
+                    localPlayer.dataset.content_id,
+                    duration > 0 ? duration : 1,
+                    duration > 0 ? duration : 1
+                );
+            }
+            get_next_media();
+        });
         localPlayer.addEventListener('timeupdate', () => {
             if (!localPlayer.dataset.content_id) {
                 return;
