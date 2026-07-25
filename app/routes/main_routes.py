@@ -56,6 +56,7 @@ class APIEndpoints(Enum):
     LIBRARY_HOME = "/library/home"
     PLAYBACK_PROGRESS = "/playback_progress"
     CONNECT_LOCAL_PLAYER = "/connect_local_player"
+    SCAN_STATUS = "/scan_status"
 
 
 media_controller_button_dict = {
@@ -516,6 +517,16 @@ def get_disk_space():
         print("Exception class: ", e.__class__)
         print(f"ERROR: {e}")
         print(traceback.print_exc())
+
+
+@main_bp.route(APIEndpoints.SCAN_STATUS.value, methods=['GET'])
+def scan_status():
+    """Lightweight poll for scan/transfer busy state (Phase 2)."""
+    return {
+        "scanning": bool(bh.media_scan_in_progress),
+        "transfer_in_progress": bool(bh.transfer_in_progress),
+        "status": "busy" if bh.media_scan_in_progress or bh.transfer_in_progress else "idle",
+    }, 200
 
 
 @main_bp.route(APIEndpoints.SCAN_MEDIA_DIRECTORIES.value, methods=['POST'])

@@ -58,16 +58,28 @@ UPDATE_CONTENT_PLAYBACK_PROGRESS = (
 UPDATE_CONTENT_PLAYED = (
     "UPDATE content SET play_count = play_count + 1, last_played_at = :last_played_at WHERE id = :id;"
 )
-LIST_CONTINUE_WATCHING = """
+# parent_container_id: prefer the lowest container_content parent (season/show)
+# so resume from Continue Watching keeps sequential next-episode working.
+_SHELF_CONTENT_SELECT = """
 SELECT content.*,
        content_directory.content_url || '/' || content.content_src AS url,
        content_directory.content_src || content.content_src AS path,
        content_directory.content_url || '/' || content.img_src AS img_url,
-       GROUP_CONCAT(user_tags.tag_title) AS user_tags
+       GROUP_CONCAT(DISTINCT user_tags.tag_title) AS user_tags,
+       (
+           SELECT cc.parent_container_id
+           FROM container_content cc
+           WHERE cc.content_id = content.id
+           ORDER BY cc.parent_container_id ASC
+           LIMIT 1
+       ) AS parent_container_id
 FROM content
 INNER JOIN content_directory ON content.content_directory_id = content_directory.id
 LEFT JOIN user_tags_content ON content.id = user_tags_content.content_id
 LEFT JOIN user_tags ON user_tags_content.user_tags_id = user_tags.id
+"""
+
+LIST_CONTINUE_WATCHING = _SHELF_CONTENT_SELECT + """
 WHERE content.last_position > 30
   AND (content.last_duration IS NULL OR content.last_duration = 0
        OR content.last_position / content.last_duration < 0.9)
@@ -75,31 +87,13 @@ GROUP BY content.id
 ORDER BY content.last_played_at DESC
 LIMIT :limit;
 """
-LIST_RECENTLY_PLAYED = """
-SELECT content.*,
-       content_directory.content_url || '/' || content.content_src AS url,
-       content_directory.content_src || content.content_src AS path,
-       content_directory.content_url || '/' || content.img_src AS img_url,
-       GROUP_CONCAT(user_tags.tag_title) AS user_tags
-FROM content
-INNER JOIN content_directory ON content.content_directory_id = content_directory.id
-LEFT JOIN user_tags_content ON content.id = user_tags_content.content_id
-LEFT JOIN user_tags ON user_tags_content.user_tags_id = user_tags.id
+LIST_RECENTLY_PLAYED = _SHELF_CONTENT_SELECT + """
 WHERE content.last_played_at IS NOT NULL AND content.last_played_at != ''
 GROUP BY content.id
 ORDER BY content.last_played_at DESC
 LIMIT :limit;
 """
-LIST_RECENTLY_ADDED = """
-SELECT content.*,
-       content_directory.content_url || '/' || content.content_src AS url,
-       content_directory.content_src || content.content_src AS path,
-       content_directory.content_url || '/' || content.img_src AS img_url,
-       GROUP_CONCAT(user_tags.tag_title) AS user_tags
-FROM content
-INNER JOIN content_directory ON content.content_directory_id = content_directory.id
-LEFT JOIN user_tags_content ON content.id = user_tags_content.content_id
-LEFT JOIN user_tags ON user_tags_content.user_tags_id = user_tags.id
+LIST_RECENTLY_ADDED = _SHELF_CONTENT_SELECT + """
 GROUP BY content.id
 ORDER BY content.id DESC
 LIMIT :limit;

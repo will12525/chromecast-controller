@@ -769,11 +769,20 @@ async function update_local_media_player(response_data) {
 
 async function play_media(content_id, parent_container_id=null, content_type=null) {
     var url = "/play_media";
+    let tagList = [];
+    const tagListEl = document.getElementById("tag_list_group");
+    if (tagListEl) {
+        tagList = get_selected_checkboxes(tagListEl);
+    }
+    // When browsing a library type, include its tag so auto-next can shuffle
+    if (!tagList.length && currentLibraryKey && LIBRARY_TAG_MAP[currentLibraryKey]) {
+        tagList = [LIBRARY_TAG_MAP[currentLibraryKey]];
+    }
     let data = {
         "content_id": content_id,
         "parent_container_id": parent_container_id,
         "content_type": content_type,
-        "tag_list": get_selected_checkboxes(document.getElementById("tag_list_group"))
+        "tag_list": tagList
     };
     // Send POST request
     let response = await fetch(url, {
@@ -783,12 +792,53 @@ async function play_media(content_id, parent_container_id=null, content_type=nul
     });
 
     if (!response.ok) {
-        throw new Error("HTTP status connect_local_player: " + response.status);
+        throw new Error("HTTP status play_media: " + response.status);
     } else {
         let response_data = await response.json();
         if (response_data["local_play_url"] !== undefined) {
             update_local_media_player(response_data)
         }
+    }
+}
+
+/**
+ * Shuffle-play a random item for the active library or selected tags.
+ * Reuses /play_media with tag_list and no parent container (tag-random mode).
+ */
+async function shuffle_library_play() {
+    let tags = [];
+    const tagListEl = document.getElementById("tag_list_group");
+    if (tagListEl) {
+        tags = get_selected_checkboxes(tagListEl);
+    }
+    if (!tags.length && currentLibraryKey && LIBRARY_TAG_MAP[currentLibraryKey]) {
+        tags = [LIBRARY_TAG_MAP[currentLibraryKey]];
+    }
+    if (!tags.length) {
+        // Default shuffle across movies if nothing selected
+        tags = ["movie"];
+    }
+    // Use a dummy content_id of 0 — server needs an id path; pick first from recently added via home
+    try {
+        const homeRes = await fetch("/library/home");
+        if (!homeRes.ok) {
+            throw new Error("library home for shuffle failed");
+        }
+        const home = await homeRes.json();
+        const pool = (home.recently_added || []).concat(home.recently_played || []);
+        // Prefer items matching tag when available; otherwise any content
+        let pick = pool.find((item) => {
+            const itemTags = (item.user_tags || "").split(",").map((t) => t.trim());
+            return tags.some((t) => itemTags.includes(t));
+        }) || pool[0];
+        if (!pick || !pick.id) {
+            showScanToast("Nothing to shuffle — try Scan Media", true);
+            return;
+        }
+        await play_media(pick.id, pick.parent_container_id || null);
+    } catch (e) {
+        console.error(e);
+        showScanToast("Shuffle play failed", true);
     }
 }
 
@@ -1091,6 +1141,9 @@ async function generate_media_container_for_shelf(content_data, media_card_templ
     wrapper.className = "library-shelf-card";
     wrapper.innerHTML = media_card_template;
     const cardRoot = wrapper.querySelector("#content_container") || wrapper.firstElementChild;
+    const parentId = content_data.parent_container_id != null
+        ? content_data.parent_container_id
+        : null;
 
     if ("container_title" in content_data) {
         cardRoot.dataset.containerId = content_data.container_id || content_data.id;
@@ -1098,13 +1151,38 @@ async function generate_media_container_for_shelf(content_data, media_card_templ
         nav.textContent = content_data.container_title;
         nav.setAttribute("href", "javascript:load_container(" + content_data.id + ")");
     } else if ("content_title" in content_data) {
-        cardRoot.dataset.contentId = content_data.content_id || content_data.id;
+        const contentId = content_data.content_id || content_data.id;
+        cardRoot.dataset.contentId = contentId;
+        if (parentId != null) {
+            cardRoot.dataset.parentContainerId = parentId;
+        }
         const nav = wrapper.querySelector("#content_navigator");
         nav.textContent = content_data.content_title;
         nav.setAttribute(
             "href",
-            "javascript:play_media(" + content_data.id + ", " + (content_data.parent_container_id || "null") + ")"
+            "javascript:play_media(" + contentId + ", " + (parentId != null ? parentId : "null") + ")"
         );
+        // Play affordance on poster click
+        const img = wrapper.querySelector("#content_img");
+        if (img) {
+            img.classList.add("library-poster-playable");
+            img.title = "Play";
+            img.addEventListener("click", (e) => {
+                e.preventDefault();
+                play_media(contentId, parentId);
+            });
+        }
+        // Explicit play button in footer
+        const footerActions = wrapper.querySelector(".card-footer .d-grid");
+        if (footerActions) {
+            const playBtn = document.createElement("button");
+            playBtn.type = "button";
+            playBtn.className = "btn btn-success me-md-2";
+            playBtn.innerHTML = '<i class="bi-play-fill"></i>';
+            playBtn.title = "Play";
+            playBtn.addEventListener("click", () => play_media(contentId, parentId));
+            footerActions.insertBefore(playBtn, footerActions.firstChild);
+        }
     }
     if ("play_count" in content_data && content_data.play_count == 0) {
         wrapper.querySelector("#new_tag").hidden = false;
@@ -1322,6 +1400,10 @@ function setup_media_page() {
         shortcuts.querySelectorAll("[data-library]").forEach((btn) => {
             btn.addEventListener("click", () => load_library(btn.dataset.library));
         });
+    }
+    const shuffleBtn = document.getElementById("shuffle_play_button");
+    if (shuffleBtn) {
+        shuffleBtn.addEventListener("click", shuffle_library_play);
     }
     const navHome = document.getElementById("nav_home");
     if (navHome) {

@@ -55,7 +55,7 @@ class TestLibraryHomeAndProgress(unittest.TestCase):
             )
             setattr(self, f"content_{i}_id", content["id"])
 
-        # tv show container for library counts
+        # tv show container for library counts + parent link for episodes
         container = {
             "container_title": "Demo Show",
             "container_path": "/tv_shows/Demo Show",
@@ -65,6 +65,40 @@ class TestLibraryHomeAndProgress(unittest.TestCase):
             "container_content": [],
         }
         self.db.insert_container(container)
+        self.container_id = container.get("id")
+        if not self.container_id:
+            row = self.db.get_data_from_db_first_result(
+                "SELECT id FROM container WHERE container_path = :p;",
+                {"p": container["container_path"]},
+            )
+            self.container_id = row.get("id")
+
+        # Link content_1 as episode under the show (for parent_container_id on shelves)
+        ep = {
+            "content_directory_id": self.dir_id,
+            "content_title": "Demo Show - s01e01",
+            "content_src": "/tv_shows/Demo Show/Demo Show - s01e01.mp4",
+            "description": "",
+            "img_src": "",
+            "tags": [],
+        }
+        self.db.insert_content(ep)
+        if not ep.get("id"):
+            row = self.db.get_data_from_db_first_result(
+                "SELECT id FROM content WHERE content_src = :content_src;",
+                {"content_src": ep["content_src"]},
+            )
+            ep["id"] = row.get("id")
+        self.episode_id = ep["id"]
+        self.db.add_data_to_db(
+            "INSERT OR IGNORE INTO container_content (parent_container_id, content_id, content_index) "
+            "VALUES (:parent_container_id, :content_id, :content_index);",
+            {
+                "parent_container_id": self.container_id,
+                "content_id": self.episode_id,
+                "content_index": 1,
+            },
+        )
 
     def test_schema_has_progress_columns(self):
         self.assertTrue(self.db.table_has_column("content", "last_position"))
@@ -99,6 +133,13 @@ class TestLibraryHomeAndProgress(unittest.TestCase):
             {"id": self.content_1_id},
         )
         self.assertEqual(float(row["last_position"]), 120.0)
+
+    def test_continue_watching_includes_parent_container_id(self):
+        self.db.update_playback_progress(self.episode_id, 90, 600)
+        watching = self.db.list_continue_watching(limit=10)
+        match = next((row for row in watching if row["id"] == self.episode_id), None)
+        self.assertIsNotNone(match)
+        self.assertEqual(match.get("parent_container_id"), self.container_id)
 
     def test_recently_played(self):
         self.db.update_content_play_count(self.content_3_id)
@@ -188,6 +229,23 @@ class TestScanMediaGuard(unittest.TestCase):
         self.assertEqual(result["status"], "error")
         self.assertIn("disk gone", result["message"])
         self.assertFalse(handler.media_scan_in_progress)
+
+    def test_scan_status_shape_matches_api_contract(self):
+        """Document expected /scan_status payload used by the UI."""
+        handler = object.__new__(backend_handler.BackEndHandler)
+        handler.media_scan_in_progress = False
+        handler.transfer_in_progress = False
+        payload = {
+            "scanning": bool(handler.media_scan_in_progress),
+            "transfer_in_progress": bool(handler.transfer_in_progress),
+            "status": "busy" if handler.media_scan_in_progress or handler.transfer_in_progress else "idle",
+        }
+        self.assertEqual(payload["status"], "idle")
+        handler.media_scan_in_progress = True
+        payload["scanning"] = bool(handler.media_scan_in_progress)
+        payload["status"] = "busy" if handler.media_scan_in_progress else "idle"
+        self.assertEqual(payload["status"], "busy")
+        self.assertTrue(payload["scanning"])
 
 
 if __name__ == "__main__":

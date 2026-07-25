@@ -137,9 +137,16 @@
                 </p>
             </div>
             <div class="col-md-8">
+                {% if editor_metadata.get('storage_low') %}
+                <div id="editor_storage_warning" class="alert alert-warning py-2" role="alert">
+                    Low disk space — processing new splits may fail. Free space on a media drive before starting large jobs.
+                </div>
+                {% else %}
+                <div id="editor_storage_warning" class="alert alert-warning py-2" role="alert" hidden></div>
+                {% endif %}
                 {% if 'storage' in editor_metadata %}
                 {% for storage_item in editor_metadata['storage']: %}
-                <div>
+                <div class="{% if storage_item.get('percent_used', 0) >= 90 or storage_item.get('free_space', 99) <= 5 %}text-danger fw-semibold{% endif %}">
                     <span>Free Space: {{ storage_item['free_space'] }} {{ storage_item['unit'] }}, Used: {{ storage_item['percent_used'] }}%</span>
                     <span>Path: {{ storage_item['path'] }}</span>
                 </div>

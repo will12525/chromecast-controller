@@ -198,7 +198,16 @@ class BackEndHandler:
                                                            selected_editor_file=selected_txt_file,
                                                            raw_url=raw_folder_url,
                                                            process_file=EDITOR_PROCESSED_LOG)
-        editor_metadata["storage"] = get_system_data()
+        storage = get_system_data()
+        editor_metadata["storage"] = storage
+        # Flag low storage so the editor UI can warn / block process starts.
+        # percent_used is 0-100; treat >= 90% used as low free space.
+        low = [
+            item for item in (storage or [])
+            if (item.get("percent_used") or 0) >= 90 or (item.get("free_space") or 0) <= 5
+        ]
+        editor_metadata["storage_low"] = bool(low)
+        editor_metadata["storage_warnings"] = low
         return editor_metadata
 
     def editor_process_txt_file(self, media_type, file_name):

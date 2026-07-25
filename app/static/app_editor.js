@@ -161,8 +161,28 @@ async function validate_txt_file(content_data) {
 }
 
 async function process_txt_file(content_data) {
+    // Surface low-storage warning from the editor page banner if present
+    const warn = document.getElementById("editor_storage_warning");
+    if (warn && !warn.hidden && warn.classList.contains("alert-warning")) {
+        // Soft confirm — server still enforces disk checks via build_editor_output_path
+        const proceed = window.confirm(
+            "Disk space looks low. Start processing anyway? Jobs may fail if a drive runs out of space."
+        );
+        if (!proceed) {
+            return;
+        }
+    }
     fetchAndSetData('/process_txt_file', content_data).then(response_data => {
         update_editor_process_queue(response_data);
+        if (response_data && Array.isArray(response_data.process_log)) {
+            const diskErr = response_data.process_log.find(
+                (e) => e && /space|Disk out of space|System out of space/i.test(JSON.stringify(e))
+            );
+            if (diskErr && warn) {
+                warn.hidden = false;
+                warn.textContent = "Low disk space — processing was blocked or failed. Free space and retry.";
+            }
+        }
     }).catch(error => {
         console.error('Error:', error);
     });

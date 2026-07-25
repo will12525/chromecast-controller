@@ -189,6 +189,15 @@ body {
     text-underline-offset: 0.25rem;
 }
 
+.library-poster-playable {
+    cursor: pointer;
+}
+.library-poster-playable:hover {
+    opacity: 0.9;
+    outline: 2px solid #04AA6D;
+    outline-offset: 2px;
+}
+
 #library_shortcuts .btn.active {
     background-color: #6c757d;
     color: #fff;
