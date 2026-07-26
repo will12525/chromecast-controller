@@ -11,7 +11,7 @@ from app.utils import config_file_handler
 
 main_bp = Blueprint("main", __name__)
 
-# Remaining backlog: content_transfer harden, Chromecast UUID ids, optional added_at.
+# Remaining backlog: Chromecast UUID ids, optional added_at.
 
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "mp4"}
 

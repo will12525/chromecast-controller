@@ -53,6 +53,8 @@ Example `app/config.json`:
 - `mode`: `CLIENT` or `SERVER`
 - `content_src`: absolute path on disk
 - `content_url`: LAN URL where that path is served by http-server
+- `server_url` (CLIENT): base URL of the SERVER node for content pull on scan
+- Optional transfer handshake overrides: `transfer_handshake_secret` / `transfer_handshake_response` in config, or env `TRANSFER_HANDSHAKE_SECRET` / `TRANSFER_HANDSHAKE_RESPONSE`
 
 Install packages:
 
@@ -85,7 +87,7 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 pip install pytest pytest-cov pytest-mock
-pytest tests/test_library_home.py -q
+pytest tests/test_library_home.py tests/test_content_transfer_unit.py -q
 ```
 
 Schema migrations run on app start via `DBHandler.create_db()` (currently version **2**: playback progress columns).
