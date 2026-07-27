@@ -37,8 +37,11 @@ jobs:
         run: |
           mkdir -p tests/junit
           # Maintained green suites (legacy tests still use pre-refactor imports).
-          python -m pytest tests/test_library_home.py tests/test_content_transfer_unit.py -q \
-            --junitxml=tests/junit/test-results.xml
+          python -m pytest \
+            tests/test_library_home.py \
+            tests/test_content_transfer_unit.py \
+            tests/test_chromecast_uuid.py \
+            -q --junitxml=tests/junit/test-results.xml
           test -f tests/junit/test-results.xml
           ls -la tests/junit
 

@@ -8,7 +8,7 @@ Inspired by a Plex-style **Home** (Continue Watching, Recently Added, library sh
 
 - **Library home** — shelves for Continue Watching, Recently Added, Recently Played, and TV / Movies / Books
 - **Browse** — tag filters, unified search, card grid and table view
-- **Play** — Chromecast or local HTML5; sequential next-in-show and tag-random playlists; resume position
+- **Play** — Chromecast (identified by device UUID) or local HTML5; sequential next-in-show and tag-random playlists; resume position
 - **Catalog** — scan disks for TV / movies / books by filename convention
 - **Editor (SERVER mode)** — split raw MP4s into library layout with ffmpeg
 - **Optional client mode** — pull missing content from a server node

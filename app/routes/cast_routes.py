@@ -34,15 +34,20 @@ def connect_chromecast():
     if json_request := request.get_json():
         if chromecast_id := json_request.get("chromecast_id"):
             if bh.connect_chromecast(chromecast_id):
-                data = {"chromecast_id": chromecast_id}
+                data = {
+                    "chromecast_id": bh.get_chromecast_device_id() or chromecast_id,
+                    "chromecast_name": bh.get_chromecast_device_name(),
+                }
     return data, 200
 
 
 @main_bp.route(APIEndpoints.GET_CHROMECAST_LIST.value, methods=["POST"])
 def get_chromecast_list():
+    # scanned_devices: [{uuid, name}, ...] — connect with uuid, display name
     data = {
         "scanned_devices": bh.get_chromecast_scan_list(),
-        "connected_device": bh.get_chromecast_device_id(),
+        "connected_device": bh.get_chromecast_device_name() or bh.get_chromecast_device_id(),
+        "connected_device_id": bh.get_chromecast_device_id(),
     }
     return data, 200
 

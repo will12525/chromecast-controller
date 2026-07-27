@@ -11,7 +11,7 @@ from app.utils import config_file_handler
 
 main_bp = Blueprint("main", __name__)
 
-# Remaining backlog: Chromecast UUID ids, optional added_at.
+# Remaining backlog: optional added_at for true Recently Added after reorganize.
 
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "mp4"}
 

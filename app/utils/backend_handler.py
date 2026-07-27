@@ -143,6 +143,9 @@ class BackEndHandler:
     def get_chromecast_device_id(self):
         return self.chromecast.get_chromecast_id()
 
+    def get_chromecast_device_name(self):
+        return self.chromecast.get_chromecast_name()
+
     def seek_media_time(self, media_time):
         self.chromecast.seek_media_time(media_time)
 

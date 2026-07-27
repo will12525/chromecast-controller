@@ -3,9 +3,40 @@ import threading
 import time
 import os
 from enum import Enum, auto
+from uuid import UUID
+
 import pychromecast
 
 from app.database.db_getter import DBHandler
+
+
+def _as_uuid_str(value):
+    """Normalize cast uuid / string to a stable string id, or None."""
+    if value is None:
+        return None
+    if isinstance(value, UUID):
+        return str(value)
+    text = str(value).strip()
+    if not text:
+        return None
+    try:
+        return str(UUID(text))
+    except (ValueError, AttributeError, TypeError):
+        return text
+
+
+def _service_device_info(service):
+    """Build {uuid, name} from a discovery CastInfo/service object."""
+    uuid_val = getattr(service, "uuid", None)
+    name = getattr(service, "friendly_name", None) or getattr(service, "model_name", None) or ""
+    uuid_str = _as_uuid_str(uuid_val)
+    if not uuid_str and not name:
+        return None
+    # Prefer uuid as stable id; fall back to name only if uuid missing
+    return {
+        "uuid": uuid_str or name,
+        "name": name or uuid_str,
+    }
 
 
 class CommandList(Enum):
@@ -216,7 +247,13 @@ class ChromecastHandler(threading.Thread):
             self.chromecast_browser.stop_discovery()
 
     def get_scan_list(self):
-        return self.last_scanned_devices
+        """
+        Return discovered devices as list of dicts: {"uuid": str, "name": str}.
+
+        Older callers that expected bare friendly-name strings should use
+        device["name"] or device["uuid"].
+        """
+        return list(self.last_scanned_devices)
 
     def scan_for_chromecasts(self):
         services, browser = pychromecast.discovery.discover_chromecasts()
@@ -224,20 +261,62 @@ class ChromecastHandler(threading.Thread):
             self.chromecast_browser = browser
         else:
             browser.stop_discovery()
-        self.last_scanned_devices = [getattr(service, "friendly_name") for service in services]
+        devices = []
+        seen = set()
+        for service in services or []:
+            info = _service_device_info(service)
+            if not info:
+                continue
+            key = info["uuid"]
+            if key in seen:
+                continue
+            seen.add(key)
+            devices.append(info)
+        self.last_scanned_devices = devices
+
+    def _lookup_chromecasts(self, chromecast_id):
+        """Resolve device by UUID first, then friendly name (legacy)."""
+        if not chromecast_id:
+            return [], None
+        chromecasts, browser = [], None
+        uuid_str = _as_uuid_str(chromecast_id)
+        # Try UUID path when the id looks like a UUID
+        try:
+            uid = UUID(str(chromecast_id))
+            chromecasts, browser = pychromecast.get_listed_chromecasts(uuids=[uid])
+            if chromecasts:
+                return chromecasts, browser
+        except (ValueError, TypeError, AttributeError):
+            pass
+        # Friendly-name fallback (and when uuid lookup found nothing)
+        chromecasts, browser = pychromecast.get_listed_chromecasts(
+            friendly_names=[str(chromecast_id)]
+        )
+        if chromecasts:
+            return chromecasts, browser
+        # Match against last scan by uuid or name
+        for device in self.last_scanned_devices:
+            if device.get("uuid") == uuid_str or device.get("name") == chromecast_id:
+                try:
+                    uid = UUID(device["uuid"])
+                    return pychromecast.get_listed_chromecasts(uuids=[uid])
+                except (ValueError, TypeError, AttributeError):
+                    return pychromecast.get_listed_chromecasts(
+                        friendly_names=[device.get("name") or chromecast_id]
+                    )
+        return [], browser
 
     def connect_chromecast(self, chromecast_id):
-        chromecasts, browser = pychromecast.get_listed_chromecasts(friendly_names=[chromecast_id])
-        if len(chromecasts) > 0:
-            chromecast = chromecasts[0]
-            if getattr(chromecast.cast_info, "friendly_name") == chromecast_id:
-                chromecast.wait()
-                self.chromecast_device = chromecast
-                self.media_controller = MyMediaDevice(chromecast.media_controller)
-                if not self.chromecast_browser:
-                    self.chromecast_browser = browser
-                return True
-        return False
+        chromecasts, browser = self._lookup_chromecasts(chromecast_id)
+        if not chromecasts:
+            return False
+        chromecast = chromecasts[0]
+        chromecast.wait()
+        self.chromecast_device = chromecast
+        self.media_controller = MyMediaDevice(chromecast.media_controller)
+        if browser and not self.chromecast_browser:
+            self.chromecast_browser = browser
+        return True
 
     def disconnect_chromecast(self):
         self.chromecast_device = None
@@ -251,8 +330,32 @@ class ChromecastHandler(threading.Thread):
             return self.media_controller.get_media_controller_metadata()
 
     def get_chromecast_id(self) -> str:
-        if self.chromecast_device:
-            return self.chromecast_device.name
+        """Stable device id (UUID string when available)."""
+        if not self.chromecast_device:
+            return None
+        cast = self.chromecast_device
+        uuid_val = getattr(cast, "uuid", None)
+        if uuid_val is None and getattr(cast, "cast_info", None):
+            uuid_val = getattr(cast.cast_info, "uuid", None)
+        uuid_str = _as_uuid_str(uuid_val)
+        if uuid_str:
+            return uuid_str
+        return getattr(cast, "name", None) or getattr(
+            getattr(cast, "cast_info", None), "friendly_name", None
+        )
+
+    def get_chromecast_name(self) -> str:
+        """Human-readable friendly name for UI labels."""
+        if not self.chromecast_device:
+            return None
+        cast = self.chromecast_device
+        name = getattr(cast, "name", None)
+        if name:
+            return name
+        cast_info = getattr(cast, "cast_info", None)
+        if cast_info:
+            return getattr(cast_info, "friendly_name", None)
+        return self.get_chromecast_id()
 
     def seek_media_time(self, media_time):
         if self.media_controller:
