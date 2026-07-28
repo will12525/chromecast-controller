@@ -104,7 +104,9 @@ class TestLibraryHomeAndProgress(unittest.TestCase):
         self.assertTrue(self.db.table_has_column("content", "last_position"))
         self.assertTrue(self.db.table_has_column("content", "last_played_at"))
         self.assertTrue(self.db.table_has_column("content", "last_duration"))
+        self.assertTrue(self.db.table_has_column("content", "added_at"))
         self.assertEqual(self.db.check_db_version(), self.db.VERSION)
+        self.assertEqual(self.db.VERSION, 3)
 
     def test_update_playback_progress_and_continue_watching(self):
         ok = self.db.update_playback_progress(self.content_1_id, 120, 600)
@@ -147,11 +149,79 @@ class TestLibraryHomeAndProgress(unittest.TestCase):
         ids = [row["id"] for row in played]
         self.assertIn(self.content_3_id, ids)
 
-    def test_recently_added_orders_by_id_desc(self):
+    def test_recently_added_orders_by_added_at(self):
+        # Override stamps so order is by added_at, not insert id
+        self.db.add_data_to_db(
+            "UPDATE content SET added_at = :t WHERE id = :id;",
+            {"id": self.content_1_id, "t": "2020-01-01T00:00:00+00:00"},
+        )
+        self.db.add_data_to_db(
+            "UPDATE content SET added_at = :t WHERE id = :id;",
+            {"id": self.content_2_id, "t": "2024-06-01T00:00:00+00:00"},
+        )
+        self.db.add_data_to_db(
+            "UPDATE content SET added_at = :t WHERE id = :id;",
+            {"id": self.content_3_id, "t": "2022-01-01T00:00:00+00:00"},
+        )
         added = self.db.list_recently_added(limit=10)
-        self.assertGreaterEqual(len(added), 3)
         ids = [row["id"] for row in added]
-        self.assertEqual(ids, sorted(ids, reverse=True)[: len(ids)])
+        # Newest added_at first among the three movies
+        movie_order = [i for i in ids if i in (self.content_1_id, self.content_2_id, self.content_3_id)]
+        self.assertEqual(
+            movie_order[:3],
+            [self.content_2_id, self.content_3_id, self.content_1_id],
+        )
+
+    def test_insert_content_stamps_added_at(self):
+        content = {
+            "content_directory_id": self.dir_id,
+            "content_title": "Delta",
+            "content_src": "/movies/Delta (2025).mp4",
+            "description": "",
+            "img_src": "",
+            "tags": [],
+        }
+        self.db.insert_content(content)
+        self.assertTrue(content.get("id"))
+        row = self.db.get_data_from_db_first_result(
+            "SELECT added_at FROM content WHERE id = :id;",
+            {"id": content["id"]},
+        )
+        self.assertTrue(row.get("added_at"))
+        self.assertIn("T", row["added_at"])
+
+    def test_rescans_keep_original_added_at(self):
+        content = {
+            "content_directory_id": self.dir_id,
+            "content_title": "Echo",
+            "content_src": "/movies/Echo (2019).mp4",
+            "description": "",
+            "img_src": "",
+            "tags": [],
+            "added_at": "2019-05-05T12:00:00+00:00",
+        }
+        self.db.insert_content(content)
+        cid = content["id"]
+        # Second insert with same unique content_src is ignored; stamp must stay
+        again = {
+            "content_directory_id": self.dir_id,
+            "content_title": "Echo",
+            "content_src": "/movies/Echo (2019).mp4",
+            "description": "",
+            "img_src": "",
+            "tags": [],
+            "added_at": "2099-01-01T00:00:00+00:00",
+        }
+        self.db.insert_content(again)
+        row = self.db.get_data_from_db_first_result(
+            "SELECT added_at FROM content WHERE content_src = :s;",
+            {"s": "/movies/Echo (2019).mp4"},
+        )
+        self.assertEqual(row["added_at"], "2019-05-05T12:00:00+00:00")
+        self.assertEqual(cid, self.db.get_data_from_db_first_result(
+            "SELECT id FROM content WHERE content_src = :s;",
+            {"s": "/movies/Echo (2019).mp4"},
+        )["id"])
 
     def test_library_home_shape(self):
         home = self.db.get_library_home(limit=5)
@@ -167,11 +237,11 @@ class TestLibraryHomeAndProgress(unittest.TestCase):
         self.assertGreaterEqual(tv["count"], 1)
 
     def test_migration_from_v1(self):
-        """Create a v1-shaped table and migrate."""
+        """Create a v1-shaped table and migrate through v2 to v3."""
         path = os.path.join(self._tmpdir.name, "legacy.db")
         legacy = DBHandler(db_type=DBType.PHYSICAL, file_name=path)
         legacy.open()
-        # Force v1 content table without progress columns
+        # Force v1 content table without progress / added_at columns
         legacy.execute_db_script(
             [
                 """CREATE TABLE IF NOT EXISTS content (
@@ -188,11 +258,19 @@ class TestLibraryHomeAndProgress(unittest.TestCase):
                     version integer NOT NULL
                 );""",
                 "INSERT INTO version_info(version) VALUES(1);",
+                "INSERT INTO content (content_directory_id, content_title, content_src) "
+                "VALUES (1, 'Legacy', '/movies/Legacy (2000).mp4');",
             ]
         )
         legacy.create_db()
         self.assertTrue(legacy.table_has_column("content", "last_position"))
-        self.assertEqual(legacy.check_db_version(), 2)
+        self.assertTrue(legacy.table_has_column("content", "added_at"))
+        self.assertEqual(legacy.check_db_version(), 3)
+        row = legacy.get_data_from_db_first_result(
+            "SELECT added_at FROM content WHERE content_title = 'Legacy';",
+            {},
+        )
+        self.assertTrue(row.get("added_at"))
         legacy.close()
 
 

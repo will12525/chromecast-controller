@@ -90,7 +90,7 @@ pip install pytest pytest-cov pytest-mock
 pytest tests/test_library_home.py tests/test_content_transfer_unit.py -q
 ```
 
-Schema migrations run on app start via `DBHandler.create_db()` (currently version **2**: playback progress columns).
+Schema migrations run on app start via `DBHandler.create_db()` (currently version **3**: playback progress + `added_at` for Recently Added).
 
 ## Notes
 

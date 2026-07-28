@@ -46,9 +46,14 @@ CREATE_CONTENT_INFO_TABLE = f'''CREATE TABLE IF NOT EXISTS content (
                                     last_position REAL DEFAULT 0,
                                     last_played_at text DEFAULT "",
                                     last_duration REAL DEFAULT 0,
+                                    added_at text DEFAULT "",
                                     FOREIGN KEY (content_directory_id) REFERENCES content_directory (id)
                                 );'''
-SET_CONTENT_INFO_TABLE = f'{INSERT_IGNORE} content (content_directory_id, content_title, content_src, description, img_src) VALUES (:content_directory_id, :content_title, :content_src, :description, :img_src);'
+# added_at set only on first insert (INSERT OR IGNORE) so re-scans keep original catalog time
+SET_CONTENT_INFO_TABLE = (
+    f"{INSERT_IGNORE} content (content_directory_id, content_title, content_src, description, img_src, added_at) "
+    f"VALUES (:content_directory_id, :content_title, :content_src, :description, :img_src, :added_at);"
+)
 
 # Playback progress (schema v2)
 UPDATE_CONTENT_PLAYBACK_PROGRESS = (
@@ -95,7 +100,7 @@ LIMIT :limit;
 """
 LIST_RECENTLY_ADDED = _SHELF_CONTENT_SELECT + """
 GROUP BY content.id
-ORDER BY content.id DESC
+ORDER BY content.added_at DESC, content.id DESC
 LIMIT :limit;
 """
 COUNT_CONTENT_WITH_TAG = """

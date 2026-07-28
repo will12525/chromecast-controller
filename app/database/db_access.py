@@ -22,7 +22,7 @@ def print_db_traceback(error, message):
 
 
 class DBConnection:
-    VERSION = 2
+    VERSION = 3
     DB_FILE_NAME = "media_metadata.db"
 
     connection = None

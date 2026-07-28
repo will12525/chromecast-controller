@@ -11,7 +11,7 @@ from app.utils import config_file_handler
 
 main_bp = Blueprint("main", __name__)
 
-# Remaining backlog: optional added_at for true Recently Added after reorganize.
+# Phase 1–2 library plan complete (shelves, transfer harden, UUID cast, added_at).
 
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "mp4"}
 

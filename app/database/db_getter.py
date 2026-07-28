@@ -41,6 +41,8 @@ class DBHandler(DBConnection):
         """Updates the database schema from current_version toward VERSION."""
         if current_version < 2:
             self._migrate_to_v2()
+        if current_version < 3:
+            self._migrate_to_v3()
 
     def _migrate_to_v2(self):
         """Add playback progress columns for Continue Watching shelves."""
@@ -53,6 +55,22 @@ class DBHandler(DBConnection):
             if not self.table_has_column("content", column_name):
                 self.execute_db_script([alter_sql])
                 print(f"Migrated content: added {column_name}")
+
+    def _migrate_to_v3(self):
+        """Add added_at for true Recently Added (stable across re-scans / reorganize)."""
+        if not self.table_has_column("content", "added_at"):
+            self.execute_db_script(
+                ["ALTER TABLE content ADD COLUMN added_at text DEFAULT '';"]
+            )
+            print("Migrated content: added added_at")
+        # Backfill empty added_at so existing rows sort consistently (id as proxy for age)
+        self.execute_db_script(
+            [
+                "UPDATE content SET added_at = printf('1970-01-01T00:00:00+00:00#%08d', id) "
+                "WHERE added_at IS NULL OR added_at = '';"
+            ]
+        )
+        print("Migrated content: backfilled added_at for existing rows")
 
     def create_db(self):
         # Always ensure base tables exist (CREATE IF NOT EXISTS)
@@ -135,9 +153,12 @@ class DBHandler(DBConnection):
         # print(container)
 
     def insert_content(self, content):
+        # Stamp catalog time only when not already provided (first insert wins via INSERT OR IGNORE)
+        if not content.get("added_at"):
+            content["added_at"] = utc_now_iso()
         if content_id := self.add_data_to_db(db_queries.SET_CONTENT_INFO_TABLE, content):
             content["id"] = content_id
-            for tag in content.get("tags"):
+            for tag in content.get("tags", []) or []:
                 self.insert_tag(tag)
                 self.add_tag_to_content({"user_tags_id": tag.get("id"), "content_id": content.get("id")})
 
