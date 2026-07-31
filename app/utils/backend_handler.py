@@ -115,6 +115,9 @@ class BackEndHandler:
     editor_thread = mp4_splitter.SubclipThreadHandler()
     media_scan_in_progress = False
     transfer_in_progress = False
+    # Last finished scan result for /scan_status polling (message after async job ends)
+    last_scan_result = None  # type: dict | None
+    _scan_lock = threading.Lock()
 
     def __init__(self):
         repo = git.Repo(search_parent_directories=True)
@@ -169,7 +172,7 @@ class BackEndHandler:
 
     def scan_media_directories(self):
         """
-        Scan content directories once.
+        Scan content directories once (synchronous).
 
         Returns:
             dict: {"status": "ok"|"busy"|"error", "message": str}
@@ -183,14 +186,86 @@ class BackEndHandler:
             db_connection.open()
             db_connection.scan_content_directories()
             db_connection.close()
-            return {"status": "ok", "message": "Scan complete"}
+            result = {"status": "ok", "message": "Scan complete"}
+            self.last_scan_result = result
+            return result
         except Exception as e:
             print("Exception class: ", e.__class__)
             print(f"ERROR: {e}")
             print(traceback.print_exc())
-            return {"status": "error", "message": str(e)}
+            result = {"status": "error", "message": str(e)}
+            self.last_scan_result = result
+            return result
         finally:
             self.media_scan_in_progress = False
+
+    def get_scan_status(self):
+        """Payload for GET /scan_status."""
+        busy = bool(self.media_scan_in_progress or self.transfer_in_progress)
+        payload = {
+            "scanning": bool(self.media_scan_in_progress),
+            "transfer_in_progress": bool(self.transfer_in_progress),
+            "status": "busy" if busy else "idle",
+        }
+        if self.last_scan_result:
+            payload["last_result"] = dict(self.last_scan_result)
+        return payload
+
+    def start_scan_media_directories(self, run_client_sync=False):
+        """
+        Start a background media scan (and optional CLIENT content pull).
+
+        Returns immediately with status "started" or "busy".
+        Clients should poll get_scan_status() until status is idle, then read last_result.
+        """
+        with self._scan_lock:
+            if self.media_scan_in_progress or self.transfer_in_progress:
+                return {"status": "busy", "message": "Scan already in progress"}
+            self.media_scan_in_progress = True
+            self.last_scan_result = None
+
+        def _job():
+            final = {"status": "ok", "message": "Scan complete"}
+            try:
+                db_connection = DBHandler()
+                db_connection.open()
+                try:
+                    db_connection.scan_content_directories()
+                finally:
+                    db_connection.close()
+
+                if run_client_sync and not self.transfer_in_progress:
+                    print("Starting server content pull")
+                    self.transfer_in_progress = True
+                    try:
+                        from app.utils import content_transfer
+
+                        content_transfer.query_server()
+                    finally:
+                        self.transfer_in_progress = False
+                    # Rescan after transfer so newly pulled files appear
+                    db_connection = DBHandler()
+                    db_connection.open()
+                    try:
+                        db_connection.scan_content_directories()
+                    finally:
+                        db_connection.close()
+                    final = {
+                        "status": "ok",
+                        "message": "Scan complete (synced from server)",
+                    }
+            except Exception as e:
+                print("Exception class: ", e.__class__)
+                print(f"ERROR: {e}")
+                print(traceback.print_exc())
+                final = {"status": "error", "message": str(e)}
+            finally:
+                self.last_scan_result = final
+                self.media_scan_in_progress = False
+                self.transfer_in_progress = False
+
+        threading.Thread(target=_job, daemon=True, name="media-scan").start()
+        return {"status": "started", "message": "Scan started"}
 
     def get_editor_metadata(self, selected_txt_file=None):
         config_file = config_file_handler.load_json_file_content()

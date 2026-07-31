@@ -16,7 +16,6 @@ from app.routes.shared import (
     play_response_from_metadata,
     system_mode,
 )
-from app.utils import content_transfer
 from app.utils.common import SystemMode
 
 
@@ -258,48 +257,25 @@ def get_disk_space():
 
 @main_bp.route(APIEndpoints.SCAN_STATUS.value, methods=["GET"])
 def scan_status():
-    """Lightweight poll for scan/transfer busy state."""
-    return {
-        "scanning": bool(bh.media_scan_in_progress),
-        "transfer_in_progress": bool(bh.transfer_in_progress),
-        "status": "busy"
-        if bh.media_scan_in_progress or bh.transfer_in_progress
-        else "idle",
-    }, 200
+    """Lightweight poll for scan/transfer busy state and last scan result."""
+    return bh.get_scan_status(), 200
 
 
 @main_bp.route(APIEndpoints.SCAN_MEDIA_DIRECTORIES.value, methods=["POST"])
 def scan_media_directories():
     """
-    Trigger a media directory scan. Concurrent scans return status=busy.
-    CLIENT mode may also pull missing content from the server after a successful scan.
+    Start a background media directory scan. Concurrent starts return status=busy.
+    CLIENT mode also pulls missing content from the server after the first pass.
+    Poll GET /scan_status until status is idle; last_result holds the outcome.
     """
-    data = {"status": "ok", "message": "Scan complete"}
     try:
-        result = bh.scan_media_directories()
-        if isinstance(result, dict):
-            data.update(result)
+        run_client_sync = system_mode == SystemMode.CLIENT
+        data = bh.start_scan_media_directories(run_client_sync=run_client_sync)
         print("Server scan triggered:", data.get("status"))
-        if (
-            data.get("status") == "ok"
-            and system_mode == SystemMode.CLIENT
-            and not bh.transfer_in_progress
-        ):
-            print("Starting server content pull")
-            bh.transfer_in_progress = True
-            try:
-                content_transfer.query_server()
-            finally:
-                bh.transfer_in_progress = False
-            result = bh.scan_media_directories()
-            if isinstance(result, dict):
-                data.update(result)
-                if data.get("status") == "ok":
-                    data["message"] = "Scan complete (synced from server)"
     except Exception as e:
         print(e)
         data = {"status": "error", "message": str(e)}
-    http_status = 200 if data.get("status") in ("ok", "busy") else 500
+    http_status = 200 if data.get("status") in ("started", "busy", "ok") else 500
     return data, http_status
 
 

@@ -313,17 +313,43 @@ class TestScanMediaGuard(unittest.TestCase):
         handler = object.__new__(backend_handler.BackEndHandler)
         handler.media_scan_in_progress = False
         handler.transfer_in_progress = False
-        payload = {
-            "scanning": bool(handler.media_scan_in_progress),
-            "transfer_in_progress": bool(handler.transfer_in_progress),
-            "status": "busy" if handler.media_scan_in_progress or handler.transfer_in_progress else "idle",
-        }
+        handler.last_scan_result = None
+        payload = handler.get_scan_status()
         self.assertEqual(payload["status"], "idle")
         handler.media_scan_in_progress = True
-        payload["scanning"] = bool(handler.media_scan_in_progress)
-        payload["status"] = "busy" if handler.media_scan_in_progress else "idle"
+        payload = handler.get_scan_status()
         self.assertEqual(payload["status"], "busy")
         self.assertTrue(payload["scanning"])
+
+    def test_start_scan_async_returns_started_and_sets_result(self):
+        handler = object.__new__(backend_handler.BackEndHandler)
+        handler.media_scan_in_progress = False
+        handler.transfer_in_progress = False
+        handler.last_scan_result = None
+        handler._scan_lock = __import__("threading").Lock()
+        mock_db = mock.MagicMock()
+        with mock.patch.object(backend_handler, "DBHandler", return_value=mock_db):
+            result = handler.start_scan_media_directories(run_client_sync=False)
+            self.assertEqual(result["status"], "started")
+            # Wait briefly for daemon thread
+            import time
+            for _ in range(50):
+                if not handler.media_scan_in_progress and handler.last_scan_result:
+                    break
+                time.sleep(0.02)
+        self.assertFalse(handler.media_scan_in_progress)
+        self.assertEqual(handler.last_scan_result["status"], "ok")
+        status = handler.get_scan_status()
+        self.assertEqual(status["status"], "idle")
+        self.assertEqual(status["last_result"]["message"], "Scan complete")
+
+    def test_start_scan_async_busy_when_running(self):
+        handler = object.__new__(backend_handler.BackEndHandler)
+        handler.media_scan_in_progress = True
+        handler.transfer_in_progress = False
+        handler._scan_lock = __import__("threading").Lock()
+        result = handler.start_scan_media_directories()
+        self.assertEqual(result["status"], "busy")
 
 
 if __name__ == "__main__":
