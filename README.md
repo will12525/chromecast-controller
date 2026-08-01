@@ -117,3 +117,23 @@ Schema migrations run on app start via `DBHandler.create_db()` (currently versio
 - Chromecast needs HTTP media URLs reachable on the LAN (the separate http-server ports).
 - Resume auto-seeks when progress is past 30s and under 90% of duration.
 - Back up `media_metadata.db` before major upgrades.
+
+## Entire (optional agent history)
+
+This repository is set up for [Entire](https://entire.io/) so AI agent sessions can be checkpointed into git.
+
+```bash
+# CLI (if missing)
+curl -fsSL https://entire.io/install.sh | bash   # installs to ~/.local/bin/entire
+
+cd /path/to/chromecast-controller
+entire status          # should show Enabled + Cursor agent
+entire doctor
+entire checkpoint list
+```
+
+- Shared settings: `.entire/settings.json` (committed). Git hooks use an absolute `entire` path for reliability.
+- Agent hooks: Cursor via `.cursor/hooks.json` (local; re-run `entire agent add cursor` on a new machine).
+- Checkpoint metadata lives on branch `entire/checkpoints/v1` and is pushed with normal `git push`.
+- **Grok Build is not a first-party Entire agent** — use Cursor (or another supported agent) for automatic session capture until an external `entire-agent-grok` plugin exists.
+- Optional cloud: `entire login` and GitHub secrets `ENTIRE_API_TOKEN` / `ENTIRE_TOKEN` for the changelog workflow.
