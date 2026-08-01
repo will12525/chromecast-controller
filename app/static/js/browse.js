@@ -1,0 +1,564 @@
+/* Phase 4: browse.js — plain global script (no bundler). */
+async function generate_media_container(content_data, media_card_template, fragment) {
+    const template = document.createElement("div");
+    template.className = "col-sm-3";
+    template.innerHTML = media_card_template;
+    if ('container_title' in content_data) {
+        if (content_data["container_id"])
+        {
+            template.querySelector("#content_container").dataset.containerId = content_data["container_id"];
+        } else {
+            template.querySelector("#content_container").dataset.containerId = content_data["id"];
+        }
+        template.querySelector("#content_navigator").textContent = content_data["container_title"]
+        template.querySelector("#content_navigator").setAttribute('href', "javascript:load_container(" + content_data["id"] + ")")
+    }
+    else if ('content_title' in content_data) {
+        if (content_data["content_id"])
+        {
+            template.querySelector("#content_container").dataset.contentId = content_data["content_id"];
+        } else {
+            template.querySelector("#content_container").dataset.contentId = content_data["id"];
+        }
+        template.querySelector("#content_navigator").textContent = content_data["content_title"]
+        template.querySelector("#content_navigator").setAttribute('href', "javascript:play_media(" + content_data["id"] + ", " + content_data["parent_container_id"] + ")")
+    }
+    else {
+        console.log("Missing title")
+    }
+    if ('play_count' in content_data) {
+        if (content_data["play_count"] == 0) {
+            template.querySelector("#new_tag").hidden = false
+        }
+    }
+    if ('user_tags' in content_data) {
+        template.querySelector("#card_tags").textContent = "Tags: " + content_data["user_tags"]
+    }
+    if ('content_index' in content_data) {
+        template.querySelector("#content_index").hidden = false
+        template.querySelector("#content_index").textContent = "Index: " + content_data["content_index"]
+    }
+    template.querySelector("#card_description").textContent = content_data["description"]
+    if ('img_src' in content_data && 'img_url' in content_data) {
+        template.querySelector("#content_img").src = content_data['img_url'];
+    }
+    template.querySelector("#content_img").dataset.img_src = content_data['img_src'];
+
+    fragment.appendChild(template)
+}
+async function update_media_table(response_data) {
+    const fragment = document.createDocumentFragment();
+    const template = document.createElement("div");
+    template.className = "col-md-12";
+
+    const table = document.createElement("table");
+    table.className = "table table-striped table-hover";
+
+    const table_head = document.createElement("thead");
+    const table_head_row = document.createElement("tr");
+    column_list = ["Select", "Title", "Type", "Tags", "Index", "Play"]
+    for (const column_title of column_list) {
+        const th_element = document.createElement("th");
+        th_element.scope = 'col';
+        th_element.textContent = column_title;
+        table_head_row.appendChild(th_element)
+    }
+    const table_body = document.createElement("tbody");
+    if ('parent_containers' in response_data) {
+        for (const content_data of response_data["parent_containers"]) {
+            const tr_element = document.createElement("tr");
+            tr_element.setAttribute('data-row-container_id', content_data["id"]);
+            const td_title = document.createElement("td");
+            const load_anchor = document.createElement('a');
+            load_anchor.href = "javascript:load_container(" + content_data["id"] + ")";
+            load_anchor.textContent = content_data["container_title"];
+            td_title.appendChild(load_anchor);
+
+            const td_type = document.createElement("td");
+            td_type.textContent = "Playlist";
+
+            const td_tags = document.createElement("td");
+            td_tags.textContent = content_data["user_tags"];
+
+            const td_index = document.createElement("td");
+            td_index.textContent = content_data["season_index"];
+
+            const td_play = document.createElement("td");
+            const play_anchor = document.createElement('a');
+            play_anchor.textContent = "Play";
+            if ('parent_container_id' in content_data) {
+                play_anchor.href = "javascript:play_media(" + content_data["id"] + ", " + content_data["parent_container_id"] + ", 'container')";
+            } else {
+                play_anchor.href = "javascript:play_media(" + content_data["id"] + ", null, 'container')";
+            }
+            td_play.appendChild(play_anchor);
+
+            // Create the checkbox element
+            const td_checkbox = document.createElement("td");
+            const checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            td_checkbox.appendChild(checkbox);
+
+            // Append all the elements to the row
+            tr_element.appendChild(td_checkbox);
+            tr_element.appendChild(td_title);
+            tr_element.appendChild(td_type);
+            tr_element.appendChild(td_tags);
+            tr_element.appendChild(td_index);
+            tr_element.appendChild(td_play);
+            table_body.appendChild(tr_element);
+        }
+    }
+    if ('containers' in response_data) {
+        for (const content_data of response_data["containers"]) {
+            const tr_element = document.createElement("tr");
+            tr_element.setAttribute('data-row-container_id', content_data["id"]);
+
+            const td_title = document.createElement("td");
+            const load_anchor = document.createElement('a');
+            load_anchor.href = "javascript:load_container(" + content_data["id"] + ")";
+            load_anchor.textContent = content_data["container_title"];
+            td_title.appendChild(load_anchor);
+
+            const td_type = document.createElement("td");
+            td_type.textContent = "Playlist";
+
+            const td_tags = document.createElement("td");
+            td_tags.textContent = content_data["user_tags"];
+
+            const td_index = document.createElement("td");
+            td_index.textContent = content_data["season_index"];
+
+            const td_play = document.createElement("td");
+            const play_anchor = document.createElement('a');
+            play_anchor.textContent = "Play";
+            if ('parent_container_id' in content_data) {
+                play_anchor.href = "javascript:play_media(" + content_data["id"] + ", " + content_data["parent_container_id"] + ", 'container')";
+            } else {
+                play_anchor.href = "javascript:play_media(" + content_data["id"] + ", null, 'container')";
+            }
+            td_play.appendChild(play_anchor);
+
+            // Create the checkbox element
+            const td_checkbox = document.createElement("td");
+            const checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            td_checkbox.appendChild(checkbox);
+
+            // Append all the elements to the row
+            tr_element.appendChild(td_checkbox);
+            tr_element.appendChild(td_title);
+            tr_element.appendChild(td_type);
+            tr_element.appendChild(td_tags);
+            tr_element.appendChild(td_index);
+            tr_element.appendChild(td_play);
+            table_body.appendChild(tr_element);
+        }
+    }
+    if ('content' in response_data) {
+        for (const content_data of response_data["content"]) {
+            const tr_element = document.createElement("tr");
+            tr_element.setAttribute('data-row-content_id', content_data["id"]);
+            const td_checkbox = document.createElement("td");
+            const checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            td_checkbox.appendChild(checkbox);
+            const td_title = document.createElement("td");
+            td_title.textContent = content_data["content_title"];
+
+            const td_type = document.createElement("td");
+            td_type.textContent = "Media";
+
+            const td_tags = document.createElement("td");
+            td_tags.textContent = content_data["user_tags"];
+
+            const td_index = document.createElement("td");
+            td_index.textContent = content_data["content_index"];
+
+            const td_play = document.createElement("td");
+            const play_anchor = document.createElement('a');
+            play_anchor.textContent = "Play";
+
+            // Use ternary operator for cleaner conditional logic
+            play_anchor.href = `javascript:play_media(${content_data["id"]}, ${'parent_container_id' in content_data ? content_data["parent_container_id"] : null}, 'content')`;
+
+            td_play.appendChild(play_anchor);
+
+            tr_element.appendChild(td_checkbox);
+            tr_element.appendChild(td_title);
+            tr_element.appendChild(td_type);
+            tr_element.appendChild(td_tags);
+            tr_element.appendChild(td_index);
+            tr_element.appendChild(td_play);
+
+            table_body.appendChild(tr_element);
+        }
+    }
+
+    table_head.appendChild(table_head_row)
+    table.appendChild(table_head)
+    table.appendChild(table_body)
+    template.appendChild(table)
+    fragment.appendChild(template)
+
+    const mainContent = document.getElementById("mediaContentSelectDiv");
+    mainContent.innerHTML = "";
+    document.getElementById("mediaContentSelectDiv").appendChild(fragment);
+
+    document.getElementById("rainbow_loading_bar").hidden = true;
+    window.scroll({
+        top: 0,
+        behavior: 'smooth'
+    });
+}
+async function update_media_container(response_data) {
+    const header_res = await fetch("static/media_list_header.html")
+    const media_list_template = await header_res.text()
+    const card_res = await fetch("static/media_card.html")
+    const media_card_template = await card_res.text()
+
+    const fragment = document.createDocumentFragment();
+    if ('parent_containers' in response_data) {
+        const template = document.createElement("div");
+        template.className = "col-md-12";
+        template.innerHTML = media_list_template;
+
+        const parent_containers = response_data["parent_containers"]
+        const parent_container = parent_containers[parent_containers.length - 1];
+        const nav_item_container = template.querySelector("#nav_item_container")
+        for (const content_data of response_data["parent_containers"]) {
+            nav_item = document.createElement("li");
+            nav_item.className = "nav-item";
+            nav_item_a = document.createElement("a");
+            nav_item_a.className = "nav-link";
+            nav_item_a.setAttribute('aria-current', true)
+            nav_item_a.textContent = content_data["container_title"];
+            nav_item_a.setAttribute('href', "javascript:load_container(" + content_data["id"] + ")")
+            nav_item.appendChild(nav_item_a)
+            nav_item_container.appendChild(nav_item)
+        }
+
+        if (parent_container["container_id"]) {
+            template.querySelector("#content_container").dataset.containerId = parent_container["container_id"];
+        } else {
+            template.querySelector("#content_container").dataset.containerId = parent_container["id"];
+        }
+        if ('content_index' in parent_container) {
+            template.querySelector("#content_index").hidden = false
+            template.querySelector("#content_index").textContent = "Index: " + parent_container["content_index"]
+        }
+        template.querySelector("#card_description").textContent = parent_container["description"];
+        if ('img_src' in parent_container && 'img_url' in parent_container) {
+            template.querySelector("#content_img").src = parent_container['img_url'];
+        }
+        template.querySelector("#content_img").dataset.img_src = parent_container['img_src'];
+        if ('user_tags' in parent_container) {
+            template.querySelector("#card_tags").textContent = "Tags: " + parent_container["user_tags"]
+        }
+        fragment.appendChild(template)
+    }
+    if ('containers' in response_data) {
+        for (const content_data of response_data["containers"]) {
+            generate_media_container(content_data, media_card_template, fragment)
+        }
+    }
+    if ('content' in response_data) {
+        for (const content_data of response_data["content"]) {
+            generate_media_container(content_data, media_card_template, fragment)
+        }
+    }
+    const mainContent = document.getElementById("mediaContentSelectDiv");
+    mainContent.innerHTML = "";
+    document.getElementById("mediaContentSelectDiv").appendChild(fragment);
+
+    const contentEditors = document.querySelectorAll("#content_editor");
+    contentEditors.forEach(editor => {
+        editor.addEventListener('click', (event) => {
+            const cardElement = event.target.closest('.card');
+            if (cardElement) {
+                let data = {
+                    "tag_list": []
+                };
+                const container_id = cardElement?.dataset.containerId;
+                const content_id = cardElement?.dataset.contentId;
+                if (container_id != null) {
+                    data["container_dict"] = {"container_id": container_id}
+                    queryDBLocal(data).then(response_data => {
+                        if (response_data["parent_containers"][0] !== undefined) {
+                            const content_data = response_data["parent_containers"][response_data["parent_containers"].length - 1];
+                            edit_metadata_modal_open({"container_id": container_id}, content_data["container_title"], content_data["img_src"], content_data["description"], content_data["user_tags"], cardElement);
+                        }
+                    });
+                }
+                if (content_id != null) {
+                    data["container_dict"] = {"content_id": content_id}
+                    queryDBLocal(data).then(response_data => {
+                        if (response_data["content"][0] !== undefined) {
+                            content_data = response_data["content"][0]
+                            edit_metadata_modal_open({"content_id": content_id}, content_data["content_title"], content_data["img_src"], content_data["description"], content_data["user_tags"], cardElement);
+                        }
+                    });
+                }
+            }
+        });
+    });
+
+    document.getElementById("rainbow_loading_bar").hidden = true;
+    window.scroll({
+        top: 0,
+        behavior: 'smooth'
+    });
+}
+
+async function queryDB(data) {
+    document.getElementById("rainbow_loading_bar").hidden = false
+    const url = "/query_db";
+    let response = await fetch(url, {
+        "method": "POST",
+        "headers": {"Content-Type": "application/json"},
+        "body": JSON.stringify(data),
+    }).then(response => response.json())
+        .then(response_data => {
+            pathname = new URL(window.location.href).pathname
+            if (pathname == "/table") {
+                update_media_table(response_data)
+            } else {
+                update_media_container(response_data)
+            }
+        })
+        .catch(error => console.error(error));
+}
+async function queryDBLocal(data) {
+    var url = "/query_db";
+    // Send POST request
+    let response = await fetch(url, {
+        "method": "POST",
+        "headers": {"Content-Type": "application/json"},
+        "body": JSON.stringify(data),
+    });
+    if (!response.ok) {
+        throw new Error("HTTP status connect_local_player: " + response.status);
+    } else {
+        return await response.json();
+    }
+}
+
+function generate_tag_list_element(tag_title) {
+    // Create the checkbox input element
+    const checkbox = document.createElement('input');
+    checkbox.className = 'form-check-input me-1';
+    checkbox.type = 'checkbox';
+    checkbox.value = tag_title;
+    checkbox.id = `tag_checkbox_${tag_title}`;
+
+    // Create the label element
+    const label = document.createElement('label');
+    label.className = 'form-check-label stretched-link';
+    label.htmlFor = `tag_checkbox_${tag_title}`;
+    label.textContent = tag_title;
+
+    const tag_group_item = document.createElement('li');
+    tag_group_item.className = 'list-group-item';
+    tag_group_item.appendChild(checkbox);
+    tag_group_item.appendChild(label);
+
+    return tag_group_item;
+}
+function generate_tag_dropdown_element(tag_title) {
+    // Create the label element
+    const a = document.createElement('a');
+    a.className = 'dropdown-item';
+    a.textContent = tag_title;
+
+    const tag_group_item = document.createElement('li');
+    tag_group_item.appendChild(a);
+    return tag_group_item;
+}
+function createTagElements(tagTitles) {
+    const container = document.getElementById('tag_list_group'); // Replace with your container ID
+    container.innerHTML = '';
+    tagTitles.forEach(tagTitle => {
+        container.appendChild(generate_tag_list_element(tagTitle));
+    });
+    if (!document.getElementById("content_editor_card").hidden) {
+        const add_tag_list_group_dropdown = document.getElementById('add_tag_list_group_dropdown'); // Replace with your container ID
+        add_tag_list_group_dropdown.innerHTML = '';
+        document.getElementById('add_tag_list_group_title').innerHTML = tagTitles[0]
+        tagTitles.forEach(tagTitle => {
+            add_tag_list_group_dropdown.appendChild(generate_tag_dropdown_element(tagTitle));
+        });
+    }
+
+}
+async function add_new_tag(element) {
+    const url = "/add_new_tag";
+    const input = element.previousElementSibling;
+    let data = {
+        "tag_title": input.value
+    };
+    let response = await fetch(url, {
+        "method": "POST",
+        "headers": {"Content-Type": "application/json"},
+        "body": JSON.stringify(data),
+    }).then(response => response.json()).then(response_data => {
+        if (response_data["tag_list"] !== undefined) {
+            const tagTitles = response_data["tag_list"].map(tag => tag.tag_title);
+            createTagElements(tagTitles)
+        }
+    })
+    .catch(error => console.error(error));
+};
+async function get_tag_list(element) {
+    var url = "/get_tag_list";
+    let response = await fetch(url, {
+        "method": "POST",
+        "headers": {"Content-Type": "application/json"}
+    });
+    if (!response.ok) {
+        throw new Error("HTTP status connect_local_player: " + response.status);
+    } else {
+        let response_data = await response.json();
+        if (response_data["tag_list"] !== undefined) {
+            return response_data["tag_list"].map(tag => tag.tag_title);
+        }
+    }
+};
+
+
+function get_selected_checkboxes(listGroup) {
+  const checkboxes = listGroup.querySelectorAll('input[type="checkbox"]:checked');
+  return Array.from(checkboxes).map(checkbox => checkbox.value);
+}
+
+async function query_db_get_all_filters(event) {
+    const searchEl = document.getElementById("library_search");
+    const search = searchEl ? searchEl.value.trim() : "";
+    const containerSearch = document.getElementById("container_txt_search");
+    const contentSearch = document.getElementById("content_txt_search");
+    if (containerSearch) {
+        containerSearch.value = search;
+    }
+    if (contentSearch) {
+        contentSearch.value = search;
+    }
+    let data = {
+        "tag_list": get_selected_checkboxes(document.getElementById("tag_list_group")),
+        "container_txt_search": search || null,
+        "content_txt_search": search || null,
+        "container_dict": {}
+    };
+    queryDB(data)
+}
+
+function edit_metadata_modal_save(content_data, reference_item) {
+    content_data["img_src"] = document.getElementById("modal_text_area_image_url").value
+    content_data["description"] = document.getElementById("modal_text_area_description").value
+    fetchAndSetData('/update_media_metadata', content_data).then(response_data => {
+        if (response_data["img_src"] !== undefined) {
+            if ('img_src' in response_data && 'img_url' in response_data) {
+                reference_item.querySelector("#content_img").src = response_data['img_url'];
+            }
+            reference_item.querySelector('#content_img').src = response_data["img_url"];
+            reference_item.querySelector('#content_img').dataset.img_src = response_data["img_src"];
+        }
+    }).catch(error => {
+        console.error('Error:', error);
+    });
+}
+
+function update_tag_content(url, content_data) {
+    fetchAndSetData(url, content_data).then(response_data => {
+        if (response_data["user_tags"] !== undefined) {
+            const tagTitles = response_data["user_tags"].split(',');
+            createTagButtons(tagTitles, content_data)
+        }
+    }).catch(error => {
+        console.error('Error:', error);
+    });
+}
+
+function add_tag_to_content(content_data) {
+    update_tag_content('/add_tag_to_content', content_data)
+}
+
+function remove_tag_from_content(content_data) {
+    update_tag_content('/remove_tag_from_content', content_data)
+}
+
+function create_tag_button_element(text, data) {
+    const btnGroup = document.createElement('div');
+    btnGroup.classList.add('btn-group', 'role', 'group', 'aria-label');
+
+    const disabledButton = document.createElement('button');
+    disabledButton.type = 'button';
+    disabledButton.classList.add('btn', 'btn-primary', 'disabled');
+    disabledButton.textContent = text;
+
+    const deleteButton = document.createElement('button');
+    deleteButton.type = 'button';
+    deleteButton.classList.add('btn', 'btn-danger');
+
+    const deleteIcon = document.createElement('i');
+    deleteIcon.classList.add('bi', 'bi-trash');
+    deleteButton.appendChild(deleteIcon);
+    deleteIcon.addEventListener("click", function() {
+        var copy = {...data};
+        copy["tag_title"] = text
+        remove_tag_from_content(copy)
+    });
+
+    btnGroup.appendChild(disabledButton);
+    btnGroup.appendChild(deleteButton);
+
+    return btnGroup;
+}
+function createTagButtons(tagTitles, data) {
+    const container = document.getElementById('modal_user_tags'); // Replace with your container ID
+    container.innerHTML = '';
+    tagTitles.forEach(tagTitle => {
+        const tag_group_item = create_tag_button_element(tagTitle, data);
+        container.appendChild(tag_group_item);
+    });
+}
+
+function populate_modal_tag_select_list(tagTitles) {
+    user_tag_select = document.getElementById("user_tag_select")
+    user_tag_select.innerHTML = ''
+    tagTitles.forEach(tagTitle => {
+        const tag_select_item = document.createElement('option');
+        tag_select_item.value = tagTitle
+        tag_select_item.innerHTML = tagTitle
+        user_tag_select.appendChild(tag_select_item);
+    });
+}
+
+function edit_metadata_modal_open(data, title, img_src, description, tags, reference_item) {
+    document.getElementById("modal_title").innerHTML = title;
+    document.getElementById("modal_text_area_image_url").value = img_src;
+    document.getElementById("modal_text_area_description").value = description;
+
+    const tagTitles = tags.split(',');
+    createTagButtons(tagTitles, data)
+
+    get_tag_list().then(tagTitles => {
+        populate_modal_tag_select_list(tagTitles)
+    });
+    user_tag_select_button = document.getElementById("user_tag_select_button")
+    user_tag_select_button.removeEventListener('click', modal_metadata_select_tag_click_handler);
+    modal_metadata_select_tag_click_handler = (event) => {
+        const selectElement = document.getElementById('user_tag_select');
+        const selectedOption = selectElement.options[selectElement.selectedIndex];
+        var copy = {...data};
+        copy["tag_title"] = selectedOption.value;
+        add_tag_to_content(copy)
+    };
+    user_tag_select_button.addEventListener('click', modal_metadata_select_tag_click_handler);
+
+    save_button = document.getElementById("modal_metadata_save")
+    save_button.removeEventListener('click', modal_metadata_save_click_handler);
+    modal_metadata_save_click_handler = (event) => {
+        edit_metadata_modal_save(data, reference_item);
+    };
+    save_button.addEventListener('click', modal_metadata_save_click_handler);
+}
+

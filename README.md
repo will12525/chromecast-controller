@@ -94,6 +94,22 @@ pytest tests/ -m "not integration" -q
 pytest tests/ -m integration -q
 ```
 
+### Front-end layout (Phase 4)
+
+Browser scripts are plain globals (no bundler) under `app/static/js/`:
+
+| File | Responsibility |
+|------|----------------|
+| `shared.js` | State, constants, `fetchAndSetData` |
+| `chromecast.js` | Cast list, connect, commands |
+| `browse.js` | Cards, table, query_db, tags/modal |
+| `playback.js` | Play, resume progress, shuffle |
+| `scan.js` | Scan toast + status polling |
+| `library.js` | Home shelves, library nav, search |
+| `app_main.js` | DOMContentLoaded / navbar wiring |
+
+Load order is set in `index.html` / `editor.html`. Template `onclick` handlers still call global function names.
+
 Schema migrations run on app start via `DBHandler.create_db()` (currently version **3**: playback progress + `added_at` for Recently Added).
 
 ## Notes

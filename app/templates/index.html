@@ -133,7 +133,14 @@
         type="text/javascript" language="javascript"></script>
 <script src="{{ url_for('static', filename='node_modules/bootstrap/dist/js/bootstrap.bundle.min.js') }}"
         type="text/javascript" language="javascript"></script>
-<script src="{{ url_for('static', filename='app.js') }}" type="text/javascript" language="javascript"></script>
+{# Phase 4: plain script modules (globals for template onclick handlers) #}
+<script src="{{ url_for('static', filename='js/shared.js') }}"></script>
+<script src="{{ url_for('static', filename='js/chromecast.js') }}"></script>
+<script src="{{ url_for('static', filename='js/browse.js') }}"></script>
+<script src="{{ url_for('static', filename='js/playback.js') }}"></script>
+<script src="{{ url_for('static', filename='js/scan.js') }}"></script>
+<script src="{{ url_for('static', filename='js/library.js') }}"></script>
+<script src="{{ url_for('static', filename='js/app_main.js') }}"></script>
 
 </body>
 </html>
