@@ -2,6 +2,7 @@ import json
 import os
 from unittest import TestCase
 
+import pytest
 from pychromecast.controllers.media import MediaStatus
 
 import app.utils.config_file_handler as config_file_handler
@@ -9,6 +10,9 @@ from app.utils.chromecast_handler import ChromecastHandler
 from app.utils import common
 from app.database.db_getter import DBHandler
 from . import pytest_mocks
+
+# Live Chromecast / LAN device integration
+pytestmark = pytest.mark.integration
 
 CHROMECAST_ID = "Family Room TV"
 

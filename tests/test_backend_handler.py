@@ -5,10 +5,15 @@ import time
 from unittest import TestCase, mock
 import pathlib
 
+import pytest
+
 from app.utils import backend_handler, config_file_handler
 from app.utils.common import ContentType
 from app.database.db_getter import DBHandler
 from . import pytest_mocks
+
+# Editor/media-path integration — skip in default CI with -m "not integration"
+pytestmark = pytest.mark.integration
 
 
 class TestSetupDB(TestCase):

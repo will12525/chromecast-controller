@@ -3,6 +3,7 @@ import pathlib
 import time
 from unittest import TestCase
 
+import pytest
 from flask import Flask
 from flask_minify import minify
 from app.routes import main_routes, register_blueprints
@@ -11,6 +12,9 @@ from app.utils import backend_handler
 from app.utils.common import get_file_hash
 
 from . import pytest_mocks
+
+# Seeded media DB + template snapshot integration
+pytestmark = pytest.mark.integration
 
 SAVE_FILES = False
 

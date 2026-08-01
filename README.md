@@ -87,7 +87,11 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 pip install pytest pytest-cov pytest-mock
-pytest tests/test_library_home.py tests/test_content_transfer_unit.py -q
+# Phase 3 unit suite (CI default)
+pytest tests/ -m "not integration" -q
+
+# Optional local integration (live Chromecast / editor fixtures / seeded DB)
+pytest tests/ -m integration -q
 ```
 
 Schema migrations run on app start via `DBHandler.create_db()` (currently version **3**: playback progress + `added_at` for Recently Added).

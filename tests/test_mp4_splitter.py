@@ -3,19 +3,36 @@ import pathlib
 from unittest import TestCase
 from . import pytest_mocks
 
-import mp4_splitter
-import config_file_handler
-from database_handler.common_objects import ContentType
+from app.utils import mp4_splitter, config_file_handler
+from app.utils.common import ContentType
 
 EDITOR_PROCESSED_LOG = "editor_metadata.json"
 
 
 class TestMp4Splitter(TestCase):
-    default_config = config_file_handler.load_json_file_content()
-    raw_folder = default_config.get('editor_raw_folder')
-    raw_url = default_config.get('editor_raw_url')
-    modify_output_path = pathlib.Path(default_config.get("media_folders")[0].get("content_src")).resolve()
-    editor_metadata_file = f"{raw_folder}editor_metadata.json"
+    @classmethod
+    def setUpClass(cls):
+        cls.default_config = config_file_handler.load_json_file_content() or {}
+        cls.raw_folder = cls.default_config.get("editor_raw_folder") or ""
+        cls.raw_url = cls.default_config.get("editor_raw_url") or ""
+        folders = cls.default_config.get("media_folders") or []
+        if folders and folders[0].get("content_src"):
+            cls.modify_output_path = pathlib.Path(folders[0].get("content_src")).resolve()
+        else:
+            cls.modify_output_path = pathlib.Path(".").resolve()
+        cls.editor_metadata_file = f"{cls.raw_folder}editor_metadata.json"
+        # Folder alone is not enough — fixture cut-lists must be present
+        fixture = pathlib.Path(cls.raw_folder) / "2024-01-31_16-32-36.json" if cls.raw_folder else None
+        cls.has_raw_folder = bool(
+            cls.raw_folder
+            and pathlib.Path(cls.raw_folder).exists()
+            and fixture
+            and fixture.exists()
+        )
+
+    def require_raw_folder(self):
+        if not getattr(self, "has_raw_folder", False):
+            self.skipTest("editor raw fixtures not available on this host")
 
 
 class TestSplitterV2(TestMp4Splitter):
@@ -26,6 +43,7 @@ class TestSplitterV2(TestMp4Splitter):
         assert subclip_metadata.end_time == 6043
 
     def test_editor_validate_error_empty_json_file(self):
+        self.require_raw_folder()
         file_name = "2024-01-31_16-32-36_empty.json"
         error_log = mp4_splitter.editor_validate_txt_file(file_name, self.raw_folder)
         assert len(error_log) == 1
@@ -124,6 +142,7 @@ class TestSplitterV2(TestMp4Splitter):
         assert sub_clip.error_log[1].get("message") == "Errors occurred while parsing line"
 
     def test_load_txt_file_content(self):
+        self.require_raw_folder()
         file_name = "2024-01-31_16-32-36.json"
         file_path = pathlib.Path(f"{self.raw_folder}{file_name}").resolve()
         assert file_path.exists()
@@ -138,6 +157,7 @@ class TestSplitterV2(TestMp4Splitter):
             assert type(subclip) is dict
 
     def test_validate_editor_cmd_list(self):
+        self.require_raw_folder()
         error_log = []
         sub_clips = []
         file_name = "2024-01-31_16-32-36.json"
@@ -479,6 +499,9 @@ class TestConvertTimestamp(TestMp4Splitter):
 class TestEditor(TestMp4Splitter):
     editor_processor = mp4_splitter.SubclipThreadHandler()
 
+    def setUp(self):
+        self.require_raw_folder()
+
     def test_editor_process_txt_file_error_invalid_file(self):
         file_name = "2024hi-01-31_16-32-36.json"
         error_log = mp4_splitter.editor_process_media_file(file_name, self.modify_output_path, self.editor_processor)
@@ -708,6 +731,9 @@ class TestEditor(TestMp4Splitter):
 
 
 class TestGetCMDList(TestMp4Splitter):
+    def setUp(self):
+        self.require_raw_folder()
+
 
     def test_get_cmd_list(self):
         error_log = []
@@ -752,6 +778,9 @@ class TestGetCMDList(TestMp4Splitter):
 
 
 class TestProcessSubclipFile(TestMp4Splitter):
+    def setUp(self):
+        self.require_raw_folder()
+
 
     def test_valid_full_content_txt_file(self):
         error_log = []

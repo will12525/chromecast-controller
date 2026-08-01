@@ -1,11 +1,13 @@
 import json
 import time
 import copy
+import pathlib
 
 from unittest import TestCase
-import config_file_handler
-import database_handler.media_metadata_collector as md_collector
-from database_handler import common_objects
+
+from app.utils import config_file_handler
+import app.database.media_metadata_collector as md_collector
+from app.utils import common as common_objects
 from . import pytest_mocks
 
 
@@ -13,14 +15,24 @@ class TestMediaMetadataCollectorSetup(TestCase):
     media_paths = None
 
     def setUp(self) -> None:
-        md_collector.MOVE_FILE = False
-        self.media_paths = config_file_handler.load_json_file_content().get("media_folders")
+        if hasattr(md_collector, "MOVE_FILE"):
+            md_collector.MOVE_FILE = False
+        cfg = config_file_handler.load_json_file_content() or {}
+        self.media_paths = cfg.get("media_folders") or []
+        if not self.media_paths:
+            self.skipTest("no media_folders in config")
         for index, media_path in enumerate(self.media_paths):
             media_path["id"] = index
         pytest_mocks.patch_get_file_hash(self)
         pytest_mocks.patch_get_ffmpeg_metadata(self)
         pytest_mocks.patch_extract_subclip(self)
         pytest_mocks.patch_update_processed_file(self)
+
+    def require_sample_media(self, relative_sample="media_folder_sample/"):
+        root = self.media_paths[0].get("content_src") or ""
+        sample = pathlib.Path(root) / relative_sample.rstrip("/")
+        if not sample.exists():
+            self.skipTest(f"sample media not found: {sample}")
 
 
 class TestDBCreator(TestMediaMetadataCollectorSetup):
@@ -29,6 +41,7 @@ class TestDBCreator(TestMediaMetadataCollectorSetup):
         print(int(time.strftime('%j')))
 
     def test_collect_tv_shows(self):
+        self.require_sample_media()
         content_directory_info = copy.deepcopy(self.media_paths[0])
         content_directory_info["content_src"] = content_directory_info["content_src"] + "media_folder_sample/"
 
