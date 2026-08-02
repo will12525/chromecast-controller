@@ -1,10 +1,11 @@
-<nav class="navbar fixed-bottom navbar-expand-xl bg-dark bg-body-tertiary" data-bs-theme="light">
+<nav class="navbar fixed-bottom navbar-expand bg-dark bg-body-tertiary media-control-bar" data-bs-theme="light">
     <div class="container-fluid text-center">
-        <div class="col bottom-nav-col">
+        <div class="col bottom-nav-col w-100">
             <div class="row justify-content-center">
                 <div class="col">
-                    <input type="range" id="mediaTimeInputId" onMouseUp="set_media_runtime(this);" min=0 value=0
-                           class="slider">
+                    {# Touch-safe seek: player_controls binds pointer/touch/change; mouse kept for desktop #}
+                    <input type="range" id="mediaTimeInputId" min=0 value=0
+                           class="slider" aria-label="Seek">
                 </div>
             </div>
             <div class="row justify-content-center">
@@ -12,11 +13,12 @@
                     <output id="mediaTimeOutputId"></output>
                 </div>
             </div>
-            <div class="row justify-content-center">
+            <div class="row justify-content-center media-control-buttons-row">
                 {% for key, value in button_dict.items() %}
-                <div class="col-1">
-                    <button id="{{ value['id'] }}" class="btn"><i class="{{ value['icon'] }}"
-                                                                  style="font-size: 2rem; color: black;"></i>
+                <div class="col media-control-btn-col">
+                    <button type="button" id="{{ value['id'] }}" class="btn media-control-btn"
+                            aria-label="{{ key }}">
+                        <i class="{{ value['icon'] }}"></i>
                     </button>
                 </div>
                 {% endfor %}

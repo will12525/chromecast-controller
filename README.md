@@ -8,10 +8,26 @@ Inspired by a Plex-style **Home** (Continue Watching, Recently Added, library sh
 
 - **Library home** — shelves for Continue Watching, Recently Added, Recently Played, and TV / Movies / Books
 - **Browse** — tag filters, unified search, card grid and table view
-- **Play** — Chromecast (identified by device UUID) or local HTML5; sequential next-in-show and tag-random playlists; resume position
+- **Play** — Chromecast (device UUID) and/or local HTML5; multi-device connect with stream modes; sequential next-in-show and tag-random playlists; resume position
 - **Catalog** — scan disks for TV / movies / books by filename convention
 - **Editor (SERVER mode)** — split raw MP4s into library layout with ffmpeg
 - **Optional client mode** — pull missing content from a server node
+
+### Playback & cast controls
+
+Media files are progressive **HTTP MP4** from the per-disk `http-server` (`content_url`). Flask does not re-encode.
+
+| Stream mode | Behavior |
+|-------------|----------|
+| **Local** | Bottom bar controls the browser `<video>` player |
+| **Device** | Play/commands go to one connected Chromecast |
+| **All connected** | Same media and transport commands fan out to every connected cast |
+
+- Connect multiple Chromecasts from the cast menu (checkmark = connected). Use **All connected**, **Local**, or **Use** on a device.
+- Bottom bar: **−15 / +15**, play/pause/stop, rewind (restart or previous if near start), **next** (next episode / tag-random — not jump-to-end).
+- Scrubber works with touch and mouse; seeks the active target (or all in **All** mode).
+- Cast uses pychromecast **BUFFERED** stream type for VOD MP4s.
+- Non-Cast TVs: open the same LAN `content_url` in the TV browser or an external player (no DLNA built in).
 
 ### Filename conventions
 
@@ -101,7 +117,8 @@ Browser scripts are plain globals (no bundler) under `app/static/js/`:
 | File | Responsibility |
 |------|----------------|
 | `shared.js` | State, constants, `fetchAndSetData` |
-| `chromecast.js` | Cast list, connect, commands |
+| `chromecast.js` | Multi-device cast menu, connect, stream mode |
+| `player_controls.js` | Unified Local + Cast transport (bottom bar) |
 | `browse.js` | Cards, table, query_db, tags/modal |
 | `playback.js` | Play, resume progress, shuffle |
 | `scan.js` | Scan toast + status polling |

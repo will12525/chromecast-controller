@@ -1,4 +1,4 @@
-"""Chromecast discovery, connection, and transport controls."""
+"""Chromecast discovery, connection, multi-device stream mode, and transport controls."""
 from flask import request
 
 from app.routes.shared import APIEndpoints, bh, main_bp
@@ -34,28 +34,61 @@ def connect_chromecast():
     if json_request := request.get_json():
         if chromecast_id := json_request.get("chromecast_id"):
             if bh.connect_chromecast(chromecast_id):
+                state = bh.get_chromecast_stream_state()
                 data = {
                     "chromecast_id": bh.get_chromecast_device_id() or chromecast_id,
                     "chromecast_name": bh.get_chromecast_device_name(),
+                    "connected_devices": state.get("connected_devices", []),
+                    "stream_mode": state.get("stream_mode"),
+                    "active_device_id": state.get("active_device_id"),
                 }
     return data, 200
 
 
 @main_bp.route(APIEndpoints.GET_CHROMECAST_LIST.value, methods=["POST"])
 def get_chromecast_list():
-    # scanned_devices: [{uuid, name}, ...] — connect with uuid, display name
-    data = {
-        "scanned_devices": bh.get_chromecast_scan_list(),
-        "connected_device": bh.get_chromecast_device_name() or bh.get_chromecast_device_id(),
-        "connected_device_id": bh.get_chromecast_device_id(),
-    }
-    return data, 200
+    # Full multi-device snapshot + legacy single-device fields
+    state = bh.get_chromecast_stream_state()
+    # Ensure scan list is current
+    scanned = bh.get_chromecast_scan_list()
+    state["scanned_devices"] = scanned
+    if state.get("stream_mode") == "local" and not state.get("connected_devices"):
+        state["connected_device"] = state.get("connected_device") or "Local"
+    return state, 200
 
 
 @main_bp.route(APIEndpoints.DISCONNECT_CHROMECAST.value, methods=["POST"])
 def disconnect_chromecast():
-    data = {}
-    bh.disconnect_chromecast()
+    chromecast_id = None
+    if json_request := request.get_json(silent=True):
+        chromecast_id = json_request.get("chromecast_id")
+    bh.disconnect_chromecast(chromecast_id)
+    state = bh.get_chromecast_stream_state()
+    return {
+        "ok": True,
+        "connected_devices": state.get("connected_devices", []),
+        "stream_mode": state.get("stream_mode"),
+        "connected_device": state.get("connected_device") or "Local",
+        "connected_device_id": state.get("connected_device_id"),
+    }, 200
+
+
+@main_bp.route(APIEndpoints.SET_STREAM_MODE.value, methods=["POST"])
+def set_stream_mode():
+    data = {"ok": False}
+    if json_request := request.get_json():
+        mode = json_request.get("mode") or "local"
+        chromecast_id = json_request.get("chromecast_id")
+        ok = bh.set_stream_mode(mode, chromecast_id)
+        state = bh.get_chromecast_stream_state()
+        data = {
+            "ok": ok,
+            "stream_mode": state.get("stream_mode"),
+            "active_device_id": state.get("active_device_id"),
+            "connected_devices": state.get("connected_devices", []),
+            "connected_device": state.get("connected_device") or "Local",
+            "connected_device_id": state.get("connected_device_id"),
+        }
     return data, 200
 
 
@@ -70,6 +103,11 @@ def chromecast_command():
 
 @main_bp.route(APIEndpoints.CONNECT_LOCAL_PLAYER.value, methods=["POST"])
 def connect_local_player():
-    """Switch UI to local HTML5 playback (disconnect Chromecast if connected)."""
-    bh.disconnect_chromecast()
-    return {"player": "local", "chromecast_id": None}, 200
+    """Switch stream mode to local HTML5 (keeps cast sessions idle unless disconnected)."""
+    bh.set_stream_mode("local")
+    return {
+        "player": "local",
+        "chromecast_id": None,
+        "stream_mode": "local",
+        "connected_device": "Local",
+    }, 200

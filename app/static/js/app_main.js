@@ -1,35 +1,11 @@
 /* Phase 4: app_main.js — plain global script (no bundler). */
+/* global playerUpdateSeekSelector, playerWireControlButtons, playerBindScrubber */
+
 async function updateSeekSelector() {
-    var mediaTimeInputId = document.getElementById("mediaTimeInputId");
-    if (mediaTimeInputId)
-    {
-        if (document.activeElement !== mediaTimeInputId)
-        {
-            var url = "/get_current_media_runtime";
-            let response = await fetch(url);
-
-            if (!response.ok) {
-                throw new Error("HTTP status disconnectChromecast: " + response.status);
-            } else {
-                let response_data = await response.json();
-                if ("media_runtime" in response_data) {
-                    media_runtime = response_data?.media_runtime.toString().toHHMMSS();
-                    mediaTimeInputId.max = response_data?.media_duration
-                    mediaTimeInputId.value = response_data?.media_runtime
-                    mediaTimeInputId.title = media_runtime
-
-                    mediaTimeOutputId.value = media_runtime + "  " + response_data?.media_title
-
-                    if (response_data.content_id && response_data.media_runtime != null) {
-                        postPlaybackProgress(
-                            response_data.content_id,
-                            response_data.media_runtime,
-                            response_data.media_duration
-                        );
-                    }
-                }
-            }
-        }
+    // Unified Local + Cast scrubber (player_controls.js)
+    if (typeof playerUpdateSeekSelector === "function") {
+        await playerUpdateSeekSelector();
+        return;
     }
 }
 
@@ -63,18 +39,21 @@ async function setNavbarLinks() {
 }
 
 async function setMediaControlButtons() {
+    if (typeof playerWireControlButtons === "function") {
+        await playerWireControlButtons();
+        return;
+    }
+    // Fallback: cast-only (legacy)
     var url = "/get_chromecast_controls";
     let response = await fetch(url);
-
     if (!response.ok) {
         throw new Error("HTTP status setMediaControlButtons: " + response.status);
-    } else {
-        let response_data = await response.json();
-        for (const [key, value] of Object.entries(response_data["chromecast_controls"])) {
-            button_element = document.getElementById(key + "_media_button")
-            if (button_element !== null) {
-                button_element.addEventListener("click", chromecast_command.bind(null, value));
-            }
+    }
+    let response_data = await response.json();
+    for (const [key, value] of Object.entries(response_data["chromecast_controls"])) {
+        button_element = document.getElementById(key + "_media_button");
+        if (button_element !== null) {
+            button_element.addEventListener("click", chromecast_command.bind(null, value));
         }
     }
 }
@@ -145,19 +124,13 @@ function setup_nav_bars() {
     {
         chromecast_menu.addEventListener("click", getChromecastList);
     }
-    var chromecast_disconnect_button = document.getElementById("chromecast_disconnect_button");
-    if (chromecast_disconnect_button !== null)
-    {
-        chromecast_disconnect_button.addEventListener("click", disconnectChromecast);
-    }
-    var local_play_button = document.getElementById("local_play_button");
-    if (local_play_button !== null)
-    {
-        local_play_button.addEventListener("click", connect_local_player);
-    }
+    // Disconnect / Local are re-bound when the cast menu is rebuilt
     getChromecastList();
     setNavbarLinks();
     setMediaControlButtons();
+    if (typeof playerBindScrubber === "function") {
+        playerBindScrubber();
+    }
     setInterval(updateSeekSelector, 1000);
 }
 
@@ -220,7 +193,8 @@ document.addEventListener("DOMContentLoaded", function(event){
                     duration > 0 ? duration : 1
                 );
             }
-            get_next_media();
+            // Pass video element so dataset (content_id / parent / tags) is available
+            get_next_media({ target: localPlayer });
         });
         localPlayer.addEventListener('timeupdate', () => {
             if (!localPlayer.dataset.content_id) {

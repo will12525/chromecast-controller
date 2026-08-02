@@ -1,5 +1,5 @@
 Flask~=2.3.2
-PyChromecast~=14.0.5
+PyChromecast~=14.0.10
 gitpython~=3.1.32
 js2py~=0.74
 MarkupSafe~=2.1.3

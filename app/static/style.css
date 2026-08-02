@@ -29,6 +29,7 @@
     -webkit-appearance: none;
     width: 100%;
     height: 15px;
+    min-height: 28px;
     border-radius: 5px;
     background: #d3d3d3;
     outline: none;
@@ -66,6 +67,38 @@
     font-size:50px;
 }
 
+/* Fixed bottom transport bar — mobile-friendly hit targets */
+.media-control-bar {
+    padding-bottom: env(safe-area-inset-bottom, 0);
+    z-index: 1030;
+}
+
+.media-control-buttons-row {
+    flex-wrap: nowrap;
+    align-items: center;
+}
+
+.media-control-btn-col {
+    flex: 1 1 0;
+    min-width: 44px;
+    max-width: 72px;
+    padding-left: 2px;
+    padding-right: 2px;
+}
+
+.media-control-btn {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0.25rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.media-control-btn i {
+    font-size: 1.75rem;
+    color: black;
+}
 
 .main-content-container {
     margin-bottom: 40%;

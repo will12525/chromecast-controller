@@ -1,30 +1,40 @@
 /* Phase 4: playback.js — plain global script (no bundler). */
 async function get_next_media(event) {
     var url = "/get_next_media";
-    if (event.target.dataset.content_id !== undefined) {
-        const rawTags = event.target.dataset.tagList;
-        let data = {
-            "content_id": parseInt(event.target.dataset.content_id),
-            "parent_container_id": parseInt(event.target.dataset.parent_container_id),
-            "play_mode": event.target.dataset.play_mode,
-            "tag_list": rawTags ? JSON.parse(rawTags) : []
-        };
-        let response = await fetch(url, {
-            "method": "POST",
-            "headers": {"Content-Type": "application/json"},
-            "body": JSON.stringify(data),
-        });
-
-        if (!response.ok) {
-            throw new Error("HTTP status get_next_media: " + response.status);
-        } else {
-            let response_data = await response.json();
-            if (response_data["local_play_url"] !== undefined) {
-                update_local_media_player(response_data)
-            }
-        }
+    // Prefer explicit event target; fall back to local video session dataset
+    const el = (event && event.target) || document.getElementById("local_video_player");
+    if (!el || el.dataset.content_id === undefined || el.dataset.content_id === "") {
+        return;
     }
-};
+    const rawTags = el.dataset.tagList;
+    let parentRaw = el.dataset.parent_container_id;
+    let data = {
+        "content_id": parseInt(el.dataset.content_id, 10),
+        "parent_container_id": parentRaw !== undefined && parentRaw !== "" && parentRaw !== "null"
+            ? parseInt(parentRaw, 10)
+            : null,
+        "play_mode": el.dataset.play_mode,
+        "tag_list": rawTags ? JSON.parse(rawTags) : []
+    };
+    let response = await fetch(url, {
+        "method": "POST",
+        "headers": {"Content-Type": "application/json"},
+        "body": JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+        throw new Error("HTTP status get_next_media: " + response.status);
+    }
+    let response_data = await response.json();
+    if (response_data["local_play_url"] !== undefined) {
+        // When casting, server still returns URL for local fallback; only update local if local mode
+        if (typeof playerIsLocal === "function" && !playerIsLocal()) {
+            // Cast path advances via server; keep local hidden
+            return;
+        }
+        update_local_media_player(response_data);
+    }
+}
 function shouldResume(position, duration) {
     const pos = parseFloat(position) || 0;
     const dur = parseFloat(duration) || 0;
@@ -137,10 +147,21 @@ async function play_media(content_id, parent_container_id=null, content_type=nul
 
     if (!response.ok) {
         throw new Error("HTTP status play_media: " + response.status);
-    } else {
-        let response_data = await response.json();
-        if (response_data["local_play_url"] !== undefined) {
-            update_local_media_player(response_data)
+    }
+    let response_data = await response.json();
+    // Only drive the HTML5 player in Local mode; cast targets are handled server-side
+    const useLocal = typeof playerIsLocal !== "function" || playerIsLocal();
+    if (useLocal && response_data["local_play_url"] !== undefined) {
+        update_local_media_player(response_data);
+    } else if (!useLocal && response_data["content_title"]) {
+        const titleEl = document.getElementById("content_title");
+        if (titleEl) {
+            titleEl.innerHTML = response_data["content_title"];
+        }
+        const video = document.getElementById("local_video_player");
+        if (video) {
+            video.hidden = true;
+            video.pause();
         }
     }
 }

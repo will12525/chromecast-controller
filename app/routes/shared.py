@@ -11,7 +11,7 @@ from app.utils import config_file_handler
 
 main_bp = Blueprint("main", __name__)
 
-# Phase 1–2 library plan complete (shelves, transfer harden, UUID cast, added_at).
+# Library UX complete. Streaming: multi-cast sessions + unified Local/Cast controls.
 
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "mp4"}
 
@@ -34,6 +34,7 @@ class APIEndpoints(Enum):
     CONNECT_CHROMECAST = "/connect_chromecast"
     GET_CHROMECAST_LIST = "/get_chromecast_list"
     DISCONNECT_CHROMECAST = "/disconnect_chromecast"
+    SET_STREAM_MODE = "/set_stream_mode"
     CHROMECAST_COMMAND = "/chromecast_command"
     PLAY_MEDIA = "/play_media"
     GET_NEXT_MEDIA = "/get_next_media"

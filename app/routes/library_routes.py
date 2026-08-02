@@ -149,16 +149,17 @@ def play_media():
                         media_metadata = db_connection.get_content_info(
                             json_request.get("content_id")
                         )
-                    if media_metadata.get("id"):
+                    if media_metadata and media_metadata.get("id"):
                         db_connection.update_content_play_count(media_metadata.get("id"))
                     play_response_from_metadata(media_metadata, json_request, data)
                 else:
-                    data["id"] = media_metadata.get("id")
-                    data["parent_container_id"] = json_request.get("parent_container_id")
-                    data["content_title"] = media_metadata.get("content_title")
-                    data["tag_list"] = json_request.get("tag_list")
-                    data["last_position"] = media_metadata.get("last_position") or 0
-                    data["last_duration"] = media_metadata.get("last_duration") or 0
+                    # Same fields for cast and local so UI/title/resume stay consistent
+                    play_response_from_metadata(media_metadata, json_request, data)
+                    if json_request.get("tag_list") is not None:
+                        data["tag_list"] = json_request.get("tag_list")
+                    if media_metadata.get("play_mode"):
+                        data["play_mode"] = media_metadata.get("play_mode")
+
             except Exception as e:
                 print("Exception class: ", e.__class__)
                 print(f"ERROR: {e}")

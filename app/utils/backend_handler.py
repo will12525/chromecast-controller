@@ -143,6 +143,9 @@ class BackEndHandler:
     def get_chromecast_scan_list(self):
         return self.chromecast.get_scan_list()
 
+    def get_chromecast_stream_state(self):
+        return self.chromecast.get_stream_state()
+
     def get_chromecast_device_id(self):
         return self.chromecast.get_chromecast_id()
 
@@ -158,8 +161,11 @@ class BackEndHandler:
     def connect_chromecast(self, device_id_str):
         return self.chromecast.connect_chromecast(device_id_str)
 
-    def disconnect_chromecast(self):
-        self.chromecast.disconnect_chromecast()
+    def disconnect_chromecast(self, device_id_str=None):
+        self.chromecast.disconnect_chromecast(device_id_str)
+
+    def set_stream_mode(self, mode, chromecast_id=None):
+        return self.chromecast.set_stream_mode(mode, chromecast_id)
 
     def get_chromecast_media_controller_metadata(self):
         return self.chromecast.get_media_controller_metadata()
