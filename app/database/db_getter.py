@@ -474,7 +474,11 @@ class DBHandler(DBConnection):
 
     def query_container(self, tag_list, container_dict, container_txt_search):
         # DEFINE
-        container_select_clauses = ["*", "CAST(SUBSTR(container_title, 7) AS INTEGER) AS season_index"]
+        container_select_clauses = [
+            "*",
+            "CAST(SUBSTR(container_title, 7) AS INTEGER) AS season_index",
+            db_queries._CONTAINER_SHOW_TITLE_SQL,
+        ]
         container_where_clauses = []
         container_join_clauses = []
         params = {}
@@ -544,6 +548,17 @@ class DBHandler(DBConnection):
         content_select_clauses.append("content_directory.content_url || '/' || content.img_src AS img_url")
         content_join_clauses.append(
             "INNER JOIN content_directory ON content.content_directory_id = content_directory.id")
+
+        # TV show name for episode tiles (Season→Show walk-up)
+        content_select_clauses.append(db_queries._CONTENT_SHOW_TITLE_SQL)
+        # Prefer explicit parent when browsing a container; else first container_content link
+        content_select_clauses.append(
+            """(
+                SELECT cc.parent_container_id FROM container_content cc
+                WHERE cc.content_id = content.id
+                ORDER BY cc.parent_container_id ASC LIMIT 1
+            ) AS parent_container_id"""
+        )
 
         if container_dict.get("container_id"):
             content_join_clauses.append(

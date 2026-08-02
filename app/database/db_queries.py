@@ -65,7 +65,43 @@ UPDATE_CONTENT_PLAYED = (
 )
 # parent_container_id: prefer the lowest container_content parent (season/show)
 # so resume from Continue Watching keeps sequential next-episode working.
-_SHELF_CONTENT_SELECT = """
+# show_title: top-level show when content is under Season→Show; else immediate parent title.
+_CONTENT_SHOW_TITLE_SQL = """
+(
+    SELECT COALESCE(
+        (
+            SELECT grandparent.container_title
+            FROM container_content cc
+            INNER JOIN container_container link
+                ON link.container_id = cc.parent_container_id
+            INNER JOIN container grandparent
+                ON grandparent.id = link.parent_container_id
+            WHERE cc.content_id = content.id
+            ORDER BY cc.parent_container_id ASC
+            LIMIT 1
+        ),
+        (
+            SELECT parent.container_title
+            FROM container_content cc
+            INNER JOIN container parent ON parent.id = cc.parent_container_id
+            WHERE cc.content_id = content.id
+            ORDER BY cc.parent_container_id ASC
+            LIMIT 1
+        )
+    )
+) AS show_title
+"""
+# Season/container tiles: parent container title (the TV show) when nested under a show.
+_CONTAINER_SHOW_TITLE_SQL = """
+(
+    SELECT parent.container_title
+    FROM container_container link
+    INNER JOIN container parent ON parent.id = link.parent_container_id
+    WHERE link.container_id = container.id
+    LIMIT 1
+) AS show_title
+"""
+_SHELF_CONTENT_SELECT = f"""
 SELECT content.*,
        content_directory.content_url || '/' || content.content_src AS url,
        content_directory.content_src || content.content_src AS path,
@@ -77,7 +113,8 @@ SELECT content.*,
            WHERE cc.content_id = content.id
            ORDER BY cc.parent_container_id ASC
            LIMIT 1
-       ) AS parent_container_id
+       ) AS parent_container_id,
+       {_CONTENT_SHOW_TITLE_SQL}
 FROM content
 INNER JOIN content_directory ON content.content_directory_id = content_directory.id
 LEFT JOIN user_tags_content ON content.id = user_tags_content.content_id

@@ -1,4 +1,30 @@
 /* Phase 4: browse.js — plain global script (no bundler). */
+
+/** Show TV show name on season/episode tiles when API provides show_title. */
+function apply_show_title_to_card(root, content_data) {
+    const showEl = root.querySelector("#card_show_title");
+    if (!showEl) {
+        return;
+    }
+    const showTitle = content_data.show_title || content_data.tv_show_title || "";
+    const mainTitle = content_data.container_title || content_data.content_title || "";
+    if (showTitle && showTitle !== mainTitle) {
+        showEl.hidden = false;
+        showEl.textContent = showTitle;
+    } else {
+        showEl.hidden = true;
+        showEl.textContent = "";
+    }
+}
+
+function format_title_with_show(content_data, mainTitle) {
+    const showTitle = content_data.show_title || content_data.tv_show_title || "";
+    if (showTitle && showTitle !== mainTitle) {
+        return showTitle + " · " + mainTitle;
+    }
+    return mainTitle;
+}
+
 async function generate_media_container(content_data, media_card_template, fragment) {
     const template = document.createElement("div");
     template.className = "col-sm-3";
@@ -12,6 +38,7 @@ async function generate_media_container(content_data, media_card_template, fragm
         }
         template.querySelector("#content_navigator").textContent = content_data["container_title"]
         template.querySelector("#content_navigator").setAttribute('href', "javascript:load_container(" + content_data["id"] + ")")
+        apply_show_title_to_card(template, content_data);
     }
     else if ('content_title' in content_data) {
         if (content_data["content_id"])
@@ -22,6 +49,7 @@ async function generate_media_container(content_data, media_card_template, fragm
         }
         template.querySelector("#content_navigator").textContent = content_data["content_title"]
         template.querySelector("#content_navigator").setAttribute('href', "javascript:play_media(" + content_data["id"] + ", " + content_data["parent_container_id"] + ")")
+        apply_show_title_to_card(template, content_data);
     }
     else {
         console.log("Missing title")
@@ -71,7 +99,9 @@ async function update_media_table(response_data) {
             const td_title = document.createElement("td");
             const load_anchor = document.createElement('a');
             load_anchor.href = "javascript:load_container(" + content_data["id"] + ")";
-            load_anchor.textContent = content_data["container_title"];
+            load_anchor.textContent = format_title_with_show(
+                content_data, content_data["container_title"]
+            );
             td_title.appendChild(load_anchor);
 
             const td_type = document.createElement("td");
@@ -117,7 +147,9 @@ async function update_media_table(response_data) {
             const td_title = document.createElement("td");
             const load_anchor = document.createElement('a');
             load_anchor.href = "javascript:load_container(" + content_data["id"] + ")";
-            load_anchor.textContent = content_data["container_title"];
+            load_anchor.textContent = format_title_with_show(
+                content_data, content_data["container_title"]
+            );
             td_title.appendChild(load_anchor);
 
             const td_type = document.createElement("td");
@@ -164,7 +196,9 @@ async function update_media_table(response_data) {
             checkbox.type = "checkbox";
             td_checkbox.appendChild(checkbox);
             const td_title = document.createElement("td");
-            td_title.textContent = content_data["content_title"];
+            td_title.textContent = format_title_with_show(
+                content_data, content_data["content_title"]
+            );
 
             const td_type = document.createElement("td");
             td_type.textContent = "Media";

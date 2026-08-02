@@ -58,6 +58,9 @@ async function generate_media_container_for_shelf(content_data, media_card_templ
         const nav = wrapper.querySelector("#content_navigator");
         nav.textContent = content_data.container_title;
         nav.setAttribute("href", "javascript:load_container(" + content_data.id + ")");
+        if (typeof apply_show_title_to_card === "function") {
+            apply_show_title_to_card(wrapper, content_data);
+        }
     } else if ("content_title" in content_data) {
         const contentId = content_data.content_id || content_data.id;
         cardRoot.dataset.contentId = contentId;
@@ -70,6 +73,9 @@ async function generate_media_container_for_shelf(content_data, media_card_templ
             "href",
             "javascript:play_media(" + contentId + ", " + (parentId != null ? parentId : "null") + ")"
         );
+        if (typeof apply_show_title_to_card === "function") {
+            apply_show_title_to_card(wrapper, content_data);
+        }
         // Play affordance on poster click
         const img = wrapper.querySelector("#content_img");
         if (img) {

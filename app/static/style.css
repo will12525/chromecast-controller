@@ -67,6 +67,16 @@
     font-size:50px;
 }
 
+/* TV show name under season/episode card title */
+.card-show-title {
+    font-size: 0.8rem;
+    line-height: 1.2;
+    margin-top: 0.15rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 /* Fixed bottom transport bar — mobile-friendly hit targets */
 .media-control-bar {
     padding-bottom: env(safe-area-inset-bottom, 0);
