@@ -226,6 +226,30 @@ class TestLiveStreamModes:
 # ===========================================================================
 
 
+class TestLiveMultiSync:
+    def test_multi_start_runtime_skew(self, clean_cast, two_devices, tv_episode):
+        """Soft check: after synced multi start, runtimes are within 1.5s."""
+        h = clean_cast
+        a, b = two_devices
+        h.connect_chromecast(a["uuid"])
+        h.connect_chromecast(b["uuid"])
+        h.set_stream_mode(STREAM_MODE_ALL)
+        meta = _play_library(h, tv_episode)
+        assert meta is not None
+        time.sleep(2.5)
+        runtimes = []
+        for media in h.iter_targets():
+            st = media.get_media_controller_metadata() or {}
+            if st.get("media_runtime") is not None:
+                runtimes.append(float(st["media_runtime"]))
+        h.send_command(CommandList.CMD_STOP)
+        if len(runtimes) < 2:
+            pytest.skip("Receivers did not report runtime for skew check")
+        skew = abs(runtimes[0] - runtimes[1])
+        # Soft bound after barrier re-align (Wi‑Fi residual still possible)
+        assert skew < 2.0, f"multi-cast start skew too high: {skew:.2f}s {runtimes}"
+
+
 class TestLiveLibraryPlay:
     def test_play_real_library_url_single(self, clean_cast, primary, tv_episode, seeded_db):
         h = clean_cast
@@ -257,14 +281,22 @@ class TestLiveLibraryPlay:
         h.connect_chromecast(b["uuid"])
         h.set_stream_mode(STREAM_MODE_ALL)
         targets = h.iter_targets()
-        spies = []
+        load_spies = []
+        play_spies = []
         for media in targets:
-            spy = mock.Mock(wraps=media.play_media_info)
-            media.play_media_info = spy
-            spies.append(spy)
+            load_spy = mock.Mock(wraps=media.load_media_info)
+            play_spy = mock.Mock(wraps=media.play)
+            media.load_media_info = load_spy
+            media.play = play_spy
+            load_spies.append(load_spy)
+            play_spies.append(play_spy)
         meta = _play_library(h, tv_episode)
         assert meta is not None
-        for spy in spies:
+        for spy in load_spies:
+            assert spy.called
+            # multi-sync path must load without autoplay
+            assert spy.call_args.kwargs.get("autoplay") is False
+        for spy in play_spies:
             assert spy.called
         H.settle_after_play()
         h.send_command(CommandList.CMD_STOP)

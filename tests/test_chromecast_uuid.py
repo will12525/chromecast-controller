@@ -237,8 +237,13 @@ class TestMultiSession(unittest.TestCase):
             )
 
         self.assertIsNotNone(result)
-        media_a.play_media_info.assert_called_once()
-        media_b.play_media_info.assert_called_once()
+        # Multi-cast sync path: load(autoplay=False) then play — not serial play_media_info
+        media_a.load_media_info.assert_called()
+        media_b.load_media_info.assert_called()
+        self.assertFalse(media_a.load_media_info.call_args.kwargs.get("autoplay", True))
+        self.assertFalse(media_b.load_media_info.call_args.kwargs.get("autoplay", True))
+        media_a.play.assert_called()
+        media_b.play.assert_called()
 
     def test_stream_mode_device_targets_one(self):
         handler = _make_handler()

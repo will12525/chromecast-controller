@@ -10,6 +10,7 @@ Phase 0/1:
 import logging
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from enum import Enum, auto
 from uuid import UUID
 
@@ -19,6 +20,7 @@ from pychromecast import STREAM_TYPE_BUFFERED
 from pychromecast.discovery import CastBrowser, SimpleCastListener
 
 from app.database.db_getter import DBHandler
+from app.utils import config_file_handler
 from app.utils.play_mode import (
     PLAY_MODE_RANDOM_CONTAINER,
     PLAY_MODE_RANDOM_TAG,
@@ -35,6 +37,9 @@ from app.utils.play_mode import (
 STREAM_MODE_LOCAL = "local"
 STREAM_MODE_DEVICE = "device"
 STREAM_MODE_ALL = "all"
+
+# Multi-cast load barrier
+MULTI_LOAD_TIMEOUT_S = 20.0
 
 
 def _as_uuid_str(value):
@@ -198,40 +203,60 @@ class MyMediaDevice:
             self.play_media_info(media_info)
             return media_info
 
-    def play_media_info(self, media_metadata, update_play_count=True):
-        if not media_metadata:
-            return
-        start_seconds = None
-        try:
-            last_position = float(media_metadata.get("last_position") or 0)
-            last_duration = float(media_metadata.get("last_duration") or 0)
-            if last_position > 30 and (
-                last_duration <= 0 or last_position / last_duration < 0.9
-            ):
-                start_seconds = last_position
-        except (TypeError, ValueError):
-            start_seconds = None
+    def load_media_info(
+        self,
+        media_metadata,
+        *,
+        autoplay=True,
+        start_seconds=None,
+        block_timeout=MULTI_LOAD_TIMEOUT_S,
+    ):
+        """
+        Load URL onto the receiver.
 
+        autoplay=False is used for multi-cast barrier sync (load all, then play together).
+        start_seconds: explicit position; if None, use resume policy (or omit for start).
+        """
+        if not media_metadata:
+            return False
         play_kwargs = {
             "title": media_metadata.get("content_title"),
             "metadata": media_metadata,
             "stream_type": STREAM_TYPE_BUFFERED,
+            "autoplay": autoplay,
         }
         if start_seconds is not None:
-            play_kwargs["current_time"] = start_seconds
+            play_kwargs["current_time"] = float(start_seconds)
+        else:
+            resume = _resume_start_seconds(media_metadata)
+            if resume is not None:
+                play_kwargs["current_time"] = resume
 
         self.media_controller.play_media(
             media_metadata.get("url"),
             self.DEFAULT_MEDIA_TYPE,
             **play_kwargs,
         )
-        self.media_controller.block_until_active()
+        if block_timeout is not None:
+            self.media_controller.block_until_active(timeout=block_timeout)
+        return True
 
+    def play_media_info(self, media_metadata, update_play_count=True):
+        """Single-device play: load with autoplay and optional resume."""
+        if not media_metadata:
+            return
+        self.load_media_info(media_metadata, autoplay=True)
         if update_play_count and media_metadata.get("id"):
             db_connection = DBHandler()
             db_connection.open()
             db_connection.update_content_play_count(media_metadata.get("id"))
             db_connection.close()
+
+    def pause(self):
+        self.media_controller.pause()
+
+    def play(self):
+        self.media_controller.play()
 
     def get_media_controller_metadata(self):
         if self.status:
@@ -287,6 +312,37 @@ class MyMediaDevice:
                     self.play_next_episode()
         except Exception:
             logging.exception("new_media_status finished handling failed")
+
+
+def _resume_start_seconds(media_metadata):
+    """Return resume offset in seconds, or None to start from beginning."""
+    if not media_metadata:
+        return None
+    try:
+        last_position = float(media_metadata.get("last_position") or 0)
+        last_duration = float(media_metadata.get("last_duration") or 0)
+        if last_position > 30 and (
+            last_duration <= 0 or last_position / last_duration < 0.9
+        ):
+            return last_position
+    except (TypeError, ValueError):
+        return None
+    return None
+
+
+def _sync_start_seconds(media_metadata):
+    """Position used for multi-cast align (0 or resume)."""
+    resume = _resume_start_seconds(media_metadata)
+    return float(resume) if resume is not None else 0.0
+
+
+def _multi_cast_go_delay_ms():
+    """Optional Phase B: wait this many ms after barrier before simultaneous play."""
+    try:
+        cfg = config_file_handler.load_json_file_content() or {}
+        return max(0, int(cfg.get("multi_cast_go_delay_ms") or 0))
+    except Exception:
+        return 0
 
 
 def _resolve_content_metadata(content_data):
@@ -886,11 +942,143 @@ class ChromecastHandler(threading.Thread):
             return sess.get("name") or _cast_device_name(sess["cast"])
 
     def seek_media_time(self, media_time):
-        for media in self.iter_targets():
+        targets = self.iter_targets()
+        if len(targets) <= 1:
+            for media in targets:
+                try:
+                    media.seek(media_time)
+                except Exception:
+                    logging.exception("seek failed")
+            return
+        # Multi: pause → seek → play for re-align
+        self._seek_on_targets_synced(targets, media_time)
+
+    def _seek_on_targets_synced(self, targets, media_time):
+        def _pause_seek(m):
             try:
-                media.seek(media_time)
+                m.pause()
             except Exception:
-                logging.exception("seek failed")
+                pass
+            try:
+                m.seek(media_time)
+            except Exception:
+                logging.exception("multi seek failed on %s", m.device_uuid)
+            return m
+
+        ready = []
+        with ThreadPoolExecutor(max_workers=max(1, len(targets))) as pool:
+            futs = [pool.submit(_pause_seek, m) for m in targets]
+            for fut in as_completed(futs, timeout=MULTI_LOAD_TIMEOUT_S + 5):
+                try:
+                    ready.append(fut.result())
+                except Exception:
+                    logging.exception("multi seek worker failed")
+        for m in ready:
+            try:
+                m.play()
+            except Exception:
+                logging.exception("multi seek play failed on %s", m.device_uuid)
+
+    def _play_on_targets_synced(self, media_metadata, targets=None):
+        """
+        Play media on one or many targets.
+
+        Single target: load with autoplay (low latency).
+        Multi target: parallel load (autoplay=False) → pause/seek align → simultaneous play.
+        """
+        if targets is None:
+            targets = self.iter_targets()
+        if not targets or not media_metadata:
+            return False
+
+        if len(targets) == 1:
+            targets[0].play_media_info(media_metadata, update_play_count=True)
+            return True
+
+        t0 = _sync_start_seconds(media_metadata)
+
+        def _load_one(media):
+            media.load_media_info(
+                media_metadata,
+                autoplay=False,
+                start_seconds=t0,
+                block_timeout=MULTI_LOAD_TIMEOUT_S,
+            )
+            # Defensive: some receivers ignore autoplay=False
+            try:
+                media.pause()
+            except Exception:
+                pass
+            try:
+                media.seek(t0)
+            except Exception:
+                logging.exception("sync seek failed on %s", media.device_uuid)
+            return media
+
+        ready = []
+        with ThreadPoolExecutor(max_workers=len(targets)) as pool:
+            futs = {pool.submit(_load_one, m): m for m in targets}
+            try:
+                for fut in as_completed(futs, timeout=MULTI_LOAD_TIMEOUT_S + 5):
+                    try:
+                        ready.append(fut.result())
+                    except Exception:
+                        logging.exception(
+                            "multi load failed on %s",
+                            getattr(futs.get(fut), "device_uuid", "?"),
+                        )
+            except TimeoutError:
+                logging.error("multi-cast load barrier timed out")
+                for fut, media in futs.items():
+                    if fut.done() and not fut.exception():
+                        try:
+                            ready.append(fut.result())
+                        except Exception:
+                            pass
+
+        if not ready:
+            logging.error("multi-cast: no targets ready after load")
+            return False
+
+        # Second align pass: early finishers may have drifted while others loaded
+        def _realign(media):
+            try:
+                media.pause()
+            except Exception:
+                pass
+            try:
+                media.seek(t0)
+            except Exception:
+                logging.exception("sync realign seek failed on %s", media.device_uuid)
+            return media
+
+        with ThreadPoolExecutor(max_workers=len(ready)) as pool:
+            list(pool.map(_realign, ready))
+
+        # Brief settle so receivers apply seek before play
+        time.sleep(0.15)
+
+        go_ms = _multi_cast_go_delay_ms()
+        # Default a small go delay for multi (helps simultaneous play RPC burst)
+        if go_ms <= 0:
+            go_ms = 200
+        deadline = time.monotonic() + (go_ms / 1000.0)
+        while time.monotonic() < deadline:
+            time.sleep(0.001)
+
+        # Burst play — shared go signal
+        for media in ready:
+            try:
+                media.play()
+            except Exception:
+                logging.exception("multi play failed on %s", media.device_uuid)
+
+        if media_metadata.get("id"):
+            db_connection = DBHandler()
+            db_connection.open()
+            db_connection.update_content_play_count(media_metadata.get("id"))
+            db_connection.close()
+        return True
 
     def play_from_sql(self, content_data):
         targets = self.iter_targets()
@@ -899,11 +1087,7 @@ class ChromecastHandler(threading.Thread):
         media_metadata = _resolve_content_metadata(content_data)
         if not media_metadata:
             return None
-        for i, media in enumerate(targets):
-            try:
-                media.play_media_info(media_metadata, update_play_count=(i == 0))
-            except Exception:
-                logging.exception("play_media_info failed on target %s", i)
+        self._play_on_targets_synced(media_metadata, targets)
         return media_metadata
 
     def play_random_container_content(self, json_request):
@@ -919,11 +1103,7 @@ class ChromecastHandler(threading.Thread):
         if not media_metadata:
             return None
         stamp_play_mode(media_metadata, PLAY_MODE_RANDOM_CONTAINER, req)
-        for i, media in enumerate(targets):
-            try:
-                media.play_media_info(media_metadata, update_play_count=(i == 0))
-            except Exception:
-                logging.exception("play_random_container failed on target %s", i)
+        self._play_on_targets_synced(media_metadata, targets)
         return media_metadata
 
     def send_command(self, media_device_command):
@@ -955,11 +1135,7 @@ class ChromecastHandler(threading.Thread):
             info = _next_media_from_status(media.status)
         if not info:
             return
-        for i, target in enumerate(self.iter_targets()):
-            try:
-                target.play_media_info(info, update_play_count=(i == 0))
-            except Exception:
-                logging.exception("playlist command fan-out failed")
+        self._play_on_targets_synced(info, self.iter_targets())
 
     def _on_device_finished(self, device_uuid):
         """Primary-only auto-advance with fan-out to all targets."""
@@ -977,11 +1153,7 @@ class ChromecastHandler(threading.Thread):
         info = _next_media_from_status(sess["media"].status)
         if not info:
             return
-        for i, target in enumerate(self.iter_targets()):
-            try:
-                target.play_media_info(info, update_play_count=(i == 0))
-            except Exception:
-                logging.exception("auto-next fan-out failed")
+        self._play_on_targets_synced(info, self.iter_targets())
 
     def run(self):
         if self._start_discovery:

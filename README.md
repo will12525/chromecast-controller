@@ -21,7 +21,9 @@ Media files are progressive **HTTP MP4** from the per-disk `http-server` (`conte
 |-------------|----------|
 | **Local** | Bottom bar controls the browser `<video>` player |
 | **Device** | Play/commands go to one connected Chromecast |
-| **All connected** | Same media and transport commands fan out to every connected cast |
+| **All connected** | Same media and transport commands fan out to every connected cast; multi-start loads in parallel then plays together (near-sync) |
+
+Optional config `multi_cast_go_delay_ms` (default `0`): after all devices are loaded/paused, wait this many ms before the simultaneous `play()` burst (scheduled go-signal experiment).
 
 | Play mode | Behavior on finish / next |
 |-----------|---------------------------|
