@@ -23,11 +23,36 @@ Media files are progressive **HTTP MP4** from the per-disk `http-server` (`conte
 | **Device** | Play/commands go to one connected Chromecast |
 | **All connected** | Same media and transport commands fan out to every connected cast |
 
+| Play mode | Behavior on finish / next |
+|-----------|---------------------------|
+| **Sequential** | Next episode in the show (default when starting a TV episode) |
+| **Reverse** | Previous episode (series backwards; stops at the start) |
+| **Tag random** | Random item with the same tags; mode **persists** even if an episode is picked |
+| **Container random** | Random item within the current show/container |
+| **Single** | Stop; no auto-next |
+
+- Mode selector is on the bottom bar; choice is stored in `localStorage` (`cc_play_mode`) and sent as `play_mode` on play/next. The chip updates from the **server** response after play/next.
 - Connect multiple Chromecasts from the cast menu (checkmark = connected). Use **All connected**, **Local**, or **Use** on a device.
-- Bottom bar: **−15 / +15**, play/pause/stop, rewind (restart or previous if near start), **next** (next episode / tag-random — not jump-to-end).
+- Bottom bar: **−15 / +15**, play/pause/stop, rewind / next (advance follows current play mode).
 - Scrubber works with touch and mouse; seeks the active target (or all in **All** mode).
 - Cast uses pychromecast **BUFFERED** stream type for VOD MP4s.
 - Non-Cast TVs: open the same LAN `content_url` in the TV browser or an external player (no DLNA built in).
+
+```bash
+# Unit suite (CI) — includes play_mode unit tests
+pytest tests/ -m "not integration" -q
+
+# Play-mode API only (local stream_mode — does NOT change TV)
+# Needs non-empty media_metadata.db (Scan Media in the app first).
+pytest tests/test_cast_play_modes_integration.py -m integration -q
+
+# Live Chromecast (will play/pause on real devices)
+# CAST_DEVICE_1="Family Room TV" CAST_DEVICE_2="Bedroom" \
+pytest tests/test_cast_streaming_integration.py -m integration -q
+
+# Full disk rescan from tests is opt-in only (slow / looks like a hang):
+# CAST_ALLOW_FULL_SCAN=1 pytest ...
+```
 
 ### Filename conventions
 

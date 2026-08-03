@@ -305,7 +305,7 @@ class DBHandler(DBConnection):
             media_metadata["tag_list"] = tag_list
             return media_metadata
 
-    def get_previous_content_in_container(self, json_request):
+    def get_previous_content_in_container(self, json_request, wrap=True):
         sub_content_list = []
         next_content_id = None
         parent_container_id = None
@@ -316,7 +316,10 @@ class DBHandler(DBConnection):
         for index, sub_content in enumerate(sub_content_list):
             if sub_content.get("id") == json_request.get("content_id"):
                 if index == 0:
-                    next_content_id = sub_content_list[-1].get("id")
+                    # reverse mode stops at series start when wrap=False
+                    next_content_id = (
+                        sub_content_list[-1].get("id") if wrap and sub_content_list else None
+                    )
                 else:
                     next_content_id = sub_content_list[index - 1].get("id")
 

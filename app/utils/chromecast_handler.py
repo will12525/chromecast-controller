@@ -19,6 +19,17 @@ from pychromecast import STREAM_TYPE_BUFFERED
 from pychromecast.discovery import CastBrowser, SimpleCastListener
 
 from app.database.db_getter import DBHandler
+from app.utils.play_mode import (
+    PLAY_MODE_RANDOM_CONTAINER,
+    PLAY_MODE_RANDOM_TAG,
+    PLAY_MODE_REVERSE,
+    PLAY_MODE_SEQUENTIAL,
+    PLAY_MODE_SINGLE,
+    normalize_play_mode,
+    resolve_play_mode,
+    restamp_from_session,
+    stamp_play_mode,
+)
 
 # Stream target modes (process memory only)
 STREAM_MODE_LOCAL = "local"
@@ -154,8 +165,6 @@ class MyMediaDevice:
     def play_random_content_with_tag(self, json_request):
         media_metadata = _resolve_content_metadata(json_request)
         if media_metadata:
-            media_metadata["play_mode"] = "play_random_content_with_tag"
-            media_metadata["tag_list"] = json_request.get("tag_list")
             self.play_media_info(media_metadata)
             return media_metadata
 
@@ -165,29 +174,26 @@ class MyMediaDevice:
         media_metadata = db_connection.get_random_content_in_container(json_request)
         db_connection.close()
         if media_metadata:
+            mode = resolve_play_mode(
+                {
+                    **(json_request or {}),
+                    "play_mode": PLAY_MODE_RANDOM_CONTAINER,
+                }
+            )
+            stamp_play_mode(media_metadata, mode, json_request or {})
             self.play_media_info(media_metadata)
             return media_metadata
 
     def play_next_episode(self):
-        """Resolve next item from current status and play on this device only."""
+        """Advance in current play_mode direction (this device only)."""
         media_info = _next_media_from_status(self.status)
         if media_info:
             self.play_media_info(media_info)
             return media_info
 
     def play_previous_episode(self):
-        media_info = None
-        if self.status and (media_metadata := self.status.media_metadata):
-            current_media_data = {
-                "content_id": media_metadata.get("id"),
-                "parent_container_id": media_metadata.get("parent_container_id"),
-            }
-            db_connection = DBHandler()
-            db_connection.open()
-            media_info = db_connection.get_previous_content_in_container(
-                current_media_data
-            )
-            db_connection.close()
+        """Navigate opposite of sequential forward (or sequential when in reverse)."""
+        media_info = _adjacent_media_from_status(self.status, reverse=True)
         if media_info:
             self.play_media_info(media_info)
             return media_info
@@ -239,6 +245,10 @@ class MyMediaDevice:
                 meta["parent_container_id"] = self.status.media_metadata.get(
                     "parent_container_id"
                 )
+                if self.status.media_metadata.get("play_mode"):
+                    meta["play_mode"] = self.status.media_metadata.get("play_mode")
+                if self.status.media_metadata.get("tag_list") is not None:
+                    meta["tag_list"] = self.status.media_metadata.get("tag_list")
             return meta
 
     def seek(self, position):
@@ -280,7 +290,7 @@ class MyMediaDevice:
 
 
 def _resolve_content_metadata(content_data):
-    """Load content row and attach parent/play_mode fields for cast metadata."""
+    """Load content row and attach durable play_mode fields for cast metadata."""
     if not content_data or not content_data.get("content_id"):
         return None
     db_connection = DBHandler()
@@ -291,34 +301,62 @@ def _resolve_content_metadata(content_data):
         db_connection.close()
     if not media_metadata:
         return None
-    if content_data.get("parent_container_id") is not None:
-        media_metadata["parent_container_id"] = content_data.get("parent_container_id")
-    if content_data.get("parent_container_id") is None and content_data.get("tag_list"):
-        media_metadata["play_mode"] = "play_random_content_with_tag"
-        media_metadata["tag_list"] = content_data.get("tag_list")
+    mode = resolve_play_mode(content_data)
+    stamp_play_mode(media_metadata, mode, content_data)
     return media_metadata
 
 
 def _next_media_from_status(status):
+    """Advance in the direction of current play_mode (FINISHED / CMD_SKIP)."""
+    return _adjacent_media_from_status(status, reverse=False)
+
+
+def _adjacent_media_from_status(status, reverse=False):
+    """
+    Resolve next/previous item from cast status metadata.
+
+    reverse=False: advance in mode direction (sequential→next, reverse→previous,
+                   random_tag→random, …).
+    reverse=True: opposite of sequential direction (for CMD_PLAY_PREV).
+    """
     if not status or not status.media_metadata:
         return None
     media_metadata = status.media_metadata
+    mode = normalize_play_mode(media_metadata.get("play_mode")) or PLAY_MODE_SEQUENTIAL
+
+    if mode == PLAY_MODE_SINGLE:
+        return None
+
     db_connection = DBHandler()
     db_connection.open()
     try:
-        if media_metadata.get("play_mode") == "play_random_content_with_tag":
+        current = {
+            "content_id": media_metadata.get("id"),
+            "parent_container_id": media_metadata.get("parent_container_id"),
+            "tag_list": media_metadata.get("tag_list"),
+            "play_mode": mode,
+        }
+
+        if mode == PLAY_MODE_RANDOM_TAG:
             media_info = db_connection.get_random_content_with_tag(
                 media_metadata.get("tag_list")
             )
-            if media_info:
-                media_info["play_mode"] = "play_random_content_with_tag"
-                media_info["tag_list"] = media_metadata.get("tag_list")
-            return media_info
-        current_media_data = {
-            "content_id": media_metadata.get("id"),
-            "parent_container_id": media_metadata.get("parent_container_id"),
-        }
-        return db_connection.get_next_content_in_container(current_media_data)
+            return restamp_from_session(media_info, media_metadata)
+
+        if mode == PLAY_MODE_RANDOM_CONTAINER:
+            media_info = db_connection.get_random_content_in_container(current)
+            return restamp_from_session(media_info, media_metadata)
+
+        # sequential / reverse: direction depends on mode and reverse flag
+        go_backward = (mode == PLAY_MODE_REVERSE) ^ bool(reverse)
+        if go_backward:
+            # At series start stop (no wrap) for reverse advance
+            media_info = db_connection.get_previous_content_in_container(
+                current, wrap=False
+            )
+        else:
+            media_info = db_connection.get_next_content_in_container(current)
+        return restamp_from_session(media_info, media_metadata)
     finally:
         db_connection.close()
 
@@ -384,7 +422,8 @@ class ChromecastHandler(threading.Thread):
             self._sync_browser_devices_locked()
             self._refresh_scan_list_locked()
 
-    def _on_cast_remove(self, uuid, service):
+    def _on_cast_remove(self, uuid, service, cast_info=None):
+        # pychromecast SimpleCastListener may pass (uuid, name, cast_info)
         uuid_str = _as_uuid_str(uuid)
         with self._lock:
             if uuid_str and uuid_str in self._discovered:
@@ -860,15 +899,6 @@ class ChromecastHandler(threading.Thread):
         media_metadata = _resolve_content_metadata(content_data)
         if not media_metadata:
             return None
-        if content_data.get("parent_container_id") is None and content_data.get(
-            "tag_list"
-        ):
-            media_metadata["play_mode"] = "play_random_content_with_tag"
-            media_metadata["tag_list"] = content_data.get("tag_list")
-        elif content_data.get("parent_container_id") is not None:
-            media_metadata["parent_container_id"] = content_data.get(
-                "parent_container_id"
-            )
         for i, media in enumerate(targets):
             try:
                 media.play_media_info(media_metadata, update_play_count=(i == 0))
@@ -880,12 +910,15 @@ class ChromecastHandler(threading.Thread):
         targets = self.iter_targets()
         if not targets:
             return None
+        req = dict(json_request or {})
+        req["play_mode"] = PLAY_MODE_RANDOM_CONTAINER
         db_connection = DBHandler()
         db_connection.open()
-        media_metadata = db_connection.get_random_content_in_container(json_request)
+        media_metadata = db_connection.get_random_content_in_container(req)
         db_connection.close()
         if not media_metadata:
             return None
+        stamp_play_mode(media_metadata, PLAY_MODE_RANDOM_CONTAINER, req)
         for i, media in enumerate(targets):
             try:
                 media.play_media_info(media_metadata, update_play_count=(i == 0))
@@ -909,26 +942,16 @@ class ChromecastHandler(threading.Thread):
                 logging.exception("command %s failed", media_device_command)
 
     def _command_playlist(self, cmd):
-        """Next/prev: compute on primary status, play on all targets."""
+        """Advance/prev: compute on primary status, fan-out to all targets."""
         with self._lock:
             primary = self._primary_session_locked()
         if not primary:
             return
         media = primary["media"]
         if cmd == CommandList.CMD_PLAY_PREV:
-            info = None
-            if media.status and media.status.media_metadata:
-                current = {
-                    "content_id": media.status.media_metadata.get("id"),
-                    "parent_container_id": media.status.media_metadata.get(
-                        "parent_container_id"
-                    ),
-                }
-                db = DBHandler()
-                db.open()
-                info = db.get_previous_content_in_container(current)
-                db.close()
+            info = _adjacent_media_from_status(media.status, reverse=True)
         else:
+            # SKIP / PLAY_NEXT = advance in current play_mode direction
             info = _next_media_from_status(media.status)
         if not info:
             return
@@ -939,7 +962,7 @@ class ChromecastHandler(threading.Thread):
                 logging.exception("playlist command fan-out failed")
 
     def _on_device_finished(self, device_uuid):
-        """Primary-only auto-next with fan-out to all targets."""
+        """Primary-only auto-advance with fan-out to all targets."""
         now = time.time()
         if now < self._next_guard_until:
             return

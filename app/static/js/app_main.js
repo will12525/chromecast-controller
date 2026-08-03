@@ -125,6 +125,9 @@ function setup_nav_bars() {
         chromecast_menu.addEventListener("click", getChromecastList);
     }
     // Disconnect / Local are re-bound when the cast menu is rebuilt
+    if (typeof setupPlayModeSelector === "function") {
+        setupPlayModeSelector();
+    }
     getChromecastList();
     setNavbarLinks();
     setMediaControlButtons();

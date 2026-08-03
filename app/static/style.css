@@ -67,6 +67,19 @@
     font-size:50px;
 }
 
+.play-mode-row {
+    margin-bottom: 0.25rem;
+}
+
+.play-mode-select {
+    min-width: 9.5rem;
+    max-width: 12rem;
+}
+
+.play-mode-chip {
+    font-weight: 500;
+}
+
 /* TV show name under season/episode card title */
 .card-show-title {
     font-size: 0.8rem;

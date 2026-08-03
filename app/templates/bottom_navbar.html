@@ -1,6 +1,18 @@
 <nav class="navbar fixed-bottom navbar-expand bg-dark bg-body-tertiary media-control-bar" data-bs-theme="light">
     <div class="container-fluid text-center">
         <div class="col bottom-nav-col w-100">
+            <div class="row justify-content-center align-items-center play-mode-row gx-2">
+                <div class="col-auto">
+                    <label for="play_mode_select" class="form-label mb-0 small text-dark">Mode</label>
+                </div>
+                <div class="col-auto">
+                    <select id="play_mode_select" class="form-select form-select-sm play-mode-select"
+                            aria-label="Play mode"></select>
+                </div>
+                <div class="col-auto">
+                    <span id="play_mode_chip" class="badge text-bg-secondary play-mode-chip">Sequential</span>
+                </div>
+            </div>
             <div class="row justify-content-center">
                 <div class="col">
                     {# Touch-safe seek: player_controls binds pointer/touch/change; mouse kept for desktop #}

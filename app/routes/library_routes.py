@@ -133,39 +133,29 @@ def play_media():
     data = {}
     if json_request := request.get_json():
         if json_request.get("content_id"):
+            from app.utils.chromecast_handler import _resolve_content_metadata
+
             db_connection = DBHandler()
             try:
                 media_metadata = bh.play_media_on_chromecast(json_request)
                 if not media_metadata:
-                    db_connection.open()
-                    if json_request.get("parent_container_id") is None and json_request.get(
-                        "tag_list"
-                    ):
-                        media_metadata = db_connection.get_content_info(
-                            json_request.get("content_id")
-                        )
-                        data["play_mode"] = "play_random_content_with_tag"
-                    else:
-                        media_metadata = db_connection.get_content_info(
-                            json_request.get("content_id")
-                        )
+                    # Local / no cast target: still resolve durable play_mode
+                    media_metadata = _resolve_content_metadata(json_request)
                     if media_metadata and media_metadata.get("id"):
-                        db_connection.update_content_play_count(media_metadata.get("id"))
-                    play_response_from_metadata(media_metadata, json_request, data)
-                else:
-                    # Same fields for cast and local so UI/title/resume stay consistent
-                    play_response_from_metadata(media_metadata, json_request, data)
-                    if json_request.get("tag_list") is not None:
-                        data["tag_list"] = json_request.get("tag_list")
-                    if media_metadata.get("play_mode"):
-                        data["play_mode"] = media_metadata.get("play_mode")
-
+                        db_connection.open()
+                        db_connection.update_content_play_count(
+                            media_metadata.get("id")
+                        )
+                play_response_from_metadata(media_metadata, json_request, data)
             except Exception as e:
                 print("Exception class: ", e.__class__)
                 print(f"ERROR: {e}")
                 print(traceback.print_exc())
             finally:
-                db_connection.close()
+                try:
+                    db_connection.close()
+                except Exception:
+                    pass
         else:
             print(f"Media ID not provided: {json_request}")
     return data, 200
@@ -185,29 +175,70 @@ def play_random_container_content():
 
 @main_bp.route(APIEndpoints.GET_NEXT_MEDIA.value, methods=["POST"])
 def get_next_media():
+    """Advance using durable play_mode (sequential / reverse / random_tag / …)."""
     data = {}
     media_metadata = {}
     if json_request := request.get_json():
+        from app.utils.play_mode import (
+            PLAY_MODE_RANDOM_CONTAINER,
+            PLAY_MODE_RANDOM_TAG,
+            PLAY_MODE_REVERSE,
+            PLAY_MODE_SEQUENTIAL,
+            PLAY_MODE_SINGLE,
+            normalize_play_mode,
+            resolve_play_mode,
+            restamp_from_session,
+            stamp_play_mode,
+        )
+
         db_connection = DBHandler()
         try:
             db_connection.open()
-            if json_request.get("content_id") and json_request.get("parent_container_id"):
-                media_metadata = db_connection.get_next_content_in_container(json_request)
-            elif (
-                json_request.get("play_mode") == "play_random_content_with_tag"
-                and json_request.get("tag_list")
-            ):
+            mode = resolve_play_mode(json_request)
+            # Prefer explicit session mode on next (client dataset)
+            mode = normalize_play_mode(json_request.get("play_mode")) or mode
+            session_meta = {
+                "play_mode": mode,
+                "tag_list": json_request.get("tag_list"),
+                "parent_container_id": json_request.get("parent_container_id"),
+                "id": json_request.get("content_id"),
+            }
+
+            if mode == PLAY_MODE_SINGLE:
+                data["play_mode"] = PLAY_MODE_SINGLE
+                data["error_msg"] = "single mode: no next"
+            elif mode == PLAY_MODE_RANDOM_TAG and json_request.get("tag_list"):
                 media_metadata = db_connection.get_random_content_with_tag(
                     json_request.get("tag_list")
                 )
-                data["play_mode"] = "play_random_content_with_tag"
+                media_metadata = restamp_from_session(media_metadata, session_meta)
+            elif mode == PLAY_MODE_RANDOM_CONTAINER and json_request.get(
+                "parent_container_id"
+            ):
+                media_metadata = db_connection.get_random_content_in_container(
+                    json_request
+                )
+                media_metadata = restamp_from_session(media_metadata, session_meta)
+            elif mode == PLAY_MODE_REVERSE and json_request.get("content_id"):
+                media_metadata = db_connection.get_previous_content_in_container(
+                    json_request, wrap=False
+                )
+                media_metadata = restamp_from_session(media_metadata, session_meta)
+            elif mode == PLAY_MODE_SEQUENTIAL and json_request.get("content_id"):
+                if json_request.get("parent_container_id"):
+                    media_metadata = db_connection.get_next_content_in_container(
+                        json_request
+                    )
+                media_metadata = restamp_from_session(media_metadata, session_meta)
             else:
-                print(f"content_id not provided: {json_request}")
-                data["error_msg"] = f"content_id or play_mode not provided: {json_request}"
+                data["error_msg"] = (
+                    f"content_id or play_mode not provided: {json_request}"
+                )
+
             if media_metadata:
+                if not media_metadata.get("play_mode"):
+                    stamp_play_mode(media_metadata, mode, json_request)
                 play_response_from_metadata(media_metadata, json_request, data)
-                if media_metadata.get("tag_list"):
-                    data["tag_list"] = media_metadata.get("tag_list")
         except Exception as e:
             print("Exception class: ", e.__class__)
             print(f"ERROR: {e}")

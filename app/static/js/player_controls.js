@@ -269,6 +269,9 @@ async function playerUpdateSeekSelector() {
             response_data.media_duration
         );
     }
+    if (response_data.play_mode && typeof acknowledgePlayMode === "function") {
+        acknowledgePlayMode(response_data.play_mode);
+    }
 }
 
 function playerBindScrubber() {

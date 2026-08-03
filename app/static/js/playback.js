@@ -8,13 +8,14 @@ async function get_next_media(event) {
     }
     const rawTags = el.dataset.tagList;
     let parentRaw = el.dataset.parent_container_id;
+    const tagList = rawTags ? JSON.parse(rawTags) : [];
     let data = {
         "content_id": parseInt(el.dataset.content_id, 10),
         "parent_container_id": parentRaw !== undefined && parentRaw !== "" && parentRaw !== "null"
             ? parseInt(parentRaw, 10)
             : null,
-        "play_mode": el.dataset.play_mode,
-        "tag_list": rawTags ? JSON.parse(rawTags) : []
+        "play_mode": el.dataset.play_mode || (typeof sessionPlayMode !== "undefined" ? sessionPlayMode : null),
+        "tag_list": tagList
     };
     let response = await fetch(url, {
         "method": "POST",
@@ -26,6 +27,9 @@ async function get_next_media(event) {
         throw new Error("HTTP status get_next_media: " + response.status);
     }
     let response_data = await response.json();
+    if (response_data.play_mode && typeof acknowledgePlayMode === "function") {
+        acknowledgePlayMode(response_data.play_mode);
+    }
     if (response_data["local_play_url"] !== undefined) {
         // When casting, server still returns URL for local fallback; only update local if local mode
         if (typeof playerIsLocal === "function" && !playerIsLocal()) {
@@ -88,6 +92,9 @@ async function update_local_media_player(response_data) {
         }
         if (response_data["play_mode"] !== undefined) {
             videoPlayer.dataset.play_mode = response_data['play_mode'];
+            if (typeof acknowledgePlayMode === "function") {
+                acknowledgePlayMode(response_data.play_mode);
+            }
         }
         if (response_data["tag_list"] !== undefined) {
             videoPlayer.dataset.tagList = JSON.stringify(response_data['tag_list']);
@@ -132,11 +139,15 @@ async function play_media(content_id, parent_container_id=null, content_type=nul
     if (!tagList.length && currentLibraryKey && LIBRARY_TAG_MAP[currentLibraryKey]) {
         tagList = [LIBRARY_TAG_MAP[currentLibraryKey]];
     }
+    const playMode = typeof resolveClientPlayMode === "function"
+        ? resolveClientPlayMode({ parent_container_id: parent_container_id, tag_list: tagList })
+        : (parent_container_id != null ? "sequential" : (tagList.length ? "random_tag" : "single"));
     let data = {
         "content_id": content_id,
         "parent_container_id": parent_container_id,
         "content_type": content_type,
-        "tag_list": tagList
+        "tag_list": tagList,
+        "play_mode": playMode,
     };
     // Send POST request
     let response = await fetch(url, {
@@ -149,6 +160,9 @@ async function play_media(content_id, parent_container_id=null, content_type=nul
         throw new Error("HTTP status play_media: " + response.status);
     }
     let response_data = await response.json();
+    if (response_data.play_mode && typeof acknowledgePlayMode === "function") {
+        acknowledgePlayMode(response_data.play_mode);
+    }
     // Only drive the HTML5 player in Local mode; cast targets are handled server-side
     const useLocal = typeof playerIsLocal !== "function" || playerIsLocal();
     if (useLocal && response_data["local_play_url"] !== undefined) {

@@ -95,14 +95,25 @@ def build_main_content():
 
 
 def play_response_from_metadata(media_metadata, json_request, data):
-    """Populate play API response including resume fields."""
+    """Populate play API response including resume + durable play_mode fields."""
     if not media_metadata:
         return data
     data["id"] = media_metadata.get("id")
-    data["parent_container_id"] = json_request.get("parent_container_id")
+    # Prefer stamped metadata parent (next episode) over stale request parent
+    data["parent_container_id"] = (
+        media_metadata.get("parent_container_id")
+        if media_metadata.get("parent_container_id") is not None
+        else json_request.get("parent_container_id")
+    )
     data["local_play_url"] = media_metadata.get("url")
     data["content_title"] = media_metadata.get("content_title")
-    data["tag_list"] = json_request.get("tag_list")
+    tags = media_metadata.get("tag_list")
+    if tags is None:
+        tags = json_request.get("tag_list")
+    data["tag_list"] = tags
+    play_mode = media_metadata.get("play_mode") or json_request.get("play_mode")
+    if play_mode:
+        data["play_mode"] = play_mode
     data["last_position"] = media_metadata.get("last_position") or 0
     data["last_duration"] = media_metadata.get("last_duration") or 0
     return data
