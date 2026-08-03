@@ -108,17 +108,25 @@ function _castMenuStaticFooter() {
 async function getChromecastList() {
     var url = "/get_chromecast_list";
     let data = {};
-    let response = await fetch(url, {
-        "method": "POST",
-        "headers": {"Content-Type": "application/json"},
-        "body": JSON.stringify(data),
-    });
+    let response;
+    try {
+        response = await fetch(url, {
+            "method": "POST",
+            "headers": {"Content-Type": "application/json"},
+            "body": JSON.stringify(data),
+        });
+    } catch (e) {
+        console.error("getChromecastList network error", e);
+        return;
+    }
 
     if (!response.ok) {
         throw new Error("HTTP status getChromecastList: " + response.status);
     }
     let response_data = await response.json();
-    playerApplyStreamState(response_data);
+    if (typeof playerApplyStreamState === "function") {
+        playerApplyStreamState(response_data);
+    }
 
     const dropdown_list = document.getElementById("dropdown_scanned_chromecasts");
     if (!dropdown_list) {
@@ -127,7 +135,7 @@ async function getChromecastList() {
 
     const scanned = response_data.scanned_devices || [];
     const connected = response_data.connected_devices || [];
-    const connectedIds = new Set(connected.map((d) => d.uuid));
+    const connectedIds = new Set(connected.map((d) => d && d.uuid).filter(Boolean));
     const mode = response_data.stream_mode || "local";
     const activeId = response_data.active_device_id;
 
@@ -170,7 +178,9 @@ async function getChromecastList() {
             useBtn.addEventListener("click", async (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                await playerSetStreamMode("device", deviceId);
+                if (typeof playerSetStreamMode === "function") {
+                    await playerSetStreamMode("device", deviceId);
+                }
                 await getChromecastList();
             });
 
@@ -194,7 +204,9 @@ async function getChromecastList() {
             e.preventDefault();
             e.stopPropagation();
             if (isConnected) {
-                await playerSetStreamMode("device", deviceId);
+                if (typeof playerSetStreamMode === "function") {
+                    await playerSetStreamMode("device", deviceId);
+                }
                 await getChromecastList();
             } else {
                 await connectChromecast(deviceId, deviceName);
@@ -206,7 +218,7 @@ async function getChromecastList() {
 
     if (!scanned.length) {
         const li = document.createElement("li");
-        li.innerHTML = '<span class="dropdown-item-text text-muted">No devices found</span>';
+        li.innerHTML = '<span class="dropdown-item-text text-muted">No devices found — open menu again to rescan</span>';
         dropdown_list.appendChild(li);
     }
 
@@ -219,7 +231,14 @@ async function getChromecastList() {
         }
     });
 
-    playerUpdateStatusChip();
+    if (typeof playerUpdateStatusChip === "function") {
+        playerUpdateStatusChip();
+    } else if (response_data.connected_device) {
+        const chip = document.getElementById("connected_chromecast_id");
+        if (chip) {
+            chip.innerHTML = response_data.connected_device;
+        }
+    }
 }
 
 async function connect_local_player() {

@@ -41,15 +41,35 @@ def _as_uuid_str(value):
         return text
 
 
-def _service_device_info(service):
-    """Build {uuid, name} from a discovery CastInfo/service object."""
-    uuid_val = getattr(service, "uuid", None)
-    name = (
-        getattr(service, "friendly_name", None)
-        or getattr(service, "model_name", None)
-        or ""
-    )
-    uuid_str = _as_uuid_str(uuid_val)
+def _service_device_info(service, uuid_hint=None):
+    """Build {uuid, name} from CastInfo, service object, or mDNS name string.
+
+    pychromecast SimpleCastListener callbacks pass (uuid, service_name: str),
+    not a CastInfo — callers should prefer CastInfo from browser.devices and
+    only fall back to this helper with uuid_hint set.
+    """
+    if service is None and uuid_hint is None:
+        return None
+    # mDNS service name string (listener callback second arg)
+    if isinstance(service, str):
+        uuid_str = _as_uuid_str(uuid_hint)
+        if not uuid_str:
+            return None
+        # Prefer a short label; raw mDNS names are ugly
+        name = service
+        if name.endswith("._googlecast._tcp.local."):
+            name = uuid_str
+        return {"uuid": uuid_str, "name": name or uuid_str}
+
+    uuid_val = getattr(service, "uuid", None) if service is not None else None
+    name = ""
+    if service is not None:
+        name = (
+            getattr(service, "friendly_name", None)
+            or getattr(service, "model_name", None)
+            or ""
+        )
+    uuid_str = _as_uuid_str(uuid_val) or _as_uuid_str(uuid_hint)
     if not uuid_str and not name:
         return None
     return {
@@ -332,6 +352,10 @@ class ChromecastHandler(threading.Thread):
         self._discovery_started = False
         self._start_discovery = start_discovery
         self._next_guard_until = 0.0
+        self._last_discovery_attempt = 0.0
+        self._last_oneshot_scan = 0.0
+        self._discovery_retry_interval = 15.0
+        self._oneshot_scan_interval = 20.0
 
     def __del__(self):
         self.run_update = False
@@ -344,12 +368,20 @@ class ChromecastHandler(threading.Thread):
     # --- discovery ---
 
     def _on_cast_add(self, uuid, service):
-        info = self._cast_info_from_browser(uuid) or service
-        device = _service_device_info(info)
+        """Listener callback. pychromecast passes (uuid, mDNS_name: str)."""
+        info = self._cast_info_from_browser(uuid)
+        store = info if info is not None else service
+        device = _service_device_info(store, uuid_hint=uuid)
         if not device:
-            return
+            # Still record a stub so the uuid appears while CastInfo catches up
+            uuid_str = _as_uuid_str(uuid)
+            if not uuid_str:
+                return
+            device = {"uuid": uuid_str, "name": uuid_str}
+            store = service
         with self._lock:
-            self._discovered[device["uuid"]] = info
+            self._discovered[device["uuid"]] = store if store is not None else device
+            self._sync_browser_devices_locked()
             self._refresh_scan_list_locked()
 
     def _on_cast_remove(self, uuid, service):
@@ -378,11 +410,21 @@ class ChromecastHandler(threading.Thread):
                 return val
         return None
 
+    def _sync_browser_devices_locked(self):
+        """Merge CastBrowser.devices into _discovered (caller holds lock)."""
+        if not self._browser:
+            return
+        devices = getattr(self._browser, "devices", None) or {}
+        for key, cast_info in devices.items():
+            entry = _service_device_info(cast_info, uuid_hint=key)
+            if entry:
+                self._discovered[entry["uuid"]] = cast_info
+
     def _refresh_scan_list_locked(self):
         devices = []
         seen = set()
         for uuid_str, info in self._discovered.items():
-            entry = _service_device_info(info)
+            entry = _service_device_info(info, uuid_hint=uuid_str)
             if not entry:
                 continue
             key = entry["uuid"]
@@ -395,10 +437,19 @@ class ChromecastHandler(threading.Thread):
         self.last_scanned_devices = devices
 
     def _ensure_discovery(self):
-        """Start long-lived CastBrowser once (no-op if already running or disabled)."""
-        if self._discovery_started or not self._start_discovery:
-            return
+        """Start long-lived CastBrowser (retries on failure)."""
+        if not self._start_discovery:
+            return False
+        if self._discovery_started and self._browser is not None:
+            return True
+        now = time.time()
+        if now - self._last_discovery_attempt < 2.0 and self._last_discovery_attempt:
+            return bool(self._discovery_started)
+        self._last_discovery_attempt = now
         try:
+            # Clean partial state before retry
+            if self._browser or self._zconf:
+                self._stop_discovery()
             self._zconf = zeroconf.Zeroconf()
             listener = SimpleCastListener(
                 add_callback=self._on_cast_add,
@@ -409,8 +460,14 @@ class ChromecastHandler(threading.Thread):
             self._browser.start_discovery()
             self.chromecast_browser = self._browser
             self._discovery_started = True
+            logging.info("CastBrowser discovery started")
+            return True
         except Exception:
             logging.exception("Failed to start CastBrowser discovery")
+            self._discovery_started = False
+            self._browser = None
+            self._zconf = None
+            return False
 
     def _stop_discovery(self):
         try:
@@ -428,46 +485,64 @@ class ChromecastHandler(threading.Thread):
         self.chromecast_browser = None
         self._discovery_started = False
 
-    def get_scan_list(self):
-        """Return discovered devices as list of dicts: {"uuid": str, "name": str}."""
-        with self._lock:
-            # Also merge browser.devices if available (fresh)
-            if self._browser and getattr(self._browser, "devices", None):
-                for key, cast_info in self._browser.devices.items():
-                    entry = _service_device_info(cast_info)
-                    if entry:
-                        self._discovered[entry["uuid"]] = cast_info
-                self._refresh_scan_list_locked()
-            return list(self.last_scanned_devices)
-
-    def scan_for_chromecasts(self):
-        """
-        Refresh scan list from CastBrowser (or one-shot discover fallback for tests).
-
-        Prefer continuous discovery; this method remains for API compatibility.
-        """
-        self._ensure_discovery()
-        with self._lock:
-            if self._browser and getattr(self._browser, "devices", None):
-                for key, cast_info in self._browser.devices.items():
-                    entry = _service_device_info(cast_info)
-                    if entry:
-                        self._discovered[entry["uuid"]] = cast_info
-                self._refresh_scan_list_locked()
-                return
-        # Fallback for unit tests that mock discover_chromecasts
+    def _oneshot_discover_fallback(self, force=False):
+        """Blocking one-shot mDNS scan when continuous browser is empty/unavailable."""
+        now = time.time()
+        if not force and (now - self._last_oneshot_scan) < self._oneshot_scan_interval:
+            return
+        self._last_oneshot_scan = now
         try:
-            services, browser = pychromecast.discovery.discover_chromecasts()
-            if browser and not self._browser:
-                self.chromecast_browser = browser
+            services, browser = pychromecast.discovery.discover_chromecasts(timeout=5)
             with self._lock:
                 for service in services or []:
                     entry = _service_device_info(service)
                     if entry:
                         self._discovered[entry["uuid"]] = service
                 self._refresh_scan_list_locked()
+            # Prefer continuous browser; stop temporary browser if we already have one
+            if browser:
+                if self._browser:
+                    try:
+                        browser.stop_discovery()
+                    except Exception:
+                        pass
+                else:
+                    self.chromecast_browser = browser
         except Exception:
-            logging.exception("scan_for_chromecasts fallback failed")
+            logging.exception("oneshot discover_chromecasts fallback failed")
+
+    def get_scan_list(self):
+        """Return discovered devices as list of dicts: {"uuid": str, "name": str}."""
+        # Always ensure discovery is running when the UI asks for devices
+        if self._start_discovery:
+            self._ensure_discovery()
+        with self._lock:
+            self._sync_browser_devices_locked()
+            self._refresh_scan_list_locked()
+            devices = list(self.last_scanned_devices)
+        # If continuous discovery is empty, try a one-shot scan (helps cold start / zconf flakiness)
+        if not devices and self._start_discovery:
+            self._oneshot_discover_fallback(force=True)
+            with self._lock:
+                self._sync_browser_devices_locked()
+                self._refresh_scan_list_locked()
+                devices = list(self.last_scanned_devices)
+        return devices
+
+    def scan_for_chromecasts(self):
+        """
+        Refresh scan list from CastBrowser (or one-shot discover fallback).
+
+        Prefer continuous discovery; this method remains for API compatibility.
+        """
+        if self._start_discovery:
+            self._ensure_discovery()
+        with self._lock:
+            self._sync_browser_devices_locked()
+            self._refresh_scan_list_locked()
+            if self.last_scanned_devices:
+                return
+        self._oneshot_discover_fallback(force=True)
 
     # --- sessions ---
 
@@ -890,15 +965,19 @@ class ChromecastHandler(threading.Thread):
             self._ensure_discovery()
         while self.run_update:
             try:
+                if self._start_discovery and not self._discovery_started:
+                    self._ensure_discovery()
                 # Keep scan list fresh from browser
                 if self._browser:
                     with self._lock:
-                        if getattr(self._browser, "devices", None):
-                            for key, cast_info in self._browser.devices.items():
-                                entry = _service_device_info(cast_info)
-                                if entry:
-                                    self._discovered[entry["uuid"]] = cast_info
-                            self._refresh_scan_list_locked()
+                        self._sync_browser_devices_locked()
+                        self._refresh_scan_list_locked()
+                        empty = not self.last_scanned_devices
+                    # Periodic one-shot if browser stays empty (zconf glitches)
+                    if empty:
+                        now = time.time()
+                        if now - self._last_oneshot_scan >= self._oneshot_scan_interval:
+                            self._oneshot_discover_fallback(force=False)
                 time.sleep(1.0)
             except KeyboardInterrupt:
                 break

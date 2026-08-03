@@ -47,10 +47,14 @@ def connect_chromecast():
 
 @main_bp.route(APIEndpoints.GET_CHROMECAST_LIST.value, methods=["POST"])
 def get_chromecast_list():
-    # Full multi-device snapshot + legacy single-device fields
-    state = bh.get_chromecast_stream_state()
-    # Ensure scan list is current
+    # Full multi-device snapshot + legacy single-device fields.
+    # get_scan_list ensures CastBrowser is running and may one-shot scan if empty.
     scanned = bh.get_chromecast_scan_list()
+    if not scanned:
+        # Explicit refresh path for cold UI open before background thread settles
+        bh.chromecast.scan_for_chromecasts()
+        scanned = bh.get_chromecast_scan_list()
+    state = bh.get_chromecast_stream_state()
     state["scanned_devices"] = scanned
     if state.get("stream_mode") == "local" and not state.get("connected_devices"):
         state["connected_device"] = state.get("connected_device") or "Local"
