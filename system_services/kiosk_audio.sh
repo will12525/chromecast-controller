@@ -45,9 +45,10 @@ if [[ -z "${target}" ]]; then
     exit 0
 fi
 
-read -r device profile <<<"${target}"
-if ! wpctl set-profile "${device}" "${profile}"; then
-    echo "kiosk_audio: set-profile ${device} ${profile} failed" >&2
+read -r device profile_index <<<"${target}"
+# wpctl set-profile takes the profile index. The name is not accepted.
+if ! wpctl set-profile "${device}" "${profile_index}"; then
+    echo "kiosk_audio: set-profile ${device} ${profile_index} failed" >&2
     exit 0
 fi
 
@@ -59,11 +60,11 @@ for _ in $(seq 1 10); do
 done
 
 if [[ -z "${sink}" ]]; then
-    echo "kiosk_audio: profile ${profile} did not create a sink" >&2
+    echo "kiosk_audio: profile ${profile_index} did not create a sink" >&2
     exit 0
 fi
 
 wpctl set-default "${sink}"
 wpctl set-mute "${sink}" 0
 wpctl set-volume "${sink}" 70%
-echo "kiosk_audio: ${connector} sink ${sink} ${profile}"
+echo "kiosk_audio: ${connector} sink ${sink} profile ${profile_index}"
