@@ -1,0 +1,179 @@
+<timestamp>Friday, Nov 13, 2026, 12:46 PM (UTC-5)</timestamp>
+
+Implement the plan as specified, it is attached for your reference. Do NOT edit the plan file itself.
+
+To-do's from the plan have already been created. Do not create them again. Mark them as in_progress as you work, starting with the first one. Don't stop until you have completed all the to-dos.
+
+---
+
+<timestamp>Friday, Nov 13, 2026, 12:46 PM (UTC-5)</timestamp>
+
+commit
+
+---
+
+Ran: sudo ./setup_client.sh
+Looking for USB disks
+Automount 9C3B-9904 at /media/usb/t7_shield
+Traceback (most recent call last):
+  File "<stdin>", line 7, in <module>
+  File "/usr/lib/python3.13/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+        cls=cls, object_hook=object_hook,
+        parse_float=parse_float, parse_int=parse_int,
+        parse_constant=parse_constant, object_pairs_hook=object_pairs_hook, **kw)
+  File "/usr/lib/python3.13/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "/usr/lib/python3.13/json/decoder.py", line 345, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/json/decoder.py", line 361, in raw_decode
+    obj, end = self.scan_once(s, idx)
+               ~~~~~~~~~~~~~~^^^^^^^^
+json.decoder.JSONDecodeError: Expecting ',' delimiter: line 5 column 5 (char 109)
+
+---
+
+USB disk contains partitions sda1, sda2. Provide cli steps for me to modify which partition is mounted
+
+---
+
+Pi UI very small. update the setup_client.sh script and provide cli steps to adjust resolution to 1080p
+
+---
+
+web UI is very small, does not expand to a 1080p monitor, black bars on either side, condensed navbar as if the ui senses mobile/phone size contstraints
+
+---
+
+Display still small after applying changes and system restarts
+
+---
+
+willow@mobile-media:~/chromecast-controller $ sudo sed -i 's|^ExecStart=.*|ExecStart=/usr/bin/cage -s -- /usr/bin/chromium --kiosk --ozone-platform=wayland --enable-features=UseOzonePlatform --disable-features=WaylandFractionalScaleV1 --start-maximized --force-device-scale-factor=1 --noerrdialogs --disable-infobars --check-for-update-interval=31536000 --app=http://127.0.0.1:5000|' /etc/systemd/user/chromium_kiosk.service
+willow@mobile-media:~/chromecast-controller $ sudo systemctl restart "user@1000.service"
+willow@mobile-media:~/chromecast-controller $ kmsprint | head -n 20
+Connector 0 (35) HDMI-A-1 (connected)
+  Encoder 0 (34) TMDS
+    Crtc 3 (102) 720x480@59.94 27.000 720/16/62/60/- 480/9/6/30/- 60 (59.94) P|D
+      Plane 3 (91) fb-id: 730 (crtcs: 3) 0,0 720x480 -> 0,0 720x480 (XR24 AR24 AB24 XB24 RX24 RA24 BX24 BA24 RG16 BG16 AR15 XR15 RG24 BG24 YU16 YV16 YU24 YV24 YU12 YV12 NV12 NV21 NV16 NV61 P030 XR30 AR30 AB30 XB30 RGB8 BGR8 XR12 AR12 XB12 AB12 BX12 BA12 RX12 RA12)
+        FB 730 720x480 AB24
+      Plane 57 (688) fb-id: 728 (crtcs: 3) 0,0 64x64 -> 357,239 64x64 (XR24 AR24 AB24 XB24 RX24 RA24 BX24 BA24 RG16 BG16 AR15 XR15 RG24 BG24 YU16 YV16 YU24 YV24 YU12 YV12 NV12 NV21 NV16 NV61 P030 XR30 AR30 AB30 XB30 RGB8 BGR8 XR12 AR12 XB12 AB12 BX12 BA12 RX12 RA12)
+        FB 728 64x64 AR24
+Connector 1 (44) HDMI-A-2 (disconnected)
+  Encoder 1 (43) TMDS
+willow@mobile-media:~/chromecast-controller $ tr '\0' ' ' < /proc/$(pgrep -n chromium)/cmdline; echo
+/usr/lib/chromium/chromium --type=renderer --crashpad-handler-pid=0 --enable-crash-reporter=,built on Debian GNU/Linux 13 (trixie) --noerrdialogs --change-stack-guard-on-fork=enable --disable-dev-shm-usage --force-device-scale-factor=1 --ozone-platform=wayland --lang=en-GB --num-raster-threads=2 --enable-main-frame-before-activation --renderer-client-id=5 --launch-time-ticks=1025460325 --shared-files=v8_context_snapshot_data:100 --metrics-shmem-handle=4,i,10018694134444217418,12319773830694825006,1572864 --field-trial-handle=3,i,8857502980545142409,11350532708091070932,262144 --enable-features=UseOzonePlatform --disable-features=WaylandFractionalScaleV1 --variations-seed-version --pseudonymization-salt-handle=7,i,6870896331662879965,1102832410029970305,4 --trace-process-track-uuid=3190708990997080739
+
+---
+
+Setting applied and rebooted. display still small. provide commands for you to debug and adjust
+
+---
+
+willow@mobile-media:~ $ echo '== files'
+ls -l /boot/firmware/cmdline.txt /boot/cmdline.txt 2>&1
+echo '== firmware cmdline'
+cat /boot/firmware/cmdline.txt 2>&1
+echo '== boot cmdline'
+cat /boot/cmdline.txt 2>&1
+echo '== running cmdline'
+cat /proc/cmdline
+echo '== kmsprint'
+kmsprint
+echo '== hdmi sysfs'
+for f in /sys/class/drm/card*-HDMI-A-*/status /sys/class/drm/card*-HDMI-A-*/enabled /sys/class/drm/card*-HDMI-A-*/modes; do
+  echo "-- $f"
+  cat "$f" 2>&1
+done
+echo '== edid bytes'
+wc -c /sys/class/drm/card*-HDMI-A-*/edid 2>&1
+== files
+-rw-r--r-- 1 root root  92 Oct  5 20:20 /boot/cmdline.txt
+-rwxr-xr-x 1 root root 246 Nov 13 13:34 /boot/firmware/cmdline.txt
+== firmware cmdline
+console=serial0,115200 console=tty1 root=PARTUUID=7d3b37e7-02 rootfstype=ext4 fsck.repair=yes rootwait ds=nocloud;i=rpi-imager-1794586274000 cfg80211.ieee80211_regdom=US consoleblank=0 video=HDMI-A-1:1920x1080M@60eD video=HDMI-A-2:1920x1080M@60eD== boot cmdline
+DO NOT EDIT THIS FILE
+
+The file you are looking for has moved to /boot/firmware/cmdline.txt
+== running cmdline
+coherent_pool=1M 8250.nr_uarts=1 snd_bcm2835.enable_headphones=0 cgroup_disable=memory numa_policy=interleave nvme.max_host_mem_size_mb=32 snd_bcm2835.enable_headphones=1 snd_bcm2835.enable_hdmi=1 snd_bcm2835.enable_hdmi=0  numa=fake=2 system_heap.max_order=0 iommu_dma_numa_policy=interleave smsc95xx.macaddr=DC:A6:32:93:7D:7D vc_mem.mem_base=0x3ec00000 vc_mem.mem_size=0x40000000  console=ttyAMA0,115200 console=tty1 root=PARTUUID=7d3b37e7-02 rootfstype=ext4 fsck.repair=yes rootwait ds=nocloud;i=rpi-imager-1794586274000 cfg80211.ieee80211_regdom=US consoleblank=0 video=HDMI-A-1:1920x1080M@60eD video=HDMI-A-2:1920x1080M@60eD
+== kmsprint
+Connector 0 (35) HDMI-A-1 (connected)
+  Encoder 0 (34) TMDS
+    Crtc 3 (102) 720x480@59.94 27.000 720/16/62/60/- 480/9/6/30/- 60 (59.94) P|D
+      Plane 3 (91) fb-id: 727 (crtcs: 3) 0,0 720x480 -> 0,0 720x480 (XR24 AR24 AB24 XB24 RX24 RA24 BX24 BA24 RG16 BG16 AR15 XR15 RG24 BG24 YU16 YV16 YU24 YV24 YU12 YV12 NV12 NV21 NV16 NV61 P030 XR30 AR30 AB30 XB30 RGB8 BGR8 XR12 AR12 XB12 AB12 BX12 BA12 RX12 RA12)
+        FB 727 720x480 AB24
+      Plane 57 (688) fb-id: 729 (crtcs: 3) 0,0 64x64 -> 531,240 64x64 (XR24 AR24 AB24 XB24 RX24 RA24 BX24 BA24 RG16 BG16 AR15 XR15 RG24 BG24 YU16 YV16 YU24 YV24 YU12 YV12 NV12 NV21 NV16 NV61 P030 XR30 AR30 AB30 XB30 RGB8 BGR8 XR12 AR12 XB12 AB12 BX12 BA12 RX12 RA12)
+        FB 729 64x64 AR24
+Connector 1 (44) HDMI-A-2 (disconnected)
+  Encoder 1 (43) TMDS
+== hdmi sysfs
+-- /sys/class/drm/card1-HDMI-A-1/status
+connected
+-- /sys/class/drm/card1-HDMI-A-2/status
+disconnected
+-- /sys/class/drm/card1-HDMI-A-1/enabled
+enabled
+-- /sys/class/drm/card1-HDMI-A-2/enabled
+disabled
+-- /sys/class/drm/card1-HDMI-A-1/modes
+720x480
+4096x2160
+4096x2160
+4096x2160
+4096x2160
+4096x2160
+3840x2160
+3840x2160
+3840x2160
+3840x2160
+3840x2160
+1920x1080
+1920x1080
+1920x1080
+1920x1080
+1920x1080
+1920x1080
+1920x1080i
+1920x1080i
+1920x1080
+1920x1080i
+1920x1080
+1920x1080
+1920x1080
+1920x1080
+1920x1080
+1280x1024
+1280x720
+1280x720
+1280x720
+1024x768
+800x600
+720x576
+720x480
+720x480
+720x480
+720x480
+640x480
+640x480
+640x480
+-- /sys/class/drm/card1-HDMI-A-2/modes
+== edid bytes
+256 /sys/class/drm/card1-HDMI-A-1/edid
+0 /sys/class/drm/card1-HDMI-A-2/edid
+256 total
+
+---
+
+willow@mobile-media:~ $ kmsprint | head -n 12
+Connector 0 (35) HDMI-A-1 (connected)
+  Encoder 0 (34) TMDS
+    Crtc 3 (102) 1920x1080@120.00 297.000 1920/88/44/148/+ 1080/4/5/36/+ 120 (120.00) D 16:9
+      Plane 3 (91) fb-id: 724 (crtcs: 3) 0,0 1920x1080 -> 0,0 1920x1080 (XR24 AR24 AB24 XB24 RX24 RA24 BX24 BA24 RG16 BG16 AR15 XR15 RG24 BG24 YU16 YV16 YU24 YV24 YU12 YV12 NV12 NV21 NV16 NV61 P030 XR30 AR30 AB30 XB30 RGB8 BGR8 XR12 AR12 XB12 AB12 BX12 BA12 RX12 RA12)
+        FB 724 1920x1080 XR24
+      Plane 57 (688) fb-id: 721 (crtcs: 3) 0,0 64x64 -> 97,99 64x64 (XR24 AR24 AB24 XB24 RX24 RA24 BX24 BA24 RG16 BG16 AR15 XR15 RG24 BG24 YU16 YV16 YU24 YV24 YU12 YV12 NV12 NV21 NV16 NV61 P030 XR30 AR30 AB30 XB30 RGB8 BGR8 XR12 AR12 XB12 AB12 BX12 BA12 RX12 RA12)
+        FB 721 64x64 AR24
+Connector 1 (44) HDMI-A-2 (disconnected)
+  Encoder 1 (43) TMDS

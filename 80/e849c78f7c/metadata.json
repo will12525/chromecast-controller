@@ -1,0 +1,31 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "80e849c78f7c",
+  "strategy": "manual-commit",
+  "branch": "fix_tests",
+  "checkpoints_count": 10,
+  "files_touched": [
+    "README.md",
+    "app/static/nf.css",
+    "app/static/style.css",
+    "setup_client.sh",
+    "system_services/chromium_kiosk.service",
+    "system_services/sway_kiosk.conf"
+  ],
+  "sessions": [
+    {
+      "metadata": "/80/e849c78f7c/0/metadata.json",
+      "transcript": "/80/e849c78f7c/0/full.jsonl",
+      "compact_transcript": "/80/e849c78f7c/0/transcript.jsonl",
+      "content_hash": "/80/e849c78f7c/0/content_hash.txt",
+      "prompt": "/80/e849c78f7c/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 216677,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 3864576,
+    "output_tokens": 22104,
+    "api_call_count": 7
+  }
+}
