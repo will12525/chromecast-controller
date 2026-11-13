@@ -1,1 +1,5 @@
 Analyze workspace, what are the uncommited changes, what chat applied them
+
+---
+
+Create commit, drop changes from Unstaged — play URLs
