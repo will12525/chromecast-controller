@@ -1,5 +1,6 @@
 [Unit]
 Description=Chromium kiosk for the local media client
+After=pipewire.service pipewire-pulse.service wireplumber.service
 
 [Service]
 Type=simple

@@ -78,8 +78,8 @@ install_packages() {
     echo "Install system packages"
     export DEBIAN_FRONTEND=noninteractive
     apt-get update -y
-    apt-get install -y chromium sway npm python3-venv sqlite3 ffmpeg exfatprogs ntfs-3g
-    usermod -aG video,render,input "${install_user}"
+    apt-get install -y chromium sway pipewire pipewire-pulse wireplumber npm python3-venv sqlite3 ffmpeg exfatprogs ntfs-3g
+    usermod -aG audio,video,render,input "${install_user}"
 }
 
 install_flask_service() {
@@ -99,8 +99,10 @@ ExecStart=
 ExecStart=-/sbin/agetty --autologin ${install_user} --noclear %I \$TERM
 EOF
 
-    mkdir -p "${USER_UNIT_DIR}" /etc/sway
+    mkdir -p "${USER_UNIT_DIR}" /etc/sway /usr/local/bin
     cp "${SERVICES_DIR}/sway_kiosk.conf" /etc/sway/kiosk.conf
+    cp "${SERVICES_DIR}/kiosk_audio.sh" /usr/local/bin/kiosk_audio.sh
+    chmod 755 /usr/local/bin/kiosk_audio.sh
     cp "${SERVICES_DIR}/chromium_kiosk.service" "${USER_UNIT_DIR}/chromium_kiosk.service"
     if [[ ! -d "${install_home}/.config" ]]; then
         mkdir -p "${install_home}/.config"
@@ -109,6 +111,15 @@ EOF
     local wants="${install_home}/.config/systemd/user/default.target.wants"
     mkdir -p "${wants}"
     ln -sfn "${USER_UNIT_DIR}/chromium_kiosk.service" "${wants}/chromium_kiosk.service"
+    local unit unit_path
+    for unit in pipewire.service pipewire-pulse.service wireplumber.service; do
+        if [[ -f "/usr/lib/systemd/user/${unit}" ]]; then
+            unit_path="/usr/lib/systemd/user/${unit}"
+        else
+            unit_path="/lib/systemd/user/${unit}"
+        fi
+        ln -sfn "${unit_path}" "${wants}/${unit}"
+    done
     chown -R "${install_user}:${install_user}" "${install_home}/.config/systemd"
 }
 

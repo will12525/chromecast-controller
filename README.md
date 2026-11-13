@@ -125,7 +125,7 @@ On the Pi, this is the client command. It calls `setup.sh` after it records a US
 sudo ./setup_client.sh
 ```
 
-Reboot when it finishes. The script keeps HDMI on at 1080p and does not send HDMI-CEC. It disables Wi-Fi and Bluetooth, leaves Ethernet on DHCP, and leaves SSH enabled. tty1 autologins into the Chromium kiosk. Ctrl+Alt+F2 is still a normal login. USB disks already listed in fstab are left in place. The first USB mount is written to `MEDIA_DIR` in [config.cfg](config.cfg) when that value is empty. `sudo ./setup.sh` remains the SERVER command and still requires `MEDIA_DIR`. The script does not change `server_url`. Add that in [app/config.json](app/config.json) when this client should clone from a server.
+Reboot when it finishes. The script keeps HDMI on at 1080p and does not send HDMI-CEC. It disables Wi-Fi and Bluetooth, leaves Ethernet on DHCP, and leaves SSH enabled. tty1 autologins into the Chromium kiosk. HDMI is the system audio output, and the keyboard volume keys change that level. Ctrl+Alt+F2 is still a normal login. USB disks already listed in fstab are left in place. The first USB mount is written to `MEDIA_DIR` in [config.cfg](config.cfg) when that value is empty. `sudo ./setup.sh` remains the SERVER command and still requires `MEDIA_DIR`. The script does not change `server_url`. Add that in [app/config.json](app/config.json) when this client should clone from a server.
 
 ## Run locally
 
