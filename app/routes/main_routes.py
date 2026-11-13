@@ -25,6 +25,7 @@ from app.routes.shared import (  # noqa: F401
 
 # Side-effect: register handlers on main_bp
 from app.routes import cast_routes as cast_routes  # noqa: F401,E402
+from app.routes import clone_routes as clone_routes  # noqa: F401,E402
 from app.routes import editor_routes as editor_routes  # noqa: F401,E402
 from app.routes import library_routes as library_routes  # noqa: F401,E402
 from app.routes import transfer_routes as transfer_routes  # noqa: F401,E402

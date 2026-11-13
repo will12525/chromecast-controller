@@ -1,5 +1,14 @@
 /* Phase 4: browse.js — plain global script (no bundler). */
 
+/** Seasons and episodes always show the TV show poster when the API provides one. */
+function displayArt(content_data) {
+    const data = content_data || {};
+    if (data.show_title && data.show_img_url) {
+        return {src: data.show_img_url, imgSrc: data.show_img_src || ""};
+    }
+    return {src: data.img_url || "", imgSrc: data.img_src || ""};
+}
+
 /** Show TV show name on season/episode tiles when API provides show_title. */
 function apply_show_title_to_card(root, content_data) {
     const showEl = root.querySelector("#card_show_title");
@@ -67,10 +76,11 @@ async function generate_media_container(content_data, media_card_template, fragm
         template.querySelector("#content_index").textContent = "Index: " + content_data["content_index"]
     }
     template.querySelector("#card_description").textContent = content_data["description"]
-    if ('img_src' in content_data && 'img_url' in content_data) {
-        template.querySelector("#content_img").src = content_data['img_url'];
+    const art = displayArt(content_data);
+    if (art.src) {
+        template.querySelector("#content_img").src = art.src;
     }
-    template.querySelector("#content_img").dataset.img_src = content_data['img_src'];
+    template.querySelector("#content_img").dataset.img_src = art.imgSrc;
 
     fragment.appendChild(template)
 }

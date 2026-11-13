@@ -1,18 +1,31 @@
 """Chromecast discovery, connection, multi-device stream mode, and transport controls."""
 from flask import request
 
+from app.routes import shared
 from app.routes.shared import APIEndpoints, bh, main_bp
 from app.utils.chromecast_handler import CommandList
+from app.utils.common import SystemMode
+
+
+def _cast_unavailable():
+    """CLIENT mode does not expose Chromecast. Read mode at request time."""
+    if shared.system_mode != SystemMode.SERVER:
+        return {"error": "not available"}, 404
+    return None
 
 
 @main_bp.route(APIEndpoints.GET_CHROMECAST_CONTROLS.value, methods=["GET"])
 def get_chromecast_controls():
+    if blocked := _cast_unavailable():
+        return blocked
     data = {"chromecast_controls": {i.name: i.value for i in CommandList}}
     return data, 200
 
 
 @main_bp.route(APIEndpoints.SET_CURRENT_MEDIA_RUNTIME.value, methods=["POST"])
 def set_current_media_runtime():
+    if blocked := _cast_unavailable():
+        return blocked
     data = {}
     if json_request := request.get_json():
         if new_media_time := json_request.get("new_media_time"):
@@ -22,6 +35,8 @@ def set_current_media_runtime():
 
 @main_bp.route(APIEndpoints.GET_CURRENT_MEDIA_RUNTIME.value, methods=["GET"])
 def get_current_media_runtime():
+    if blocked := _cast_unavailable():
+        return blocked
     data = {}
     if media_metadata := bh.get_chromecast_media_controller_metadata():
         data = media_metadata
@@ -30,6 +45,8 @@ def get_current_media_runtime():
 
 @main_bp.route(APIEndpoints.CONNECT_CHROMECAST.value, methods=["POST"])
 def connect_chromecast():
+    if blocked := _cast_unavailable():
+        return blocked
     data = {}
     if json_request := request.get_json():
         if chromecast_id := json_request.get("chromecast_id"):
@@ -47,6 +64,8 @@ def connect_chromecast():
 
 @main_bp.route(APIEndpoints.GET_CHROMECAST_LIST.value, methods=["POST"])
 def get_chromecast_list():
+    if blocked := _cast_unavailable():
+        return blocked
     # Full multi-device snapshot + legacy single-device fields.
     # get_scan_list ensures CastBrowser is running and may one-shot scan if empty.
     scanned = bh.get_chromecast_scan_list()
@@ -63,6 +82,8 @@ def get_chromecast_list():
 
 @main_bp.route(APIEndpoints.DISCONNECT_CHROMECAST.value, methods=["POST"])
 def disconnect_chromecast():
+    if blocked := _cast_unavailable():
+        return blocked
     chromecast_id = None
     if json_request := request.get_json(silent=True):
         chromecast_id = json_request.get("chromecast_id")
@@ -79,6 +100,8 @@ def disconnect_chromecast():
 
 @main_bp.route(APIEndpoints.SET_STREAM_MODE.value, methods=["POST"])
 def set_stream_mode():
+    if blocked := _cast_unavailable():
+        return blocked
     data = {"ok": False}
     if json_request := request.get_json():
         mode = json_request.get("mode") or "local"
@@ -98,6 +121,8 @@ def set_stream_mode():
 
 @main_bp.route(APIEndpoints.CHROMECAST_COMMAND.value, methods=["POST"])
 def chromecast_command():
+    if blocked := _cast_unavailable():
+        return blocked
     data = {}
     if json_request := request.get_json():
         if chromecast_cmd_id := json_request.get("chromecast_cmd_id"):
@@ -108,6 +133,8 @@ def chromecast_command():
 @main_bp.route(APIEndpoints.CONNECT_LOCAL_PLAYER.value, methods=["POST"])
 def connect_local_player():
     """Switch stream mode to local HTML5 (keeps cast sessions idle unless disconnected)."""
+    if blocked := _cast_unavailable():
+        return blocked
     bh.set_stream_mode("local")
     return {
         "player": "local",

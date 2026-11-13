@@ -22,3 +22,6 @@ node_modules/
 # media database
 *.db
 *.backup
+
+# per-client clone manifests and a client's pending sync flag
+var/

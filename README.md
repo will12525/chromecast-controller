@@ -11,7 +11,7 @@ Inspired by a streaming-service **Home** (billboard, Continue Watching, tag rows
 - **Play** — Chromecast (device UUID) and/or local HTML5; multi-device connect with stream modes; sequential next-in-show and tag-random playlists; resume position
 - **Catalog** — scan disks for TV / movies / books by filename convention
 - **Editor (SERVER mode)** — split raw MP4s into library layout with ffmpeg
-- **Optional client mode** — pull missing content from a server node
+- **Optional client mode** — local playback only. Sync copies the shows, seasons, and episodes chosen on the server.
 
 ### Playback & cast controls
 
@@ -96,8 +96,19 @@ Example `app/config.json`:
 - `mode`: `CLIENT` or `SERVER`
 - `content_src`: absolute path on disk
 - `content_url`: LAN URL where that path is served by http-server
-- `server_url` (CLIENT): base URL of the SERVER node for content pull on scan
+- `server_url` (CLIENT): base URL of the SERVER node
+- `client_name` (CLIENT, optional): stable name for this device. Otherwise the hostname is used. Two devices that sanitize to the same name share one manifest.
 - Optional transfer handshake overrides: `transfer_handshake_secret` / `transfer_handshake_response` in config, or env `TRANSFER_HANDSHAKE_SECRET` / `TRANSFER_HANDSHAKE_RESPONSE`
+
+### CLIENT and clone manifests
+
+A CLIENT plays in the browser only. The cast menu is not shown, and cast routes answer 404.
+
+The SERVER gear menu opens **Clone**. That page lists clients that have connected (active means seen in the last 15 minutes, otherwise historical). Pick a show, season, or episode on the server side. A show or season is expanded again on each sync, so new episodes are included. Unchecking one episode stores an exclude and does not copy it. **Remove from client** queues that file for deletion the next time the client applies a sync. The show poster travels with any episode of that show. A movie or book brings its own cover. Season posters and episode stills are not copied. Seasons and episodes display the show poster in the library.
+
+Nothing is copied or deleted until the client presses **Sync** in its gear menu. If `server_url` does not answer, the client writes `var/clone_pending.json` and the next Scan that reaches the server applies it. A Scan with nothing pending only refreshes the client list. Files already on the client are skipped. Media files are deleted only on the CLIENT.
+
+Manifests live in `var/clone_manifests/<client_id>.json` on the server. Back that directory up with `media_metadata.db` if the selections matter. Saves overwrite the current file. There is no change log.
 
 Install packages:
 

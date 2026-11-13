@@ -16,6 +16,7 @@
                        aria-label="Search library" id="library_search">
             </form>
             <ul class="navbar-nav mb-2 mb-lg-0">
+                {% if system_mode == "SERVER" %}
                 <li class="nav-item">
                     <a id=connected_chromecast_id class="nav-link" aria-disabled="true">Local</a></li>
                 <li class="nav-item dropstart">
@@ -33,12 +34,15 @@
                         <li><a id="local_play_button" class="dropdown-item">Local</a></li>
                     </ul>
                 </li>
+                {% endif %}
                 <li class="nav-item dropdown">
                     <a class="nav-link" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false"
                        id="nav_manage" aria-label="Manage"><i class="bi-gear"></i></a>
                     <ul class="dropdown-menu dropdown-menu-end">
                         <li><a class="dropdown-item" id="table_button" href="/table">Table</a></li>
                         <li><a class="dropdown-item" id="editor_button" hidden>Editor</a></li>
+                        <li><a class="dropdown-item" id="clone_button" hidden>Clone</a></li>
+                        <li><a class="dropdown-item" href="#" id="nav_sync" hidden>Sync</a></li>
                         <li>
                             <hr class="dropdown-divider">
                         </li>

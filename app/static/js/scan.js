@@ -68,6 +68,31 @@ async function pollScanUntilIdle(buttonElement) {
     showScanToast("Scan is still running — refresh later", true);
 }
 
+async function sync_from_server() {
+    const button = document.getElementById("nav_sync");
+    if (button && button.classList.contains("disabled")) {
+        return;
+    }
+    if (button) {
+        button.classList.add("disabled");
+    }
+    try {
+        const response = await fetch("/sync_media", {method: "POST"});
+        if (!response.ok) {
+            showScanToast("Sync is not available", true);
+            return;
+        }
+        await pollScanUntilIdle(button);
+    } catch (e) {
+        console.error(e);
+        showScanToast("Sync failed", true);
+    } finally {
+        if (button) {
+            button.classList.remove("disabled");
+        }
+    }
+}
+
 async function scan_media_directories() {
     var url = "/scan_media_directories";
     let data = {};

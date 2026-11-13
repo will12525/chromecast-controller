@@ -90,6 +90,9 @@ class TestServerRequestAndDownload(unittest.TestCase):
                 content_transfer.requests, "post", return_value=fake_resp
             ), mock.patch.object(
                 content_transfer, "get_file_hash", return_value="cafebabe"
+            ), mock.patch(
+                "app.utils.clone_manifest.current_system_mode",
+                return_value=SystemMode.CLIENT,
             ):
                 ok = conn.request_file({"id": 1}, dest, "request_content")
 
@@ -148,6 +151,260 @@ class TestPathGuard(unittest.TestCase):
             self.assertFalse(
                 content_transfer._path_is_under_media_roots(outside, roots)
             )
+
+
+def _show_catalog():
+    def episode(src, show_id=1):
+        return {
+            "content_src": src,
+            "title": src,
+            "img_src": "",
+            "show_id": show_id,
+            "show_img_src": "tv_shows/Show/Show.png",
+            "show_title": "Show",
+        }
+
+    ep1 = episode("tv_shows/Show/Show - s01e01.mp4")
+    ep2 = episode("tv_shows/Show/Show - s01e02.mp4")
+    ep3 = episode("tv_shows/Show/Show - s02e01.mp4")
+    movie = {
+        "content_src": "movies/Title (2010).mp4",
+        "title": "Title",
+        "img_src": "movies/Title (2010).png",
+        "show_id": None,
+        "show_img_src": "",
+        "kind": "movie",
+    }
+    return {
+        "shows": {
+            1: {
+                "container_id": 1,
+                "title": "Show",
+                "img_src": "tv_shows/Show/Show.png",
+                "img_url": "",
+                "seasons": [
+                    {"container_id": 2, "title": "Season 1", "episodes": [ep1, ep2]},
+                    {"container_id": 3, "title": "Season 2", "episodes": [ep3]},
+                ],
+            }
+        },
+        "movies": [],
+        "books": [],
+        "content_by_src": {
+            ep1["content_src"]: ep1,
+            ep2["content_src"]: ep2,
+            ep3["content_src"]: ep3,
+            movie["content_src"]: movie,
+        },
+    }
+
+
+class TestClonePlan(unittest.TestCase):
+    def test_show_season_and_episode_expansion(self):
+        from app.utils import clone_manifest
+
+        catalog = _show_catalog()
+        show_plan = clone_manifest.build_clone_plan(
+            {"selections": [{"kind": "show", "container_id": 1}], "exclude": [], "remove": [], "inventory": []},
+            catalog,
+        )
+        show_files = {row["content_src"] for row in show_plan["download"]}
+        self.assertEqual(len(show_files), 3)
+        self.assertEqual(show_plan["covers"], [{"img_src": "tv_shows/Show/Show.png", "kind": "image"}])
+
+        season_plan = clone_manifest.build_clone_plan(
+            {"selections": [{"kind": "season", "container_id": 2}], "exclude": [], "remove": [], "inventory": []},
+            catalog,
+        )
+        self.assertEqual(
+            {row["content_src"] for row in season_plan["download"]},
+            {
+                "tv_shows/Show/Show - s01e01.mp4",
+                "tv_shows/Show/Show - s01e02.mp4",
+            },
+        )
+
+        one = clone_manifest.build_clone_plan(
+            {
+                "selections": [{"kind": "episode", "content_src": "tv_shows/Show/Show - s02e01.mp4"}],
+                "exclude": [],
+                "remove": [],
+                "inventory": [],
+            },
+            catalog,
+        )
+        self.assertEqual(
+            [row["content_src"] for row in one["download"]],
+            ["tv_shows/Show/Show - s02e01.mp4"],
+        )
+        self.assertEqual(one["covers"][0]["img_src"], "tv_shows/Show/Show.png")
+
+    def test_exclude_drops_episode_and_empty_manifest_downloads_nothing(self):
+        from app.utils import clone_manifest
+
+        catalog = _show_catalog()
+        plan = clone_manifest.build_clone_plan(
+            {
+                "selections": [{"kind": "show", "container_id": 1}],
+                "exclude": ["tv_shows/Show/Show - s01e02.mp4"],
+                "remove": [],
+                "inventory": [],
+            },
+            catalog,
+        )
+        srcs = {row["content_src"] for row in plan["download"]}
+        self.assertNotIn("tv_shows/Show/Show - s01e02.mp4", srcs)
+        self.assertEqual(len(srcs), 2)
+        empty = clone_manifest.build_clone_plan(
+            {"selections": [], "exclude": [], "remove": [], "inventory": []},
+            catalog,
+        )
+        self.assertEqual(empty["download"], [])
+        self.assertEqual(empty["covers"], [])
+
+    def test_last_episode_removal_includes_show_cover_and_movie_cover(self):
+        from app.utils import clone_manifest
+
+        catalog = _show_catalog()
+        plan = clone_manifest.build_clone_plan(
+            {
+                "selections": [],
+                "exclude": ["tv_shows/Show/Show - s01e01.mp4"],
+                "remove": ["tv_shows/Show/Show - s01e01.mp4"],
+                "inventory": [{"content_src": "tv_shows/Show/Show - s01e01.mp4"}],
+            },
+            catalog,
+        )
+        self.assertIn("tv_shows/Show/Show - s01e01.mp4", plan["delete"])
+        self.assertIn("tv_shows/Show/Show.png", plan["delete"])
+
+        movie = clone_manifest.build_clone_plan(
+            {
+                "selections": [],
+                "exclude": [],
+                "remove": ["movies/Title (2010).mp4"],
+                "inventory": [{"content_src": "movies/Title (2010).mp4"}],
+            },
+            catalog,
+        )
+        self.assertIn("movies/Title (2010).mp4", movie["delete"])
+        self.assertIn("movies/Title (2010).png", movie["delete"])
+
+    def test_unlink_is_client_only_and_refuses_escape(self):
+        from app.utils import clone_manifest
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            target = root / "movies" / "Title (2010).mp4"
+            target.parent.mkdir(parents=True)
+            target.write_bytes(b"video")
+            outside = pathlib.Path(tmp).parent / "escape-me.mp4"
+            roots = [{"content_src": str(root)}]
+            with mock.patch.object(clone_manifest, "current_system_mode", return_value=SystemMode.SERVER):
+                self.assertFalse(clone_manifest.unlink_media_file(target))
+            self.assertTrue(target.exists())
+            self.assertFalse(clone_manifest.delete_relative("../escape-me.mp4", roots))
+            with mock.patch.object(clone_manifest, "current_system_mode", return_value=SystemMode.CLIENT):
+                self.assertTrue(clone_manifest.delete_relative("movies/Title (2010).mp4", roots))
+            self.assertFalse(target.exists())
+            self.assertFalse(outside.exists())
+
+
+class TestCloneSync(unittest.TestCase):
+    def test_unreachable_sync_sets_pending_and_does_not_download(self):
+        from app.utils import clone_manifest
+
+        with tempfile.TemporaryDirectory() as tmp:
+            pending = pathlib.Path(tmp) / "pending.json"
+            with mock.patch.object(clone_manifest, "PENDING_PATH", pending), mock.patch.object(
+                content_transfer, "load_json_file_content",
+                return_value={"mode": "CLIENT", "server_url": "http://down.example"},
+            ), mock.patch.object(content_transfer.ServerConnection, "connect", return_value=False):
+                result = content_transfer.run_client_contact(apply=True)
+                decision = clone_manifest.interpret_contact(result, True, source="sync")
+                if decision["set_pending"]:
+                    clone_manifest.set_pending()
+            self.assertEqual(result["status"], "skipped")
+            self.assertFalse(result["applied"])
+            self.assertTrue(pending.is_file())
+
+    def test_pending_clears_only_after_success(self):
+        from app.utils import clone_manifest
+
+        failed = clone_manifest.interpret_contact(
+            {"status": "error", "applied": False, "message": "download failed"},
+            True,
+            source="scan",
+        )
+        self.assertTrue(failed["set_pending"])
+        self.assertFalse(failed["clear_pending"])
+        done = clone_manifest.interpret_contact(
+            {"status": "ok", "applied": True}, True, source="scan"
+        )
+        self.assertTrue(done["clear_pending"])
+        self.assertTrue(done["rescan"])
+        with tempfile.TemporaryDirectory() as tmp:
+            pending = pathlib.Path(tmp) / "pending.json"
+            with mock.patch.object(clone_manifest, "PENDING_PATH", pending), mock.patch.object(
+                clone_manifest, "current_system_mode", return_value=SystemMode.CLIENT
+            ):
+                clone_manifest.set_pending()
+                self.assertTrue(clone_manifest.pending_is_set())
+                clone_manifest.clear_pending()
+                self.assertFalse(clone_manifest.pending_is_set())
+
+    def test_scan_without_pending_does_not_download(self):
+        from app.utils import clone_manifest
+
+        def _connect(self, client_id=None, display_name=None):
+            self.server_token = "token"
+            self.client_id = client_id
+            return True
+
+        with mock.patch.object(
+            content_transfer, "load_json_file_content",
+            return_value={"mode": "CLIENT", "server_url": "http://server.example"},
+        ), mock.patch.object(
+            content_transfer.ServerConnection, "connect", _connect
+        ), mock.patch.object(
+            content_transfer.ServerConnection, "report_inventory", return_value=True
+        ), mock.patch.object(
+            content_transfer, "_open_db"
+        ) as open_db, mock.patch.object(
+            content_transfer.ServerConnection, "fetch_clone_plan"
+        ) as fetch_plan:
+            open_db.return_value.get_all_content_paths.return_value = []
+            open_db.return_value.close.return_value = None
+            result = content_transfer.run_client_contact(apply=False)
+        fetch_plan.assert_not_called()
+        self.assertEqual(result["message"], "Scan complete (inventory updated)")
+        decision = clone_manifest.interpret_contact(result, False, source="scan")
+        self.assertFalse(decision["set_pending"])
+        self.assertIn("inventory updated", decision["message"])
+
+    def test_cast_routes_hidden_when_client(self):
+        from flask import Flask
+
+        from app.routes import register_blueprints, shared
+
+        app = Flask(__name__, template_folder="../app/templates")
+        register_blueprints(app)
+        with mock.patch.object(shared, "system_mode", SystemMode.CLIENT):
+            client = app.test_client()
+            response = client.post("/get_chromecast_list")
+        self.assertEqual(response.status_code, 404)
+
+    def test_chromecast_handler_not_started_for_client(self):
+        from app.utils.backend_handler import BackEndHandler
+
+        saved = BackEndHandler._chromecast_handler
+        BackEndHandler._chromecast_handler = None
+        try:
+            with mock.patch("app.utils.backend_handler._is_server_mode", return_value=False):
+                self.assertIsNone(BackEndHandler.get_chromecast())
+            self.assertIsNone(BackEndHandler._chromecast_handler)
+        finally:
+            BackEndHandler._chromecast_handler = saved
 
 
 if __name__ == "__main__":

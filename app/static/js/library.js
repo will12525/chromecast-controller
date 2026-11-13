@@ -132,10 +132,14 @@ async function buildNfTile(content_data, options) {
     }
     const img = tile.querySelector(".nf-tile-img");
     img.alt = title;
-    if (content_data.img_src && content_data.img_url) {
-        img.src = content_data.img_url;
+    const art = typeof displayArt === "function" ? displayArt(content_data) : {
+        src: content_data.img_url || "",
+        imgSrc: content_data.img_src || "",
+    };
+    if (art.src) {
+        img.src = art.src;
     }
-    img.dataset.img_src = content_data.img_src || "";
+    img.dataset.img_src = art.imgSrc || "";
     const pct = nfProgressPct(content_data);
     const progress = tile.querySelector(".nf-tile-progress");
     if (pct > 0) {

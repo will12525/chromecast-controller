@@ -11,6 +11,7 @@ from app.routes.shared import (
     main_bp,
     media_controller_button_dict,
     media_types,
+    system_mode,
 )
 
 
@@ -21,6 +22,7 @@ def editor():
             "editor.html",
             homepage_url=APIEndpoints.MAIN.value,
             button_dict=media_controller_button_dict,
+            system_mode=system_mode.name,
             editor_metadata=bh.get_editor_metadata(),
             media_types=media_types,
         )

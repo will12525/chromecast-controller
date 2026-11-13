@@ -12,7 +12,11 @@ def server_connect():
     data = {"error_code": 400}
     if json_request := request.get_json():
         content_transfer.new_client_connection(
-            system_mode, json_request.get("server_token", ""), data
+            system_mode,
+            json_request.get("server_token", ""),
+            data,
+            client_id=json_request.get("client_id"),
+            display_name=json_request.get("display_name"),
         )
     return data, data["error_code"]
 

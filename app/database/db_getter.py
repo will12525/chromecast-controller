@@ -398,6 +398,42 @@ class DBHandler(DBConnection):
                         "//", "/"
                     ).replace(":/", "://")
                     break
+        self._stamp_show_posters(items)
+        return items
+
+    def _stamp_show_posters(self, items):
+        """Seasons and episodes display the TV show poster, even if they have their own still."""
+        cache = {}
+        directories = None
+        for item in items or []:
+            title = item.get("show_title")
+            if not title:
+                continue
+            if title not in cache:
+                cache[title] = self.get_data_from_db_first_result(
+                    "SELECT img_src FROM container WHERE container_title = :title AND img_src != '' LIMIT 1;",
+                    {"title": title},
+                ) or {}
+            img_src = cache[title].get("img_src") or ""
+            if not img_src:
+                continue
+            item["show_img_src"] = img_src
+            if directories is None:
+                directories = self.get_all_content_directory_info()
+            url = ""
+            for media_directory in directories or []:
+                try:
+                    img_path = pathlib.Path(f'{media_directory.get("content_src")}{img_src}')
+                    if img_path.exists():
+                        url = f'{media_directory.get("content_url")}{img_src}'
+                        break
+                except Exception:
+                    continue
+            if not url:
+                for media_directory in directories or []:
+                    url = f'{media_directory.get("content_url")}{img_src}'
+                    break
+            item["show_img_url"] = url
         return items
 
     def list_continue_watching(self, limit=20):
@@ -622,6 +658,12 @@ class DBHandler(DBConnection):
             if not node or not node.get("id"):
                 return None
             self._attach_container_img_urls([node])
+            if len(parents) > 1:
+                show = parents[0]
+                self._attach_container_img_urls([show])
+                node["show_title"] = show.get("container_title") or ""
+                node["show_img_src"] = show.get("img_src") or ""
+                node["show_img_url"] = show.get("img_url") or ""
             child_containers = self.query_container([], {"container_id": item_id}, None) or []
             child_content = self.query_content([], {"container_id": item_id}, None) or []
             seasons = []
@@ -796,10 +838,11 @@ class DBHandler(DBConnection):
         if container_where_clauses:
             container_where_clause = "WHERE " + " AND ".join(container_where_clauses)
 
-        return self.get_data_from_db(
+        rows = self.get_data_from_db(
             f"SELECT {container_select_clause} FROM container {container_join_clause} {container_where_clause} GROUP BY container.id {container_sort_order};",
             params
         )
+        return self._stamp_show_posters(rows)
 
     def query_content(self, tag_list, container_dict, content_txt_search, match_all=False):
         # print(tag_list)
@@ -869,10 +912,11 @@ class DBHandler(DBConnection):
         if content_where_clauses:
             content_where_clause = "WHERE " + " AND ".join(content_where_clauses)
 
-        return self.get_data_from_db(
+        rows = self.get_data_from_db(
             f"SELECT {content_select_clause} FROM content {content_join_clause} {content_where_clause} GROUP BY content.id {content_sort_order};",
             params
         )
+        return self._stamp_show_posters(rows)
 
     def _attach_container_img_urls(self, containers):
         directories = self.get_all_content_directory_info()

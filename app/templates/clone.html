@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><title>Clone media</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='node_modules/bootstrap-icons/font/bootstrap-icons.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='node_modules/bootstrap/dist/css/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static',filename='style.css') | safe }}">
+    <link rel="stylesheet" href="{{ url_for('static',filename='nf.css') | safe }}">
+    <link rel="shortcut icon" href="#">
+</head>
+<body class="nf-body">
+{% include 'top_navbar.html' %}
+<main class="container-fluid" style="padding-top: 5.5rem;">
+    <div class="d-flex flex-wrap align-items-end gap-3 mb-3 p-2 rounded sticky-top" style="top: 4.25rem; z-index: 1020; background: #141414;">
+        <div>
+            <label for="clone_client" class="form-label mb-1">Client</label>
+            <select id="clone_client" class="form-select"></select>
+        </div>
+        <div class="text-secondary small" id="clone_client_meta"></div>
+        <button type="button" class="btn btn-primary" id="clone_save">Save manifest</button>
+        <a class="btn btn-outline-light" href="{{ homepage_url }}">Library</a>
+    </div>
+    <div id="clone_toast" class="alert py-2" hidden></div>
+    <div class="row g-3">
+        <div class="col-lg-5">
+            <div class="card bg-dark text-light border-secondary h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>Server</span>
+                    <input id="clone_filter" class="form-control form-control-sm w-50" placeholder="Filter" aria-label="Filter server catalog">
+                </div>
+                <div class="card-body clone-tree" id="clone_server"></div>
+                <div class="card-footer">
+                    <button type="button" class="btn btn-outline-light" id="clone_add">Add to clone</button>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-2 d-flex align-items-center justify-content-center text-secondary">
+            <span class="bi-arrow-left-right" aria-hidden="true"></span>
+        </div>
+        <div class="col-lg-5">
+            <div class="card bg-dark text-light border-secondary h-100">
+                <div class="card-header">Client</div>
+                <div class="card-body clone-tree" id="clone_client_files"></div>
+                <div class="card-footer">
+                    <button type="button" class="btn btn-outline-warning" id="clone_remove">Remove from client</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+<script src="{{ url_for('static', filename='node_modules/bootstrap/dist/js/bootstrap.bundle.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/shared.js') }}"></script>
+<script src="{{ url_for('static', filename='js/play_mode.js') }}"></script>
+<script src="{{ url_for('static', filename='js/chromecast.js') }}"></script>
+<script src="{{ url_for('static', filename='js/player_controls.js') }}"></script>
+<script src="{{ url_for('static', filename='js/browse.js') }}"></script>
+<script src="{{ url_for('static', filename='js/playback.js') }}"></script>
+<script src="{{ url_for('static', filename='js/scan.js') }}"></script>
+<script src="{{ url_for('static', filename='js/library.js') }}"></script>
+<script src="{{ url_for('static', filename='js/title.js') }}"></script>
+<script src="{{ url_for('static', filename='js/ui_nav.js') }}"></script>
+<script src="{{ url_for('static', filename='js/app_main.js') }}"></script>
+<script src="{{ url_for('static', filename='js/clone.js') }}"></script>
+</body>
+</html>

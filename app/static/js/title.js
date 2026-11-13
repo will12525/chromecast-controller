@@ -154,8 +154,9 @@ function renderTitleOverlay(data) {
     document.getElementById("title_overlay_desc").textContent = data.description || "";
     const img = document.getElementById("title_overlay_img");
     img.alt = name;
-    if (data.img_url) {
-        img.src = data.img_url;
+    const art = typeof displayArt === "function" ? displayArt(data) : {src: data.img_url || ""};
+    if (art.src) {
+        img.src = art.src;
     } else {
         img.removeAttribute("src");
         apply_default_image(img);

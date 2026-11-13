@@ -14,6 +14,14 @@ from app.utils.common import get_system_data, build_editor_output_path
 EDITOR_PROCESSED_LOG = "editor_metadata.json"
 
 
+def _is_server_mode():
+    """True when config mode is SERVER. Avoids importing route shared state."""
+    from app.utils.common import SystemMode
+
+    cfg = config_file_handler.load_json_file_content() or {}
+    return cfg.get("mode") == SystemMode.SERVER.name
+
+
 def setup_db():
     db_connection = DBHandler()
     db_connection.open()
@@ -127,6 +135,8 @@ class BackEndHandler:
 
     @classmethod
     def get_chromecast(cls):
+        if not _is_server_mode():
+            return None
         if cls._chromecast_handler is None:
             cls._chromecast_handler = ChromecastHandler()
             cls._chromecast_handler.start()
@@ -171,6 +181,8 @@ class BackEndHandler:
         return self.chromecast.get_media_controller_metadata()
 
     def play_media_on_chromecast(self, content_data):
+        if not self.chromecast:
+            return None
         return self.chromecast.play_from_sql(content_data)
 
     def play_random_container_content(self, json_request):
@@ -240,26 +252,16 @@ class BackEndHandler:
                 finally:
                     db_connection.close()
 
-                if run_client_sync and not self.transfer_in_progress:
-                    print("Starting server content pull")
-                    self.transfer_in_progress = True
-                    try:
-                        from app.utils import content_transfer
-
-                        content_transfer.query_server()
-                    finally:
-                        self.transfer_in_progress = False
-                    # Rescan after transfer so newly pulled files appear
-                    db_connection = DBHandler()
-                    db_connection.open()
-                    try:
-                        db_connection.scan_content_directories()
-                    finally:
-                        db_connection.close()
-                    final = {
-                        "status": "ok",
-                        "message": "Scan complete (synced from server)",
-                    }
+                if run_client_sync:
+                    final = self._client_server_contact(apply=None, source="scan")
+                    if final.get("rescan"):
+                        db_connection = DBHandler()
+                        db_connection.open()
+                        try:
+                            db_connection.scan_content_directories()
+                        finally:
+                            db_connection.close()
+                        self._report_inventory_only()
             except Exception as e:
                 print("Exception class: ", e.__class__)
                 print(f"ERROR: {e}")
@@ -272,6 +274,64 @@ class BackEndHandler:
 
         threading.Thread(target=_job, daemon=True, name="media-scan").start()
         return {"status": "started", "message": "Scan started"}
+
+    def start_client_sync(self):
+        """Apply the server manifest now. If the server is down, record pending."""
+        with self._scan_lock:
+            if self.media_scan_in_progress or self.transfer_in_progress:
+                return {"status": "busy", "message": "Scan already in progress"}
+            self.media_scan_in_progress = True
+            self.last_scan_result = None
+
+        def _job():
+            final = {"status": "ok", "message": "Sync complete"}
+            try:
+                final = self._client_server_contact(apply=True, source="sync")
+                if final.get("rescan"):
+                    db_connection = DBHandler()
+                    db_connection.open()
+                    try:
+                        db_connection.scan_content_directories()
+                    finally:
+                        db_connection.close()
+                    self._report_inventory_only()
+            except Exception as e:
+                print(f"ERROR: {e}")
+                print(traceback.print_exc())
+                from app.utils import clone_manifest
+
+                clone_manifest.set_pending()
+                final = {"status": "error", "message": str(e)}
+            finally:
+                self.last_scan_result = final
+                self.media_scan_in_progress = False
+                self.transfer_in_progress = False
+
+        threading.Thread(target=_job, daemon=True, name="media-sync").start()
+        return {"status": "started", "message": "Sync started"}
+
+    def _report_inventory_only(self):
+        from app.utils import content_transfer
+
+        content_transfer.run_client_contact(apply=False)
+
+    def _client_server_contact(self, apply=None, source="scan"):
+        """Talk to server_url. apply=None uses the local pending flag."""
+        from app.utils import clone_manifest, content_transfer
+
+        if apply is None:
+            apply = clone_manifest.pending_is_set()
+        self.transfer_in_progress = True
+        try:
+            result = content_transfer.run_client_contact(apply=apply)
+        finally:
+            self.transfer_in_progress = False
+        decision = clone_manifest.interpret_contact(result, apply, source=source)
+        if decision.get("clear_pending"):
+            clone_manifest.clear_pending()
+        elif decision.get("set_pending"):
+            clone_manifest.set_pending()
+        return decision
 
     def get_editor_metadata(self, selected_txt_file=None):
         config_file = config_file_handler.load_json_file_content()

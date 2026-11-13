@@ -126,6 +126,9 @@ def get_media_content_types():
     data = {"table_url": APIEndpoints.TABLE.value}
     if system_mode == SystemMode.SERVER:
         data["editor"] = APIEndpoints.EDITOR.value
+        data["clone"] = APIEndpoints.CLONE.value
+    else:
+        data["sync"] = True
     return data, 200
 
 

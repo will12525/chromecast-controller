@@ -26,6 +26,23 @@ async function setNavbarLinks() {
             editor_button.setAttribute('href', response_data["editor"]);
             editor_button.hidden = false;
         }
+        var clone_button = document.getElementById("clone_button");
+        if (clone_button !== null && response_data["clone"] !== undefined)
+        {
+            clone_button.setAttribute("href", response_data["clone"]);
+            clone_button.hidden = false;
+        }
+        var sync_button = document.getElementById("nav_sync");
+        if (sync_button !== null && response_data["sync"])
+        {
+            sync_button.hidden = false;
+            sync_button.addEventListener("click", function (event) {
+                event.preventDefault();
+                if (typeof sync_from_server === "function") {
+                    sync_from_server();
+                }
+            });
+        }
         if (table_button !== null && response_data["table_url"] !== undefined)
         {
             table_button.setAttribute('href', response_data["table_url"]);
@@ -128,7 +145,9 @@ function setup_nav_bars() {
     if (typeof setupPlayModeSelector === "function") {
         setupPlayModeSelector();
     }
-    getChromecastList();
+    if (chromecast_menu !== null) {
+        getChromecastList();
+    }
     setNavbarLinks();
     setMediaControlButtons();
     if (typeof playerBindScrubber === "function") {

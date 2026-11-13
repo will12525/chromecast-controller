@@ -124,23 +124,66 @@ class ServerConnection:
         self.content_srcs = None
         self.img_srcs = None
         self.last_error = None
+        self.client_id = None
+        self.manifest = None
 
-    def connect(self):
+    def connect(self, client_id=None, display_name=None):
         if not self.base_url:
             self.last_error = "server_url missing from config"
             print(f"content_transfer: {self.last_error}")
             return False
         secret = get_handshake_secret()
+        payload = {"server_token": secret}
+        self.client_id = client_id
+        if client_id:
+            payload["client_id"] = client_id
+            payload["display_name"] = display_name or client_id
         search_response_data = server_request(
-            f"{self.base_url}/server_connect", {"server_token": secret}
+            f"{self.base_url}/server_connect", payload
         )
         if search_response_data and search_response_data.get("server_token"):
             self.server_token = search_response_data.get("server_token")
+            self.manifest = search_response_data.get("manifest")
             self.last_error = None
             return True
         self.last_error = f"handshake failed: {search_response_data}"
         print(f"content_transfer: {self.last_error}")
         return False
+
+    def fetch_clone_plan(self):
+        if not self.connected():
+            self.last_error = "not connected"
+            return None
+        data = server_request(
+            f"{self.base_url}/request_clone_plan",
+            {"server_token": self.server_token, "client_id": self.client_id},
+        )
+        if not data or data.get("error_code") != 200:
+            self.last_error = f"clone plan rejected: {data}"
+            return None
+        return {
+            "download": data.get("download") or [],
+            "covers": data.get("covers") or [],
+            "delete": data.get("delete") or [],
+        }
+
+    def report_inventory(self, client_id, inventory, removed=None):
+        if not self.connected():
+            self.last_error = "not connected"
+            return False
+        data = server_request(
+            f"{self.base_url}/client_inventory",
+            {
+                "server_token": self.server_token,
+                "client_id": client_id,
+                "inventory": inventory or [],
+                "removed": removed or [],
+            },
+        )
+        if not data or data.get("error_code") != 200:
+            self.last_error = f"inventory rejected: {data}"
+            return False
+        return True
 
     def connected(self):
         return self.server_token is not None
@@ -260,52 +303,151 @@ class ServerConnection:
                         f"ERROR: md5 mismatch for {dest}: "
                         f"server={expected_md5} local={md5sum} — removing corrupt file"
                     )
-                    dest.unlink(missing_ok=True)
+                    _unlink_client_file(dest)
                     return False
             print(f"INFO: File downloaded successfully! {dest}")
             return True
         except requests.exceptions.RequestException as e:
             print(f"ERROR: File request failed: {e}")
-            dest.unlink(missing_ok=True)
+            _unlink_client_file(dest)
             return False
         except OSError as e:
             print(f"ERROR: File write failed: {e}")
-            dest.unlink(missing_ok=True)
+            _unlink_client_file(dest)
             return False
+
+
+def _unlink_client_file(path):
+    """Remove a partial download. No-op unless mode is CLIENT."""
+    from app.utils.clone_manifest import current_system_mode
+
+    if current_system_mode() != SystemMode.CLIENT:
+        return False
+    pathlib.Path(path).unlink(missing_ok=True)
+    return True
+
+
+def _open_db():
+    db_connection = DBHandler()
+    db_connection.open()
+    return db_connection
 
 
 # CLIENT
 def query_server():
-    """Pull missing content/images from configured server_url (CLIENT mode)."""
+    """Contact the server without copying files (inventory refresh)."""
+    return run_client_contact(apply=False)
+
+
+def run_client_contact(apply=False):
+    """Handshake, optionally apply the manifest, and report inventory.
+
+    apply=False refreshes last-seen and inventory only.
+    apply=True deletes queued files and downloads missing selections.
+    A failed apply leaves the caller responsible for the pending flag.
+    """
+    from app.utils import clone_manifest
+
     cfg = load_json_file_content() or {}
     server_url = cfg.get("server_url")
     if not server_url:
         print("content_transfer: server_url not set; skip query_server")
-        return {"status": "error", "message": "server_url not set"}
+        return {"status": "error", "message": "server_url not set", "applied": False}
 
+    client_id, display_name = clone_manifest.client_identity()
     server_connection = ServerConnection(server_url)
-    if not server_connection.connect():
+    if not server_connection.connect(client_id, display_name):
         return {
-            "status": "error",
-            "message": server_connection.last_error or "connect failed",
+            "status": "skipped",
+            "message": "server unreachable",
+            "applied": False,
         }
 
-    if not server_connection.request_server_content():
+    applied = False
+    removed = []
+    if apply:
+        plan = server_connection.fetch_clone_plan()
+        if plan is None:
+            return {
+                "status": "error",
+                "message": server_connection.last_error or "clone plan failed",
+                "applied": False,
+            }
+        applied, removed = _apply_clone_plan(server_connection, plan)
+        if not applied:
+            return {
+                "status": "error",
+                "message": server_connection.last_error or "sync did not finish",
+                "applied": False,
+            }
+
+    db_connection = _open_db()
+    try:
+        inventory = clone_manifest.local_inventory(db_connection)
+    finally:
+        db_connection.close()
+    if not server_connection.report_inventory(client_id, inventory, removed):
         return {
             "status": "error",
-            "message": server_connection.last_error or "content list failed",
+            "message": server_connection.last_error or "inventory report failed",
+            "applied": applied,
         }
+    if apply:
+        return {"status": "ok", "message": "Sync complete", "applied": True}
+    return {"status": "ok", "message": "Scan complete (inventory updated)", "applied": False}
 
-    if server_connection.content_srcs:
-        server_connection.check_for_missing_content()
-        server_connection.request_missing_content()
-    if server_connection.img_srcs:
-        server_connection.process_img_files()
-    return {"status": "ok", "message": "server sync finished"}
+
+def _apply_clone_plan(server_connection, plan):
+    """Download missing files and delete queued ones. Returns (ok, removed paths)."""
+    from app.utils import clone_manifest
+
+    db_connection = _open_db()
+    try:
+        media_dirs = db_connection.get_all_content_directory_info()
+    finally:
+        db_connection.close()
+
+    removed = []
+    for rel in plan.get("delete") or []:
+        dest = clone_manifest.destination_for(rel, media_dirs)
+        if dest is None:
+            server_connection.last_error = f"refusing delete outside media roots: {rel}"
+            return False, removed
+        if not dest.exists():
+            removed.append(rel)
+            continue
+        if not clone_manifest.unlink_media_file(dest):
+            server_connection.last_error = f"delete skipped: {rel}"
+            return False, removed
+        removed.append(rel)
+
+    for item in plan.get("download") or []:
+        rel = item.get("content_src")
+        dest = clone_manifest.destination_for(rel, media_dirs)
+        if dest is None:
+            server_connection.last_error = f"no destination for {rel}"
+            return False, removed
+        if dest.exists():
+            continue
+        if not server_connection.request_file(
+            {"content_src": rel}, dest, "request_content"
+        ):
+            server_connection.last_error = server_connection.last_error or f"download failed: {rel}"
+            return False, removed
+
+    for cover in plan.get("covers") or []:
+        rel = cover.get("img_src")
+        dest = clone_manifest.destination_for(rel, media_dirs)
+        if dest is None or dest.exists():
+            continue
+        if not server_connection.request_file({"img_src": rel}, dest, "request_image"):
+            server_connection.last_error = server_connection.last_error or f"cover failed: {rel}"
+            return False, removed
+    return True, removed
 
 
 # SERVER
-def new_client_connection(system_mode, server_token, data):
+def new_client_connection(system_mode, server_token, data, client_id=None, display_name=None):
     if system_mode == SystemMode.CLIENT:
         data["error"] = "not a server"
         data["error_code"] = 400
@@ -313,6 +455,12 @@ def new_client_connection(system_mode, server_token, data):
         data["server_token"] = get_handshake_response()
         data["error_code"] = 200
         data.pop("error", None)
+        if client_id:
+            from app.utils import clone_manifest
+
+            manifest = clone_manifest.upsert_client(client_id, display_name)
+            data["manifest"] = manifest
+            data["client_id"] = manifest.get("client_id")
     else:
         data["error"] = "System in unknown mode"
         data["error_code"] = 400
@@ -389,6 +537,18 @@ def request_content(json_request, data):
         data["error_code"] = 401
         return
     content_id = json_request.get("id")
+    content_src = json_request.get("content_src")
+    if not content_id and content_src:
+        db_connection = DBHandler()
+        db_connection.open()
+        try:
+            row = db_connection.get_data_from_db_first_result(
+                "SELECT id FROM content WHERE content_src = :content_src;",
+                {"content_src": content_src},
+            )
+        finally:
+            db_connection.close()
+        content_id = row.get("id") if row else None
     if not content_id:
         data["error"] = "content id required"
         data["error_code"] = 400
