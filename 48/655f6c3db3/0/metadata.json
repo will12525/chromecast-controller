@@ -1,0 +1,146 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "48655f6c3db3",
+  "session_id": "bc8634e4-1eb7-4fa0-9c51-e3d4787a9e77",
+  "strategy": "manual-commit",
+  "created_at": "2026-11-13T20:15:21.318291462Z",
+  "branch": "fix_tests",
+  "checkpoints_count": 10,
+  "save_step_count": 9,
+  "files_touched": [
+    "README.md",
+    "setup_client.sh",
+    "system_services/kiosk_audio.sh",
+    "system_services/kiosk_hdmi.py",
+    "system_services/kiosk_output.sh",
+    "system_services/sway_kiosk.conf",
+    "tests/test_kiosk_hdmi.py"
+  ],
+  "agent": "Cursor",
+  "model": "grok-4.7-medium",
+  "turn_id": "f6c677b4df1c",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 457706,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 3617792,
+    "output_tokens": 71997,
+    "api_call_count": 9
+  },
+  "skill_events_version": 1,
+  "skill_events": [
+    {
+      "id": "prompt-skill-cursor-grill-me-2026-11-13T20:01:43.30643959Z",
+      "event_type": "prompt_invocation",
+      "skill": {
+        "name": "grill-me"
+      },
+      "source": {
+        "agent": "cursor",
+        "signal": "prompt_slash_command",
+        "confidence": "explicit"
+      },
+      "turn_id": "85bdb8c43c17",
+      "timestamp": "2026-11-13T20:01:43.30643959Z",
+      "native": {
+        "command": "/grill-me"
+      },
+      "collapse": {
+        "target": "user_message",
+        "label": "/grill-me",
+        "default_collapsed": true
+      }
+    }
+  ],
+  "session_metrics": {
+    "turn_count": 10
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-11-13T20:15:21.283868609Z",
+    "agent_lines": 485,
+    "agent_removed": 35,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 485,
+    "total_lines_changed": 520,
+    "agent_percentage": 100,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 29,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0,
+      "user_added_per_file": {
+        "config.json.old": 16,
+        "output.txt": 13
+      }
+    },
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 36,
+      "agent_lines_removed": 18
+    },
+    {
+      "checkpoint_number": 3,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 36,
+      "agent_lines_removed": 18
+    },
+    {
+      "checkpoint_number": 4,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 37,
+      "agent_lines_removed": 18
+    },
+    {
+      "checkpoint_number": 5,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 58,
+      "agent_lines_removed": 24
+    },
+    {
+      "checkpoint_number": 6,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 82,
+      "agent_lines_removed": 28
+    },
+    {
+      "checkpoint_number": 7,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 107,
+      "agent_lines_removed": 28
+    },
+    {
+      "checkpoint_number": 8,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 107,
+      "agent_lines_removed": 28
+    },
+    {
+      "checkpoint_number": 9,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 107,
+      "agent_lines_removed": 28
+    },
+    {
+      "checkpoint_number": 10,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 514,
+      "agent_lines_removed": 35
+    }
+  ]
+}
