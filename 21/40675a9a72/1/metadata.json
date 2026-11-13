@@ -1,0 +1,147 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "2140675a9a72",
+  "session_id": "9701cf62-70df-4b92-95f6-33ae0bd0043c",
+  "strategy": "manual-commit",
+  "created_at": "2026-11-13T17:24:20.669119366Z",
+  "branch": "fix_tests",
+  "checkpoints_count": 9,
+  "save_step_count": 2,
+  "files_touched": [
+    ".gitignore",
+    "README.md",
+    "app/database/db_getter.py",
+    "app/routes/__init__.py",
+    "app/routes/cast_routes.py",
+    "app/routes/clone_routes.py",
+    "app/routes/editor_routes.py",
+    "app/routes/library_routes.py",
+    "app/routes/main_routes.py",
+    "app/routes/shared.py",
+    "app/routes/transfer_routes.py",
+    "app/static/js/app_main.js",
+    "app/static/js/browse.js",
+    "app/static/js/clone.js",
+    "app/static/js/library.js",
+    "app/static/js/scan.js",
+    "app/static/js/title.js",
+    "app/templates/clone.html",
+    "app/templates/top_navbar.html",
+    "app/utils/backend_handler.py",
+    "app/utils/clone_manifest.py",
+    "app/utils/content_transfer.py",
+    "tests/test_content_transfer_unit.py"
+  ],
+  "agent": "Cursor",
+  "model": "grok-4.7-medium",
+  "turn_id": "a3244bac8ba4",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 226990,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 5122816,
+    "output_tokens": 8949,
+    "api_call_count": 2
+  },
+  "skill_events_version": 1,
+  "skill_events": [
+    {
+      "id": "prompt-skill-cursor-grill-me-2026-11-13T16:10:51.911406493Z",
+      "event_type": "prompt_invocation",
+      "skill": {
+        "name": "grill-me"
+      },
+      "source": {
+        "agent": "cursor",
+        "signal": "prompt_slash_command",
+        "confidence": "explicit"
+      },
+      "turn_id": "c86bd2ac0340",
+      "timestamp": "2026-11-13T16:10:51.911406493Z",
+      "native": {
+        "command": "/grill-me"
+      },
+      "collapse": {
+        "target": "user_message",
+        "label": "/grill-me",
+        "default_collapsed": true
+      }
+    }
+  ],
+  "session_metrics": {
+    "turn_count": 9
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-11-13T17:24:20.655517606Z",
+    "agent_lines": 0,
+    "agent_removed": 0,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 49,
+    "total_committed": 2,
+    "total_lines_changed": 49,
+    "agent_percentage": 0,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 1979,
+      "user_lines_removed": 49,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0,
+      "user_added_per_file": {
+        ".gitignore": 3,
+        "README.md": 13,
+        "app/database/db_getter.py": 46,
+        "app/routes/__init__.py": 1,
+        "app/routes/cast_routes.py": 27,
+        "app/routes/clone_routes.py": 153,
+        "app/routes/editor_routes.py": 2,
+        "app/routes/library_routes.py": 3,
+        "app/routes/main_routes.py": 1,
+        "app/routes/shared.py": 6,
+        "app/routes/transfer_routes.py": 5,
+        "app/static/js/app_main.js": 20,
+        "app/static/js/browse.js": 13,
+        "app/static/js/clone.js": 412,
+        "app/static/js/library.js": 7,
+        "app/static/js/scan.js": 25,
+        "app/static/js/title.js": 3,
+        "app/templates/clone.html": 67,
+        "app/templates/top_navbar.html": 4,
+        "app/utils/backend_handler.py": 76,
+        "app/utils/clone_manifest.py": 627,
+        "app/utils/content_transfer.py": 179,
+        "config.json.old": 16,
+        "output.txt": 13,
+        "tests/test_content_transfer_unit.py": 257
+      },
+      "user_removed_per_file": {
+        "README.md": 2,
+        "app/database/db_getter.py": 2,
+        "app/routes/transfer_routes.py": 1,
+        "app/static/js/app_main.js": 1,
+        "app/static/js/browse.js": 3,
+        "app/static/js/library.js": 3,
+        "app/static/js/title.js": 2,
+        "app/utils/backend_handler.py": 16,
+        "app/utils/content_transfer.py": 19
+      }
+    },
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 3,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 1981,
+      "agent_lines_removed": 49
+    }
+  ]
+}

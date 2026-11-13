@@ -1,0 +1,69 @@
+Analyze workflow/setup for mobile media server e.g. SystemMode = CLIENT
+Validate intended workflow:
+only plays local
+hides chromecast integration
+clones media from available server on scan if wifi connected
+
+Add new feature:
+New endpoint for user to generate clone manifests
+The server shall present active/historical connected clients
+The server shall list media on the client and server
+The server shall provide the ability to select media from the server to clone to client
+e.g. use popular TFTP UI/X for endpoint webpage format
+The server will generate a manifest file for each client to preserve what was selected for each client: purpose for historical tracking and future connections
+The server will provide the ability to remove media from the client: purpose free space
+
+Goal: Confirm workflows work and improve cloning
+
+---
+
+The user shall be able to select a full tv show, season, or episode
+If the user selects a tv show, all content within the tv show will clone
+If the user selects a season all content within the season will clone
+If the user selects an episode, only the episode will clone
+The user can remove episodes from a tv show/season on the client
+The cover image for a tv show/movie/book must also clone with the respecitive media
+
+---
+
+/grill-me
+
+---
+
+Q1: A
+Q2: A
+Q3: A + seasons and episode shall show the tv show cover
+Q4: A
+Q5: A
+Q6: A
+
+---
+
+Q7: A
+Q8: A
+Q9: A
+Q10: B
+Q11: A
+
+---
+
+Q12: A + add a Sync button, copy/remove shall trigger only when the sync button is pressed. If sync is pressed but the server is not present, sync is recored in the manfiest and applied on next connection
+Q13: B
+Q14: A
+
+---
+
+Q15: A
+
+---
+
+Q16: A
+Q17: A
+Q18: A
+Q19: A
+
+---
+
+Implement the plan as specified, it is attached for your reference. Do NOT edit the plan file itself.
+
+To-do's from the plan have already been created. Do not create them again. Mark them as in_progress as you work, starting with the first one. Don't stop until you have completed all the to-dos.
