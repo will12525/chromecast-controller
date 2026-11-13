@@ -78,7 +78,7 @@ install_packages() {
     echo "Install system packages"
     export DEBIAN_FRONTEND=noninteractive
     apt-get update -y
-    apt-get install -y chromium sway pipewire pipewire-pulse wireplumber npm python3-venv sqlite3 ffmpeg exfatprogs ntfs-3g
+    apt-get install -y chromium sway kms++-utils pipewire pipewire-pulse wireplumber npm python3-venv sqlite3 ffmpeg exfatprogs ntfs-3g
     usermod -aG audio,video,render,input "${install_user}"
 }
 
@@ -99,10 +99,12 @@ ExecStart=
 ExecStart=-/sbin/agetty --autologin ${install_user} --noclear %I \$TERM
 EOF
 
-    mkdir -p "${USER_UNIT_DIR}" /etc/sway /usr/local/bin
+    mkdir -p "${USER_UNIT_DIR}" /etc/sway /usr/local/bin /usr/local/lib
     cp "${SERVICES_DIR}/sway_kiosk.conf" /etc/sway/kiosk.conf
+    cp "${SERVICES_DIR}/kiosk_hdmi.py" /usr/local/lib/kiosk_hdmi.py
+    cp "${SERVICES_DIR}/kiosk_output.sh" /usr/local/bin/kiosk_output.sh
     cp "${SERVICES_DIR}/kiosk_audio.sh" /usr/local/bin/kiosk_audio.sh
-    chmod 755 /usr/local/bin/kiosk_audio.sh
+    chmod 755 /usr/local/bin/kiosk_output.sh /usr/local/bin/kiosk_audio.sh
     cp "${SERVICES_DIR}/chromium_kiosk.service" "${USER_UNIT_DIR}/chromium_kiosk.service"
     if [[ ! -d "${install_home}/.config" ]]; then
         mkdir -p "${install_home}/.config"
@@ -133,20 +135,9 @@ keep_display_on() {
             sed -i 's/[[:space:]]*$//' "${cmdline}"
             sed -i 's/$/ consoleblank=0/' "${cmdline}"
         fi
-        local connector token previous
-        for connector in HDMI-A-1 HDMI-A-2; do
-            token="video=${connector}:1920x1080M@60eD"
-            previous="video=${connector}:1920x1080@60"
-            if grep -q "${token}" "${cmdline}"; then
-                continue
-            fi
-            if grep -q "${previous}" "${cmdline}"; then
-                sed -i "s/${previous}/${token}/g" "${cmdline}"
-                continue
-            fi
-            sed -i 's/[[:space:]]*$//' "${cmdline}"
-            sed -i "s/\$/ ${token}/" "${cmdline}"
-        done
+        # A kernel video=...M mode is CVT timing. This TV stays linked and
+        # then shows a blank picture. Sway selects the EDID 1080p60 mode.
+        sed -i -E 's/ video=HDMI-A-[0-9]+:[^ ]*//g' "${cmdline}"
     else
         echo "cmdline.txt not found; skipped consoleblank=0"
     fi
