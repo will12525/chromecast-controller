@@ -1,0 +1,30 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "787b1911952a",
+  "strategy": "manual-commit",
+  "branch": "fix_tests",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "app/static/js/clone.js",
+    "app/static/style.css",
+    "app/templates/clone.html",
+    "system_services/kiosk_hdmi.py",
+    "tests/test_kiosk_hdmi.py"
+  ],
+  "sessions": [
+    {
+      "metadata": "/78/7b1911952a/0/metadata.json",
+      "transcript": "/78/7b1911952a/0/full.jsonl",
+      "compact_transcript": "/78/7b1911952a/0/transcript.jsonl",
+      "content_hash": "/78/7b1911952a/0/content_hash.txt",
+      "prompt": "/78/7b1911952a/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 19016,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 614912,
+    "output_tokens": 11232,
+    "api_call_count": 1
+  }
+}

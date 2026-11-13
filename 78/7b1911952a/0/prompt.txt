@@ -1,0 +1,91 @@
+<timestamp>Friday, Nov 13, 2026, 3:15 PM (UTC-5)</timestamp>
+
+Implement the plan as specified, it is attached for your reference. Do NOT edit the plan file itself.
+
+To-do's from the plan have already been created. Do not create them again. Mark them as in_progress as you work, starting with the first one. Don't stop until you have completed all the to-dos.
+
+---
+
+<timestamp>Friday, Nov 13, 2026, 3:15 PM (UTC-5)</timestamp>
+
+commit
+
+---
+
+No video display
+
+sudo apt-get install -y kms++-utils
+sudo cp system_services/kiosk_hdmi.py /usr/local/lib/kiosk_hdmi.py
+sudo cp system_services/kiosk_output.sh /usr/local/bin/kiosk_output.sh
+sudo cp system_services/kiosk_audio.sh /usr/local/bin/kiosk_audio.sh
+sudo chmod 755 /usr/local/bin/kiosk_output.sh /usr/local/bin/kiosk_audio.sh
+sudo cp system_services/sway_kiosk.conf /etc/sway/kiosk.conf
+sudo systemctl restart user@1000.service
+[sudo] password for willow:
+Reading package lists... Done
+Building dependency tree... Done
+Reading state information... Done
+kms++-utils is already the newest version (0~git20250807.1813ada-1).
+0 upgraded, 0 newly installed, 0 to remove and 4 not upgraded.
+
+kmsprint | head -n 6
+Connector 0 (35) HDMI-A-1 (connected)
+  Encoder 0 (34) TMDS
+    Crtc 3 (102) 1920x1080@60.00 148.500 1920/88/44/148/- 1080/4/5/36/- 60 (60.00) D
+      Plane 3 (91) fb-id: 726 (crtcs: 3) 0,0 1920x1080 -> 0,0 1920x1080 (XR24 AR24 AB24 XB24 RX24 RA24 BX24 BA24 RG16 BG16 AR15 XR15 RG24 BG24 YU16 YV16 YU24 YV24 YU12 YV12 NV12 NV21 NV16 NV61 P030 XR30 AR30 AB30 XB30 RGB8 BGR8 XR12 AR12 XB12 AB12 BX12 BA12 RX12 RA12)
+        FB 726 1920x1080 XR24
+      Plane 57 (688) fb-id: 725 (crtcs: 3) 0,0 64x64 -> 97,99 64x64 (XR24 AR24 AB24 XB24 RX24 RA24 BX24 BA24 RG16 BG16 AR15 XR15 RG24 BG24 YU16 YV16 YU24 YV24 YU12 YV12 NV12 NV21 NV16 NV61 P030 XR30 AR30 AB30 XB30 RGB8 BGR8 XR12 AR12 XB12 AB12 BX12 BA12 RX12 RA12)
+willow@mobile-media:~/chromecast-controller $ wpctl status
+PipeWire 'pipewire-0' [1.4.2, willow@mobile-media, cookie:3777909867]
+ └─ Clients:
+        33. WirePlumber                         [1.4.2, willow@mobile-media, pid:2133]
+        37. pipewire                            [1.4.2, willow@mobile-media, pid:2134]
+        47. WirePlumber [export]                [1.4.2, willow@mobile-media, pid:2133]
+        76. wpctl                               [1.4.2, willow@mobile-media, pid:2439]
+
+Audio
+ ├─ Devices:
+ │      48. Built-in Audio                      [alsa]
+ │      49. Built-in Audio                      [alsa]
+ │      50. Built-in Audio                      [alsa]
+ │
+ ├─ Sinks:
+ │  *   54. Built-in Audio Stereo               [vol: 0.40]
+ │
+ ├─ Sources:
+ │
+ ├─ Filters:
+ │
+ └─ Streams:
+
+Video
+ ├─ Devices:
+ │      55. rpi-hevc-dec                        [v4l2]
+ │      56. bcm2835-codec-decode                [v4l2]
+ │      57. bcm2835-codec-encode                [v4l2]
+ │      58. bcm2835-codec-isp                   [v4l2]
+ │      59. bcm2835-codec-image_fx              [v4l2]
+ │      60. bcm2835-codec-encode_image          [v4l2]
+ │      61. bcm2835-isp                         [v4l2]
+ │      62. bcm2835-isp                         [v4l2]
+ │      63. bcm2835-isp                         [v4l2]
+ │      64. bcm2835-isp                         [v4l2]
+ │      65. bcm2835-isp                         [v4l2]
+ │      66. bcm2835-isp                         [v4l2]
+ │      67. bcm2835-isp                         [v4l2]
+ │      68. bcm2835-isp                         [v4l2]
+ │
+ ├─ Sinks:
+ │
+ ├─ Sources:
+ │      71. bcm2835-isp (V4L2)
+ │      72. bcm2835-isp (V4L2)
+ │  *   73. bcm2835-isp (V4L2)
+ │      74. bcm2835-isp (V4L2)
+ │
+ ├─ Filters:
+ │
+ └─ Streams:
+
+Settings
+ └─ Default Configured Devices:
