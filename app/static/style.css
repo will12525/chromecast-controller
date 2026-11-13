@@ -120,7 +120,7 @@
 
 .media-control-btn i {
     font-size: 1.75rem;
-    color: black;
+    color: #d3d3d3;
 }
 
 .main-content-container {
@@ -145,7 +145,20 @@
 }
 body {
     background-color: #141414;
+    color: #d3d3d3;
+    --bs-body-color: #d3d3d3;
+    --bs-body-color-rgb: 211, 211, 211;
+    --bs-body-bg: #141414;
+    --bs-body-bg-rgb: 20, 20, 20;
+    --bs-emphasis-color: #e8e8e8;
+    --bs-secondary-color: rgba(211, 211, 211, 0.75);
     padding-top: 40px;
+}
+
+/* Linen cards keep a light surface, so their text stays dark. */
+.card[style*="Linen"] {
+    color: #212529;
+    --bs-card-color: #212529;
 }
 
 /* Library home shelves (Plex-style horizontal rows) */

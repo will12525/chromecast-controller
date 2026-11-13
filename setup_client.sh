@@ -78,7 +78,7 @@ install_packages() {
     echo "Install system packages"
     export DEBIAN_FRONTEND=noninteractive
     apt-get update -y
-    apt-get install -y chromium cage npm python3-venv sqlite3 ffmpeg exfatprogs ntfs-3g
+    apt-get install -y chromium sway npm python3-venv sqlite3 ffmpeg exfatprogs ntfs-3g
     usermod -aG video,render,input "${install_user}"
 }
 
@@ -99,7 +99,8 @@ ExecStart=
 ExecStart=-/sbin/agetty --autologin ${install_user} --noclear %I \$TERM
 EOF
 
-    mkdir -p "${USER_UNIT_DIR}"
+    mkdir -p "${USER_UNIT_DIR}" /etc/sway
+    cp "${SERVICES_DIR}/sway_kiosk.conf" /etc/sway/kiosk.conf
     cp "${SERVICES_DIR}/chromium_kiosk.service" "${USER_UNIT_DIR}/chromium_kiosk.service"
     if [[ ! -d "${install_home}/.config" ]]; then
         mkdir -p "${install_home}/.config"
@@ -121,6 +122,20 @@ keep_display_on() {
             sed -i 's/[[:space:]]*$//' "${cmdline}"
             sed -i 's/$/ consoleblank=0/' "${cmdline}"
         fi
+        local connector token previous
+        for connector in HDMI-A-1 HDMI-A-2; do
+            token="video=${connector}:1920x1080M@60eD"
+            previous="video=${connector}:1920x1080@60"
+            if grep -q "${token}" "${cmdline}"; then
+                continue
+            fi
+            if grep -q "${previous}" "${cmdline}"; then
+                sed -i "s/${previous}/${token}/g" "${cmdline}"
+                continue
+            fi
+            sed -i 's/[[:space:]]*$//' "${cmdline}"
+            sed -i "s/\$/ ${token}/" "${cmdline}"
+        done
     else
         echo "cmdline.txt not found; skipped consoleblank=0"
     fi

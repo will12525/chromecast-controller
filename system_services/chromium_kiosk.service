@@ -5,7 +5,8 @@ Description=Chromium kiosk for the local media client
 Type=simple
 TimeoutStartSec=120
 ExecStartPre=/bin/bash -c 'for _ in $(seq 1 90); do { echo >/dev/tcp/127.0.0.1/5000; } 2>/dev/null && exit 0; sleep 1; done; echo "flask did not open port 5000" >&2; exit 1'
-ExecStart=/usr/bin/cage -s -- /usr/bin/chromium --kiosk --noerrdialogs --disable-infobars --check-for-update-interval=31536000 http://127.0.0.1:5000
+Environment=WLR_LIBINPUT_NO_DEVICES=1
+ExecStart=/usr/bin/sway -c /etc/sway/kiosk.conf
 Restart=always
 RestartSec=3
 
