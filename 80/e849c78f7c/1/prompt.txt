@@ -1,0 +1,63 @@
+SystemMode CLIENT failing to play local content when selecting play
+Local play media player loads but video does not display/start
+
+/home/willow/.cursor/projects/home-willow-workspace-chromecast-controller/uploads/e4ebad08-fa24-4606-9b1f-feefb1561c4b/chromecast journalctl.txt /home/willow/.cursor/projects/home-willow-workspace-chromecast-controller/uploads/a7ac1704-ab8b-4bc6-a11a-6d6d9c05f4ec/journal xeu.txt 
+media paths: ls /media/usb/t7_shield/media/tv_shows/101\ Dalmatians\ The\ Series/101\ Dalmatians\ The\ Series*
+'/media/usb/t7_shield/media/tv_shows/101 Dalmatians The Series/101 Dalmatians The Series.jpg'         '/media/usb/t7_shield/media/tv_shows/101 Dalmatians The Series/101 Dalmatians The Series - s1e5.mp4'
+'/media/usb/t7_shield/media/tv_shows/101 Dalmatians The Series/101 Dalmatians The Series - s1e4.mp4'
+
+app/config.json
+{
+    "mode": "CLIENT",
+    "client-name": "mobile-media",
+    "server_url": "http://192.168.1.175:5000",
+    "media_folders": [
+        {
+            "content_src": "/media/usb/t7_shield/media",
+            "content_url": "http://127.0.0.1:8001/"
+        }
+    ]
+}
+
+---
+
+Implement the plan as specified, it is attached for your reference. Do NOT edit the plan file itself.
+
+To-do's from the plan have already been created. Do not create them again. Mark them as in_progress as you work, starting with the first one. Don't stop until you have completed all the to-dos.
+
+---
+
+On the server, local play works fine. Identify variation between server and client causing this failure mode
+
+---
+
+updated app/config.json
+{
+    "mode": "CLIENT",
+    "client-name": "mobile-media",
+    "server_url": "http://192.168.1.175:5000",
+    "media_folders": [
+        {
+            "content_src": "/media/usb/t7_shield/media/",
+            "content_url": "http://127.0.0.1:8001/"
+        }
+    ]
+}
+
+sudo journalctl -xeu media_drive_8001.service
+Nov 13 13:54:40 mobile-media http-server[1066]: [Fri Nov 13 2026 13:54:40 GMT-0500 (Eastern Standard Time)]  "GET //tv_shows/A%20Bunch%20of%20Munsch/A%20Bunch%20of%20Munsch.jpg" Error (404): "Not found"
+Nov 13 13:54:40 mobile-media http-server[1066]: [Fri Nov 13 2026 13:54:40 GMT-0500 (Eastern Standard Time)]  "GET //tv_shows/Abbott%20Elementary/Abbott%20Elementary.jpg" Error (404): "Not found"
+Nov 13 13:54:40 mobile-media http-server[1066]: [Fri Nov 13 2026 13:54:40 GMT-0500 (Eastern Standard Time)]  "GET //tv_shows/101%20Dalmatians%20The%20Series/101%20Dalmatians%20The%20Series.jpg" Error (404): "Not found"
+Nov 13 13:54:40 mobile-media http-server[1066]: [Fri Nov 13 2026 13:54:40 GMT-0500 (Eastern Standard Time)]  "GET //tv_shows/A%20Good%20Girl's%20Guide%20to%20Murder/A%20Good%20Girl's%20Guide%20to%20Murder.jpg" Error (404): "Not found"
+Nov 13 13:54:40 mobile-media http-server[1066]: [Fri Nov 13 2026 13:54:40 GMT-0500 (Eastern Standard Time)]  "GET //tv_shows/A%20Pup%20Named%20Scooby-Doo/A%20Pup%20Named%20Scooby-Doo.jpg" Error (404): "Not found"
+Nov 13 13:54:40 mobile-media http-server[1066]: [Fri Nov 13 2026 13:54:40 GMT-0500 (Eastern Standard Time)]  "GET //tv_shows/Adventure%20Time%20Distant%20Lands/Adventure%20Time%20Distant%20Lands.jpg" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 >
+Nov 13 13:54:40 mobile-media http-server[1066]: [Fri Nov 13 2026 13:54:40 GMT-0500 (Eastern Standard Time)]  "GET //tv_shows/Adventure%20Time%20Distant%20Lands/Adventure%20Time%20Distant%20Lands.jpg" Error (404): "Not found"
+
+ls /media/usb/t7_shield/media/tv_shows/A\ Bunch\ of\ Munsch/A\ Bunch\ of\ Munsch*
+'/media/usb/t7_shield/media/tv_shows/A Bunch of Munsch/A Bunch of Munsch.jpg'  '/media/usb/t7_shield/media/tv_shows/A Bunch of Munsch/A Bunch of Munsch - s1e4.mp4'
+
+sqlite3 media_metadata.db
+sqlite> select * from content_directory;
+1|/media/usb/t7_shield/media/|http://127.0.0.1:8001/
+sqlite> select * from content where content_src LIKE '%Bunch%';
+3|1|The Paper Bag Princess|/tv_shows/A Bunch of Munsch/A Bunch of Munsch - s1e4.mp4|||1|0.0|2026-11-13T18:54:19+00:00|0.0|2026-11-13T18:50:36+00:00
