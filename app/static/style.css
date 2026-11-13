@@ -279,3 +279,35 @@ body {
     justify-content: center;
     align-items: center;
 }
+
+/* Clone page: action buttons stay in the column header; the tree scrolls. */
+.clone-column {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 11rem);
+    max-height: calc(100vh - 11rem);
+}
+
+.clone-column > .card-header {
+    height: auto;
+    flex: 0 0 auto;
+}
+
+.clone-column > .clone-tree {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.clone-toggle {
+    width: 1.25rem;
+    line-height: 1;
+    text-decoration: none;
+    flex: 0 0 auto;
+}
+
+.clone-toggle:hover,
+.clone-toggle:focus {
+    text-decoration: none;
+    color: #fff;
+}

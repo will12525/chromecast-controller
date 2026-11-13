@@ -33,6 +33,18 @@ def test_this_tv_uses_positive_1080p59():
     assert (1280, 720, 60.0) in [(mode["width"], mode["height"], mode["refresh"]) for mode in modes]
 
 
+def test_negative_60_twin_is_not_requested():
+    text = """
+Connector 0 (35) HDMI-A-1 (connected)
+  1920x1080@60.00 148.500 1920/88/44/148/- 1080/4/5/36/- 60 (60.00) D
+  1920x1080@60.00 148.500 1920/88/44/148/+ 1080/4/5/36/+ 60 (60.00) D
+  1920x1080@59.94 148.352 1920/88/44/148/+ 1080/4/5/36/+ 60 (59.94) D 16:9
+"""
+    modes = kiosk_hdmi.mode_candidates(text)
+    assert modes[0]["refresh"] == 59.94
+    assert 60.0 not in [mode["refresh"] for mode in modes]
+
+
 def test_positive_60_beats_59_when_both_are_safe():
     text = """
 Connector 0 (35) HDMI-A-1 (connected)

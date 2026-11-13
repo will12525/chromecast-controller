@@ -59,6 +59,27 @@ def _target_connector(connectors):
     return None
 
 
+def _within_cap(mode):
+    return (
+        not mode["interlaced"]
+        and mode["width"] <= 1920
+        and mode["height"] <= 1080
+        and mode["refresh"] <= 60.0
+    )
+
+
+def _has_negative_twin(mode, modes):
+    """Sway selects by size and refresh only, so a negative mode at the same
+    refresh can be the one that gets programmed."""
+    return any(
+        not other["positive"]
+        and other["width"] == mode["width"]
+        and other["height"] == mode["height"]
+        and abs(other["refresh"] - mode["refresh"]) < 0.02
+        for other in modes
+    )
+
+
 def mode_candidates(text):
     """Ordered modes to try. Empty when the port should be left alone."""
     connectors = parse_kmsprint(text)
@@ -69,11 +90,7 @@ def mode_candidates(text):
     usable = [
         mode
         for mode in modes
-        if mode["positive"]
-        and not mode["interlaced"]
-        and mode["width"] <= 1920
-        and mode["height"] <= 1080
-        and mode["refresh"] <= 60.0
+        if mode["positive"] and _within_cap(mode) and not _has_negative_twin(mode, modes)
     ]
     usable.sort(key=lambda mode: (-(mode["width"] * mode["height"]), abs(mode["refresh"] - 60.0)))
     return [

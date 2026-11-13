@@ -25,6 +25,41 @@ function cloneCheckedAttr(on) {
     return on ? " checked" : "";
 }
 
+function cloneToggleButton(expanded) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "clone-toggle btn btn-sm btn-link text-light p-0 me-1";
+    button.setAttribute("aria-label", expanded ? "Collapse" : "Expand");
+    button.setAttribute("aria-expanded", expanded ? "true" : "false");
+    button.innerHTML = '<span class="' + (expanded ? "bi-chevron-down" : "bi-chevron-right") + '" aria-hidden="true"></span>';
+    button.addEventListener("click", () => {
+        const open = button.getAttribute("aria-expanded") !== "true";
+        const children = button.parentElement.nextElementSibling;
+        button.setAttribute("aria-expanded", open ? "true" : "false");
+        button.setAttribute("aria-label", open ? "Collapse" : "Expand");
+        button.innerHTML = '<span class="' + (open ? "bi-chevron-down" : "bi-chevron-right") + '" aria-hidden="true"></span>';
+        if (children) {
+            children.hidden = !open;
+        }
+    });
+    return button;
+}
+
+function cloneBranch(titleNode, expanded) {
+    const block = document.createElement("div");
+    block.className = "mb-2";
+    const head = document.createElement("div");
+    head.className = "d-flex align-items-center";
+    head.appendChild(cloneToggleButton(expanded));
+    head.appendChild(titleNode);
+    const children = document.createElement("div");
+    children.className = "clone-children";
+    children.hidden = !expanded;
+    block.appendChild(head);
+    block.appendChild(children);
+    return {block: block, children: children};
+}
+
 async function cloneLoadClients() {
     const response = await fetch("/clone/clients");
     if (!response.ok) {
@@ -96,45 +131,61 @@ function cloneAppendShow(host, show, filter) {
     const showSelected = (cloneState.selections || []).some(
         (row) => row.kind === "show" && String(row.container_id) === String(show.container_id)
     );
-    const block = document.createElement("div");
-    block.className = "mb-3";
+    const filterOn = Boolean(filter);
+    const showTitleMatch = filterOn && (show.title || "").toLowerCase().indexOf(filter) !== -1;
+    const seasons = [];
+    (show.seasons || []).forEach((season) => {
+        const episodes = (season.episodes || []).filter((episode) => {
+            if (!filterOn || showTitleMatch) {
+                return true;
+            }
+            const text = ((episode.title || "") + " " + (episode.content_src || "")).toLowerCase();
+            return text.indexOf(filter) !== -1;
+        });
+        if (filterOn && !episodes.length) {
+            return;
+        }
+        seasons.push({season: season, episodes: episodes});
+    });
+    if (filterOn && !seasons.length) {
+        return;
+    }
     const title = document.createElement("label");
-    title.className = "d-flex align-items-center fw-semibold";
+    title.className = "d-flex align-items-center fw-semibold mb-0";
     title.innerHTML = clonePoster(show)
         + '<input type="checkbox" class="form-check-input me-2" data-role="show" data-id="'
         + show.container_id + '"' + (showSelected ? ' data-picked="1"' : '')
         + cloneCheckedAttr(showSelected) + "> "
         + (show.title || "Show");
-    block.appendChild(title);
-    (show.seasons || []).forEach((season) => {
+    const branch = cloneBranch(title, filterOn);
+    seasons.forEach((entry) => {
+        const season = entry.season;
         const seasonSelected = showSelected || (cloneState.selections || []).some(
             (row) => row.kind === "season" && String(row.container_id) === String(season.container_id)
         );
         const seasonLabel = document.createElement("label");
-        seasonLabel.className = "d-flex align-items-center ms-3 mt-2";
+        seasonLabel.className = "d-flex align-items-center mb-0";
         seasonLabel.innerHTML = clonePoster(season)
             + '<input type="checkbox" class="form-check-input me-2" data-role="season" data-id="'
             + season.container_id + '" data-show="' + show.container_id + '"'
             + cloneCheckedAttr(seasonSelected) + "> "
             + (season.title || "Season");
-        block.appendChild(seasonLabel);
-        (season.episodes || []).forEach((episode) => {
-            const text = (episode.title || "") + " " + (episode.content_src || "");
-            if (filter && text.toLowerCase().indexOf(filter) === -1 && (show.title || "").toLowerCase().indexOf(filter) === -1) {
-                return;
-            }
+        const seasonBranch = cloneBranch(seasonLabel, filterOn);
+        seasonBranch.block.classList.add("ms-3", "mt-2");
+        entry.episodes.forEach((episode) => {
             const row = document.createElement("label");
-            row.className = "d-flex align-items-center ms-5";
+            row.className = "d-flex align-items-center ms-4";
             const on = cloneEpisodeChecked(episode.content_src, seasonSelected);
             row.innerHTML = clonePoster(episode)
                 + '<input type="checkbox" class="form-check-input me-2" data-role="episode" data-src="'
                 + (episode.content_src || "") + '" data-show="' + show.container_id
                 + '" data-season="' + season.container_id + '"' + cloneCheckedAttr(on) + "> "
                 + (episode.title || episode.content_src);
-            block.appendChild(row);
+            seasonBranch.children.appendChild(row);
         });
+        branch.children.appendChild(seasonBranch.block);
     });
-    host.appendChild(block);
+    host.appendChild(branch.block);
 }
 
 function cloneAppendFlat(host, heading, rows, kind, filter) {
@@ -277,28 +328,27 @@ function cloneRenderClient() {
     }
     (cloneClientTree.shows || []).forEach((show) => {
         const heading = document.createElement("div");
-        heading.className = "fw-semibold mt-2";
+        heading.className = "fw-semibold";
         heading.innerHTML = clonePoster(show) + (show.title || "Show");
-        host.appendChild(heading);
+        const showBranch = cloneBranch(heading, false);
         (show.seasons || []).forEach((season) => {
             const seasonLabel = document.createElement("div");
-            seasonLabel.className = "ms-3 text-secondary";
+            seasonLabel.className = "text-secondary";
             seasonLabel.textContent = season.title || "Season";
-            host.appendChild(seasonLabel);
+            const seasonBranch = cloneBranch(seasonLabel, false);
+            seasonBranch.block.classList.add("ms-3", "mt-2");
             (season.episodes || []).forEach((episode) => {
-                const row = document.createElement("div");
-                row.className = "ms-5";
-                row.innerHTML = "";
-                host.appendChild(row);
                 const label = document.createElement("label");
-                label.className = "d-flex align-items-center";
+                label.className = "d-flex align-items-center ms-4";
                 const queued = pending.has(episode.content_src) ? " (queued)" : "";
                 label.innerHTML = clonePoster(episode)
                     + '<input type="checkbox" class="form-check-input me-2" data-remove-src="'
                     + episode.content_src + '"> ' + (episode.title || episode.content_src) + queued;
-                row.appendChild(label);
+                seasonBranch.children.appendChild(label);
             });
+            showBranch.children.appendChild(seasonBranch.block);
         });
+        host.appendChild(showBranch.block);
     });
     (cloneClientTree.movies || []).forEach((item) => addRow(item.content_src, item.title || item.content_src, clonePoster(item)));
     (cloneClientTree.books || []).forEach((item) => addRow(item.content_src, item.title || item.content_src, clonePoster(item)));
