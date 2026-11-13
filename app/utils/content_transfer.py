@@ -9,6 +9,7 @@ Hardening (Phase 2):
 """
 import os
 import pathlib
+import re
 
 import requests
 from flask import send_file
@@ -162,8 +163,7 @@ class ServerConnection:
             self.last_error = f"clone plan rejected: {data}"
             return None
         return {
-            "download": data.get("download") or [],
-            "covers": data.get("covers") or [],
+            "urls": data.get("urls") or [],
             "delete": data.get("delete") or [],
         }
 
@@ -363,8 +363,9 @@ def run_client_contact(apply=False):
             "applied": False,
         }
 
-    applied = False
     removed = []
+    changed = False
+    failures = []
     if apply:
         plan = server_connection.fetch_clone_plan()
         if plan is None:
@@ -372,14 +373,9 @@ def run_client_contact(apply=False):
                 "status": "error",
                 "message": server_connection.last_error or "clone plan failed",
                 "applied": False,
+                "changed": False,
             }
-        applied, removed = _apply_clone_plan(server_connection, plan)
-        if not applied:
-            return {
-                "status": "error",
-                "message": server_connection.last_error or "sync did not finish",
-                "applied": False,
-            }
+        failures, removed, changed = _apply_clone_plan(plan)
 
     db_connection = _open_db()
     try:
@@ -390,15 +386,26 @@ def run_client_contact(apply=False):
         return {
             "status": "error",
             "message": server_connection.last_error or "inventory report failed",
-            "applied": applied,
+            "applied": False,
+            "changed": changed,
+        }
+    if failures:
+        return {
+            "status": "error",
+            "message": "; ".join(failures),
+            "applied": False,
+            "changed": changed,
         }
     if apply:
-        return {"status": "ok", "message": "Sync complete", "applied": True}
+        return {"status": "ok", "message": "Sync complete", "applied": True, "changed": changed}
     return {"status": "ok", "message": "Scan complete (inventory updated)", "applied": False}
 
 
-def _apply_clone_plan(server_connection, plan):
-    """Download missing files and delete queued ones. Returns (ok, removed paths)."""
+def _apply_clone_plan(plan):
+    """Delete queued paths, then download each {url, path} pair.
+
+    One failure does not stop the rest. Returns (failures, removed, changed).
+    """
     from app.utils import clone_manifest
 
     db_connection = _open_db()
@@ -407,43 +414,130 @@ def _apply_clone_plan(server_connection, plan):
     finally:
         db_connection.close()
 
+    failures = []
     removed = []
+    changed = False
     for rel in plan.get("delete") or []:
         dest = clone_manifest.destination_for(rel, media_dirs)
         if dest is None:
-            server_connection.last_error = f"refusing delete outside media roots: {rel}"
-            return False, removed
+            failures.append(f"refusing delete outside media roots: {rel}")
+            continue
         if not dest.exists():
             removed.append(rel)
             continue
         if not clone_manifest.unlink_media_file(dest):
-            server_connection.last_error = f"delete skipped: {rel}"
-            return False, removed
+            failures.append(f"delete skipped: {rel}")
+            continue
         removed.append(rel)
+        changed = True
 
-    for item in plan.get("download") or []:
-        rel = item.get("content_src")
+    for pair in plan.get("urls") or []:
+        if not isinstance(pair, dict):
+            failures.append("download failed: missing path")
+            continue
+        rel = pair.get("path")
+        url = pair.get("url")
+        if not rel:
+            failures.append("download failed: missing path")
+            continue
+        if not url:
+            failures.append(f"no media url for {rel}")
+            continue
         dest = clone_manifest.destination_for(rel, media_dirs)
         if dest is None:
-            server_connection.last_error = f"no destination for {rel}"
-            return False, removed
+            failures.append(f"no destination for {rel}")
+            continue
         if dest.exists():
             continue
-        if not server_connection.request_file(
-            {"content_src": rel}, dest, "request_content"
-        ):
-            server_connection.last_error = server_connection.last_error or f"download failed: {rel}"
-            return False, removed
-
-    for cover in plan.get("covers") or []:
-        rel = cover.get("img_src")
-        dest = clone_manifest.destination_for(rel, media_dirs)
-        if dest is None or dest.exists():
+        ok, err = download_media_url(url, dest)
+        if not ok:
+            failures.append(f"{err}: {rel}" if err else f"download failed: {rel}")
             continue
-        if not server_connection.request_file({"img_src": rel}, dest, "request_image"):
-            server_connection.last_error = server_connection.last_error or f"cover failed: {rel}"
-            return False, removed
-    return True, removed
+        changed = True
+    return failures, removed, changed
+
+
+_CONTENT_RANGE_RE = re.compile(r"bytes\s+(\d+)-(\d+)/(\d+|\*)", re.IGNORECASE)
+
+
+def _parse_content_range(header):
+    match = _CONTENT_RANGE_RE.search(header or "")
+    if not match:
+        return None
+    total = None if match.group(3) == "*" else int(match.group(3))
+    return int(match.group(1)), int(match.group(2)), total
+
+
+def _response_total(response, status, existing):
+    if status == 206:
+        parsed = _parse_content_range(response.headers.get("Content-Range"))
+        if parsed and parsed[2] is not None:
+            return parsed[2]
+        length = response.headers.get("Content-Length")
+        if length and str(length).isdigit():
+            return existing + int(length)
+        return None
+    length = response.headers.get("Content-Length")
+    if length and str(length).isdigit():
+        return int(length)
+    return None
+
+
+def download_media_url(url, dest):
+    """Stream url to dest via a .partial file. Size must match. Returns (ok, error)."""
+    dest = pathlib.Path(dest)
+    partial = dest.with_name(dest.name + ".partial")
+    try:
+        partial.parent.mkdir(parents=True, exist_ok=True)
+        resume = partial.is_file() and partial.stat().st_size > 0
+        ok, err = _stream_media_url(url, partial, resume)
+        if not ok:
+            return False, err
+        partial.replace(dest)
+        return True, None
+    except OSError as e:
+        return False, f"download failed: {e}"
+    except requests.RequestException as e:
+        return False, f"download failed: {e}"
+
+
+def _stream_media_url(url, partial, resume, allow_retry=True):
+    headers = {}
+    existing = 0
+    if resume:
+        existing = partial.stat().st_size
+        headers["Range"] = f"bytes={existing}-"
+    response = requests.get(url, headers=headers, stream=True, timeout=REQUEST_TIMEOUT)
+    try:
+        status = response.status_code
+        if status == 200 and resume:
+            existing = 0
+            resume = False
+        elif status == 206 and resume:
+            parsed = _parse_content_range(response.headers.get("Content-Range"))
+            if allow_retry and (not parsed or parsed[0] != existing):
+                response.close()
+                return _stream_media_url(url, partial, False, allow_retry=False)
+        elif status not in (200, 206):
+            if status == 416:
+                _unlink_client_file(partial)
+            return False, f"download failed: {status}"
+        total = _response_total(response, status, existing)
+        mode = "ab" if status == 206 else "wb"
+        written = existing if status == 206 else 0
+        with open(partial, mode) as handle:
+            for chunk in response.iter_content(chunk_size=1024 * 1024):
+                if chunk:
+                    handle.write(chunk)
+                    written += len(chunk)
+        if total is None or written != total:
+            _unlink_client_file(partial)
+            return False, "download failed: short file"
+        return True, None
+    except requests.RequestException as e:
+        return False, f"download failed: {e}"
+    finally:
+        response.close()
 
 
 # SERVER

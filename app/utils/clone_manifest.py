@@ -9,6 +9,7 @@ import pathlib
 import re
 import socket
 from datetime import datetime, timedelta, timezone
+from urllib.parse import quote, urlsplit, urlunsplit
 
 from app.utils.common import SystemMode
 from app.utils.config_file_handler import load_json_file_content
@@ -168,6 +169,14 @@ def interpret_contact(result, apply, source="scan"):
             "clear_pending": True,
             "rescan": True,
         }
+    if result.get("changed"):
+        return {
+            "status": "error",
+            "message": result.get("message") or "Sync did not finish",
+            "set_pending": True,
+            "clear_pending": False,
+            "rescan": True,
+        }
     if result.get("status") == "skipped":
         message = (
             "Server unreachable. Sync will run on the next scan."
@@ -236,7 +245,7 @@ def save_selection(client_id, selections, exclude, remove):
     return save_manifest(manifest)
 
 
-def _episode_row(content_src, title, img_src, show_id, show_img_src, show_title):
+def _episode_row(content_src, title, img_src, show_id, show_img_src, show_title, content_url=""):
     return {
         "content_src": content_src,
         "title": title or content_src,
@@ -244,7 +253,21 @@ def _episode_row(content_src, title, img_src, show_id, show_img_src, show_title)
         "show_id": show_id,
         "show_img_src": show_img_src or "",
         "show_title": show_title or "",
+        "content_url": content_url or "",
     }
+
+
+def media_http_url(content_url, rel):
+    """Absolute http-server URL for a catalog path. Empty when content_url is missing."""
+    if not content_url or not rel:
+        return ""
+    parts = urlsplit(str(content_url).strip())
+    if parts.scheme not in ("http", "https") or not parts.netloc:
+        return ""
+    quoted = "/".join(quote(segment, safe="") for segment in str(rel).lstrip("/").split("/"))
+    prefix = parts.path.rstrip("/")
+    path = f"{prefix}/{quoted}" if prefix else f"/{quoted}"
+    return urlunsplit((parts.scheme, parts.netloc, path, "", ""))
 
 
 def catalog_from_db(db):
@@ -320,6 +343,7 @@ def catalog_from_db(db):
                     show_id,
                     show.get("img_src") or "",
                     show.get("title") or "",
+                    ep.get("content_url") or "",
                 )
                 for ep in episodes_by_parent.get(season.get("id")) or []
             ]
@@ -338,6 +362,7 @@ def catalog_from_db(db):
                 show_id,
                 show.get("img_src") or "",
                 show.get("title") or "",
+                ep.get("content_url") or "",
             )
             for ep in episodes_by_parent.get(show_id) or []
         ]
@@ -364,6 +389,7 @@ def catalog_from_db(db):
                     "title": item.get("content_title") or item.get("content_src"),
                     "img_src": item.get("img_src") or "",
                     "img_url": _cover_url(item.get("img_src"), item.get("content_url")),
+                    "content_url": item.get("content_url") or "",
                 }
             )
         return rows
@@ -386,6 +412,7 @@ def catalog_from_db(db):
                 "show_img_src": "",
                 "show_title": "",
                 "kind": item["kind"],
+                "content_url": item.get("content_url") or "",
             }
     return {
         "shows": shows,
@@ -444,6 +471,7 @@ def build_clone_plan(manifest, catalog):
                 "kind": kind,
                 "cover_img_src": cover,
                 "show_id": ep.get("show_id"),
+                "content_url": ep.get("content_url") or "",
             }
         )
 
@@ -469,11 +497,15 @@ def build_clone_plan(manifest, catalog):
 
     covers = []
     cover_seen = set()
+    cover_urls = {}
     for item in downloads:
         cover = item.get("cover_img_src") or ""
         if cover and cover not in cover_seen:
             cover_seen.add(cover)
             covers.append({"img_src": cover, "kind": "image"})
+            cover_urls[cover] = item.get("content_url") or ""
+        elif cover and not cover_urls.get(cover):
+            cover_urls[cover] = item.get("content_url") or ""
 
     remove_srcs = [src for src in (manifest.get("remove") or []) if src]
     inventory = {
@@ -504,7 +536,15 @@ def build_clone_plan(manifest, catalog):
         if not still and cover and cover not in delete_paths:
             delete_paths.append(cover)
 
-    return {"download": downloads, "covers": covers, "delete": delete_paths}
+    urls = [
+        {"url": media_http_url(item.get("content_url"), item["content_src"]), "path": item["content_src"]}
+        for item in downloads
+    ]
+    urls.extend(
+        {"url": media_http_url(cover_urls.get(cover["img_src"]), cover["img_src"]), "path": cover["img_src"]}
+        for cover in covers
+    )
+    return {"download": downloads, "covers": covers, "delete": delete_paths, "urls": urls}
 
 
 def unlink_media_file(path):

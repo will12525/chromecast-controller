@@ -290,6 +290,46 @@ class TestClonePlan(unittest.TestCase):
         self.assertIn("movies/Title (2010).mp4", movie["delete"])
         self.assertIn("movies/Title (2010).png", movie["delete"])
 
+    def test_media_url_encodes_space_and_ampersand(self):
+        from app.utils import clone_manifest
+
+        url = clone_manifest.media_http_url(
+            "http://192.168.1.175:8000/",
+            "/tv_shows/Timon & Pumbaa/Timon & Pumbaa - s1e5.mp4",
+        )
+        self.assertEqual(
+            url,
+            "http://192.168.1.175:8000/tv_shows/Timon%20%26%20Pumbaa/"
+            "Timon%20%26%20Pumbaa%20-%20s1e5.mp4",
+        )
+        self.assertEqual(clone_manifest.media_http_url("", "tv_shows/a.mp4"), "")
+
+    def test_plan_pairs_absolute_url_with_catalog_path(self):
+        from app.utils import clone_manifest
+
+        catalog = _show_catalog()
+        for row in catalog["content_by_src"].values():
+            row["content_url"] = "http://192.168.1.175:8000/"
+        plan = clone_manifest.build_clone_plan(
+            {
+                "selections": [{"kind": "episode", "content_src": "tv_shows/Show/Show - s02e01.mp4"}],
+                "exclude": [],
+                "remove": [],
+                "inventory": [],
+            },
+            catalog,
+        )
+        self.assertEqual(
+            [row["path"] for row in plan["urls"]],
+            ["tv_shows/Show/Show - s02e01.mp4", "tv_shows/Show/Show.png"],
+        )
+        video = plan["urls"][0]
+        self.assertEqual(
+            video["url"],
+            "http://192.168.1.175:8000/tv_shows/Show/Show%20-%20s02e01.mp4",
+        )
+        self.assertTrue(plan["urls"][1]["url"].endswith("/tv_shows/Show/Show.png"))
+
     def test_unlink_is_client_only_and_refuses_escape(self):
         from app.utils import clone_manifest
 
@@ -308,6 +348,74 @@ class TestClonePlan(unittest.TestCase):
                 self.assertTrue(clone_manifest.delete_relative("movies/Title (2010).mp4", roots))
             self.assertFalse(target.exists())
             self.assertFalse(outside.exists())
+
+
+class _StreamResponse:
+    def __init__(self, status, body, headers):
+        self.status_code = status
+        self.headers = headers
+        self._body = body
+
+    def iter_content(self, chunk_size=1024):
+        yield self._body
+
+    def close(self):
+        return None
+
+
+class TestMediaUrlDownload(unittest.TestCase):
+    def test_stream_renames_when_size_matches(self):
+        body = b"hello-media"
+        with tempfile.TemporaryDirectory() as tmp:
+            dest = pathlib.Path(tmp) / "clip.mp4"
+            response = _StreamResponse(200, body, {"Content-Length": str(len(body))})
+            with mock.patch.object(content_transfer.requests, "get", return_value=response) as get:
+                ok, err = content_transfer.download_media_url("http://192.168.1.175:8000/clip.mp4", dest)
+            self.assertTrue(ok, err)
+            self.assertEqual(dest.read_bytes(), body)
+            self.assertFalse((dest.parent / (dest.name + ".partial")).exists())
+            self.assertNotIn("Range", get.call_args.kwargs["headers"])
+
+    def test_resume_sends_range_and_appends(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            dest = pathlib.Path(tmp) / "clip.mp4"
+            partial = dest.with_name(dest.name + ".partial")
+            partial.write_bytes(b"hel")
+            response = _StreamResponse(
+                206,
+                b"lo-media",
+                {"Content-Range": "bytes 3-10/11", "Content-Length": "8"},
+            )
+            with mock.patch.object(content_transfer.requests, "get", return_value=response) as get:
+                ok, err = content_transfer.download_media_url("http://192.168.1.175:8000/clip.mp4", dest)
+            self.assertTrue(ok, err)
+            self.assertEqual(dest.read_bytes(), b"hello-media")
+            self.assertEqual(get.call_args.kwargs["headers"]["Range"], "bytes=3-")
+
+    def test_bad_url_and_refused_delete_do_not_stop_the_next_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            body = b"ok"
+            response = _StreamResponse(200, body, {"Content-Length": "2"})
+            db = mock.Mock()
+            db.get_all_content_directory_info.return_value = [{"content_src": str(root)}]
+            db.close.return_value = None
+            plan = {
+                "delete": ["../nope.mp4"],
+                "urls": [
+                    {"url": "", "path": "tv_shows/missing.mp4"},
+                    {"url": "http://192.168.1.175:8000/tv_shows/ok.mp4", "path": "tv_shows/ok.mp4"},
+                ],
+            }
+            with mock.patch.object(content_transfer, "_open_db", return_value=db), mock.patch.object(
+                content_transfer.requests, "get", return_value=response
+            ):
+                failures, removed, changed = content_transfer._apply_clone_plan(plan)
+            self.assertTrue(any("no media url for tv_shows/missing.mp4" in item for item in failures))
+            self.assertTrue(any("refusing delete" in item for item in failures))
+            self.assertEqual((root / "tv_shows" / "ok.mp4").read_bytes(), body)
+            self.assertEqual(removed, [])
+            self.assertTrue(changed)
 
 
 class TestCloneSync(unittest.TestCase):
@@ -343,6 +451,14 @@ class TestCloneSync(unittest.TestCase):
         )
         self.assertTrue(done["clear_pending"])
         self.assertTrue(done["rescan"])
+        partial = clone_manifest.interpret_contact(
+            {"status": "error", "applied": False, "changed": True, "message": "no media url for a.mp4"},
+            True,
+            source="sync",
+        )
+        self.assertTrue(partial["set_pending"])
+        self.assertFalse(partial["clear_pending"])
+        self.assertTrue(partial["rescan"])
         with tempfile.TemporaryDirectory() as tmp:
             pending = pathlib.Path(tmp) / "pending.json"
             with mock.patch.object(clone_manifest, "PENDING_PATH", pending), mock.patch.object(
