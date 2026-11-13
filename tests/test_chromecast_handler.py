@@ -126,8 +126,7 @@ class TestMyMediaDevice(TestCase):
         pytest_mocks.patch_extract_subclip(self)
         pytest_mocks.patch_update_processed_file(self)
 
-        if os.path.exists(self.DB_PATH):
-            os.remove(self.DB_PATH)
+        pytest_mocks.use_temp_catalog(self)
 
         self.media_paths = config_file_handler.load_json_file_content().get("media_folders")
         assert self.media_paths

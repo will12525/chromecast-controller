@@ -5,7 +5,8 @@
  *
  * Module order:
  *   js/shared.js → js/play_mode.js → js/chromecast.js → js/player_controls.js
- *   → js/browse.js → js/playback.js → js/scan.js → js/library.js → js/app_main.js
+ *   → js/browse.js → js/playback.js → js/scan.js → js/library.js
+ *   → js/title.js → js/ui_nav.js → js/app_main.js
  */
 /* global setup_nav_bars, setup_media_page */
 // Intentional no-op when modules already registered the DOMContentLoaded handlers

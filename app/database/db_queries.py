@@ -155,6 +155,26 @@ INNER JOIN user_tags ON user_tags_content.user_tags_id = user_tags.id
 WHERE user_tags.tag_title = :tag_title;
 """
 
+# Non-library-type tag links for Netflix-style genre rows.
+LIST_USER_TAG_LINKS = """
+SELECT user_tags.tag_title AS tag_title,
+       user_tags_content.container_id AS container_id,
+       user_tags_content.content_id AS content_id
+FROM user_tags_content
+INNER JOIN user_tags ON user_tags.id = user_tags_content.user_tags_id
+WHERE user_tags.tag_title NOT IN ({type_placeholders});
+"""
+
+LIST_CONTAINER_PARENTS = """
+SELECT container_id, parent_container_id FROM container_container;
+"""
+
+LIST_CONTENT_PARENTS = """
+SELECT content_id, parent_container_id
+FROM container_content
+ORDER BY parent_container_id ASC;
+"""
+
 CREATE_CONTAINER_CONTENT_INFO_TABLE = f'''CREATE TABLE IF NOT EXISTS container_content (
                                              id integer PRIMARY KEY,
                                              parent_container_id integer,

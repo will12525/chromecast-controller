@@ -7,122 +7,105 @@
           href="{{ url_for('static', filename='node_modules/bootstrap-icons/font/bootstrap-icons.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='node_modules/bootstrap/dist/css/bootstrap.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static',filename='style.css') | safe }}">
+    <link rel="stylesheet" href="{{ url_for('static',filename='nf.css') | safe }}">
     <link rel="shortcut icon" href="#">
 </head>
-<body>
+<body class="nf-body">
 {% include 'top_navbar.html' %}
-<div class="main-content-container container-fluid">
-    <div class="row gx-2 gy-2">
-        <div class="col-md-12">
-            <h5 id="content_title"></h5>
-            <video controls preload="auto" autoplay class="object-fit-contain img-fluid" id="local_video_player" hidden>
-                <source src="{{ local_play_url }}" type="video/mp4" id="local_video_player_src">
-            </video>
-        </div>
-        <div class="col-md-12" hidden id="content_editor_card">
-            <div class="card mb-3" style="background-color:Linen;">
-                <div class="card-header">
-                    Content Editor
+<div class="nf-app" id="app_shell">
+    <div id="billboard" class="nf-billboard" hidden></div>
+    <div id="library_chip_row" class="nf-chips" hidden></div>
+    <div class="nf-operator" id="content_editor_card" hidden>
+        <div class="card mb-3">
+            <div class="card-header">Content Editor</div>
+            <div class="card-body row">
+                <div class="col-md-2">
+                    <h5 class="card-title">Add Tag</h5>
                 </div>
-                <div class="card-body row">
-                    <div class="col-md-2">
-                        <h5 class="card-title">Add Tag</h5>
+                <div class="col-md-3">
+                    <div class="btn-group" id="add_tag_list_group" style="z-index: 1000;">
+                        <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown"
+                                data-bs-auto-close="true" aria-expanded="false" id="add_tag_list_group_title">
+                        </button>
+                        <ul class="dropdown-menu" id="add_tag_list_group_dropdown"></ul>
                     </div>
-                    <div class="col-md-3">
-                        <div class="btn-group" id="add_tag_list_group" style="z-index: 1000;">
-                            <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown"
-                                    data-bs-auto-close="true" aria-expanded="false" id="add_tag_list_group_title">
-                            </button>
-                            <ul class="dropdown-menu" id="add_tag_list_group_dropdown"
-                                style="z-index: 1000;">
-                            </ul>
-                        </div>
-                        <button class="btn btn-secondary" type="button" id="apply_tag">Apply</button>
-                        <button class="btn btn-secondary" type="button" id="remove_tag">Remove</button>
-                    </div>
-                    <div class="col-md-12">
-                    </div>
-                    <div class="col-md-2">
-                        <h5 class="card-title">Create tag</h5>
-                    </div>
-                    <div class="col-md-2">
-                        <div class="input-group mb-3">
-                            <input type="text" class="form-control" placeholder="New Tag" aria-label="New Tag"
-                                   aria-describedby="add_new_tag_button">
-                            <button class="btn btn-outline-secondary" type="button"
-                                    onclick="javascript:add_new_tag(this)"><i class="bi bi-plus"></i></button>
-                        </div>
-                    </div>
+                    <button class="btn btn-secondary" type="button" id="apply_tag">Apply</button>
+                    <button class="btn btn-secondary" type="button" id="remove_tag">Remove</button>
                 </div>
-                <div class="card-footer row">
+                <div class="col-md-12"></div>
+                <div class="col-md-2">
+                    <h5 class="card-title">Create tag</h5>
                 </div>
-            </div>
-        </div>
-        <div class="col-md-12">
-            <div class="row gx-2 gy-2">
-                <div class="col-sm-2">
-                    <div class="card sticky-top mb-3" style="z-index: 0; background-color:Linen;">
-                        <div class="card-header">
-                            Filters
-                        </div>
-                        <div class="card-body">
-                            <h5 class="card-title">Search</h5>
-                            <div class="input-group mb-3">
-                                <input type="text" class="form-control" placeholder="Search library…"
-                                       aria-label="Search library"
-                                       id="library_search" onclick="javascript:this.select()">
-                            </div>
-                            <!-- Kept for table-view / legacy filter helpers -->
-                            <input type="hidden" id="container_txt_search" value="">
-                            <input type="hidden" id="content_txt_search" value="">
-                        </div>
-                        <div class="card-body">
-                            <h5 class="card-title">Libraries</h5>
-                            <div class="d-grid gap-2" id="library_shortcuts">
-                                <button type="button" class="btn btn-outline-secondary btn-sm" data-library="tv">TV Shows</button>
-                                <button type="button" class="btn btn-outline-secondary btn-sm" data-library="movies">Movies</button>
-                                <button type="button" class="btn btn-outline-secondary btn-sm" data-library="books">Books</button>
-                                <button type="button" class="btn btn-outline-success btn-sm" id="shuffle_play_button" title="Play a random item">
-                                    <i class="bi-shuffle"></i> Shuffle play
-                                </button>
-                            </div>
-                        </div>
-                        <div class="card-body">
-                            <h5 class="card-title">Tags</h5>
-                            <ul class="list-group" id="tag_list_group"></ul>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-sm-10">
-                    <div id="scan_toast" class="alert alert-success py-2 px-3" role="status" hidden></div>
-                    <div class="row">
-                        <div class="col-md-12" id="rainbow_loading_bar" hidden>
-                            <div class="spinner-grow" role="status" style="color: red;">
-                            </div>
-                            <div class="spinner-grow" role="status" style="color: orange;">
-                            </div>
-                            <div class="spinner-grow" role="status" style="color: yellow;">
-                            </div>
-                            <div class="spinner-grow" role="status" style="color: green;">
-                            </div>
-                            <div class="spinner-grow" role="status" style="color: blue;">
-                            </div>
-                            <div class="spinner-grow" role="status" style="color: purple;">
-                            </div>
-                            <div class="spinner-grow" role="status" style="color: pink;">
-                            </div>
-                            <div class="spinner-grow" role="status" style="color: cyan;">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="row gx-2 gy-2" id="mediaContentSelectDiv">
+                <div class="col-md-2">
+                    <div class="input-group mb-3">
+                        <input type="text" class="form-control" placeholder="New Tag" aria-label="New Tag"
+                               aria-describedby="add_new_tag_button">
+                        <button class="btn btn-outline-secondary" type="button"
+                                onclick="javascript:add_new_tag(this)"><i class="bi bi-plus"></i></button>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+    <div id="scan_toast" class="alert alert-success py-2 px-3 mx-4" role="status" hidden></div>
+    <div class="px-4" id="rainbow_loading_bar" hidden>
+        <div class="spinner-grow" role="status" style="color: red;"></div>
+        <div class="spinner-grow" role="status" style="color: orange;"></div>
+        <div class="spinner-grow" role="status" style="color: yellow;"></div>
+        <div class="spinner-grow" role="status" style="color: green;"></div>
+        <div class="spinner-grow" role="status" style="color: blue;"></div>
+        <div class="spinner-grow" role="status" style="color: purple;"></div>
+    </div>
+    <div id="mediaContentSelectDiv"></div>
+    <ul class="list-group" id="tag_list_group" hidden></ul>
+    <input type="hidden" id="container_txt_search" value="">
+    <input type="hidden" id="content_txt_search" value="">
 </div>
-<!-- Modal -->
+
+<div id="title_overlay" class="nf-overlay" hidden>
+    <div class="nf-overlay-backdrop" data-title-close="1"></div>
+    <div class="nf-overlay-panel" role="dialog" aria-modal="true" aria-labelledby="title_overlay_name">
+        <button type="button" class="nf-overlay-close" data-title-close="1" aria-label="Close">&times;</button>
+        <div class="nf-overlay-hero">
+            <img id="title_overlay_img" alt="" onerror="apply_default_image(this)">
+            <div class="nf-overlay-hero-text">
+                <h1 id="title_overlay_name"></h1>
+                <p id="title_overlay_desc"></p>
+                <div id="title_overlay_tags" class="nf-chips"></div>
+                <button type="button" id="title_overlay_play" class="nf-btn-play">Play</button>
+            </div>
+        </div>
+        <div id="title_overlay_seasons" class="nf-overlay-seasons"></div>
+        <div id="title_overlay_episodes" class="nf-overlay-episodes"></div>
+    </div>
+</div>
+
+<div id="player_overlay" class="nf-player-overlay" hidden>
+    <button type="button" class="nf-player-back" id="player_overlay_back">← Back</button>
+    <h2 id="content_title" class="h5 px-2"></h2>
+    <video controls preload="auto" autoplay class="object-fit-contain" id="local_video_player" hidden>
+        <source src="{{ local_play_url }}" type="video/mp4" id="local_video_player_src">
+    </video>
+</div>
+
+<div class="modal fade" id="scan_confirm_modal" tabindex="-1" aria-labelledby="scan_confirm_label" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h1 class="modal-title fs-5" id="scan_confirm_label">Scan media disks?</h1>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                This walks configured media folders and can take a while. Playback is not interrupted, but the catalog may change when the scan finishes.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="scan_media_button" data-bs-dismiss="modal">Start scan</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% include 'media_edit_modal.html' %}
 {% if button_dict is defined and system_mode == "SERVER" %}
 {% include 'bottom_navbar.html' %}
@@ -133,7 +116,6 @@
         type="text/javascript" language="javascript"></script>
 <script src="{{ url_for('static', filename='node_modules/bootstrap/dist/js/bootstrap.bundle.min.js') }}"
         type="text/javascript" language="javascript"></script>
-{# Phase 4: plain script modules (globals for template onclick handlers) #}
 <script src="{{ url_for('static', filename='js/shared.js') }}"></script>
 <script src="{{ url_for('static', filename='js/play_mode.js') }}"></script>
 <script src="{{ url_for('static', filename='js/chromecast.js') }}"></script>
@@ -142,6 +124,8 @@
 <script src="{{ url_for('static', filename='js/playback.js') }}"></script>
 <script src="{{ url_for('static', filename='js/scan.js') }}"></script>
 <script src="{{ url_for('static', filename='js/library.js') }}"></script>
+<script src="{{ url_for('static', filename='js/title.js') }}"></script>
+<script src="{{ url_for('static', filename='js/ui_nav.js') }}"></script>
 <script src="{{ url_for('static', filename='js/app_main.js') }}"></script>
 
 </body>

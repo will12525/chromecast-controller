@@ -1,11 +1,48 @@
-/* Phase 4: library.js — plain global script (no bundler). */
+/* Phase 4 + Netflix-like home: shelves, billboard, poster tiles. */
+let nfCardTemplatePromise = null;
+
+function isTablePage() {
+    return new URL(window.location.href).pathname === "/table";
+}
+
+function nfCardTemplate() {
+    if (!nfCardTemplatePromise) {
+        nfCardTemplatePromise = fetch("static/nf_card.html").then((r) => r.text());
+    }
+    return nfCardTemplatePromise;
+}
+
+function nfItemKind(data) {
+    if (data.kind === "container" || data.kind === "content") {
+        return data.kind;
+    }
+    if ("container_title" in data && data.container_title != null) {
+        return "container";
+    }
+    return "content";
+}
+
+function nfItemId(data) {
+    if (nfItemKind(data) === "container") {
+        return data.container_id || data.id;
+    }
+    return data.content_id || data.id;
+}
+
+function nfItemTitle(data) {
+    return data.container_title || data.content_title || data.show_title || "";
+}
+
 async function load_container(container_id) {
+    if (typeof openTitleOverlay === "function" && !isTablePage()) {
+        openTitleOverlay("container", container_id);
+        return;
+    }
     currentLibraryKey = null;
-    let data = {
-        "tag_list": [],
-        "container_dict": {"container_id": container_id}
-    };
-    queryDB(data)
+    queryDB({
+        tag_list: [],
+        container_dict: { container_id: container_id },
+    });
 }
 
 async function load_tv_shows() {
@@ -18,7 +55,14 @@ async function load_movies() {
 function load_library(libraryKey) {
     currentLibraryKey = libraryKey;
     setActiveLibraryNav(libraryKey);
-    const tag = LIBRARY_TAG_MAP[libraryKey] || libraryKey;
+    const billboard = document.getElementById("billboard");
+    if (billboard && !isTablePage()) {
+        billboard.hidden = true;
+        billboard.innerHTML = "";
+    }
+    if (typeof nfShowChipRow === "function") {
+        nfShowChipRow(true);
+    }
     const searchEl = document.getElementById("library_search");
     const search = searchEl ? searchEl.value.trim() : "";
     const containerSearch = document.getElementById("container_txt_search");
@@ -29,166 +73,246 @@ function load_library(libraryKey) {
     if (contentSearch) {
         contentSearch.value = search;
     }
-    // TV is container-first; movies/books are content-first. Pass both search fields.
     let data = {
-        "tag_list": [tag],
-        "container_txt_search": libraryKey === "tv" ? search : (search || null),
-        "content_txt_search": libraryKey !== "tv" ? search : (search || null),
-        "container_dict": {}
+        tag_list: [LIBRARY_TAG_MAP[libraryKey] || libraryKey],
+        tag_match: "all",
+        container_txt_search: libraryKey === "tv" ? search : (search || null),
+        content_txt_search: libraryKey !== "tv" ? search : (search || null),
+        container_dict: {},
     };
-    // For unified search inside a library, search both dimensions lightly
     if (search) {
         data.container_txt_search = search;
         data.content_txt_search = search;
     }
+    const extra = typeof nfSelectedChipTags === "function" ? nfSelectedChipTags() : [];
+    extra.forEach((tag) => {
+        if (data.tag_list.indexOf(tag) < 0) {
+            data.tag_list.push(tag);
+        }
+    });
     queryDB(data);
 }
 
-async function generate_media_container_for_shelf(content_data, media_card_template) {
-    const wrapper = document.createElement("div");
-    wrapper.className = "library-shelf-card";
-    wrapper.innerHTML = media_card_template;
-    const cardRoot = wrapper.querySelector("#content_container") || wrapper.firstElementChild;
+function nfProgressPct(data) {
+    const pos = parseFloat(data.last_position) || 0;
+    const dur = parseFloat(data.last_duration) || 0;
+    if (pos <= 0) {
+        return 0;
+    }
+    return dur > 0 ? Math.min(100, (pos / dur) * 100) : 10;
+}
+
+async function buildNfTile(content_data, options) {
+    const opts = options || {};
+    const html = await nfCardTemplate();
+    const wrap = document.createElement("div");
+    wrap.innerHTML = html.trim();
+    const tile = wrap.firstElementChild;
+    const kind = nfItemKind(content_data);
+    const id = nfItemId(content_data);
     const parentId = content_data.parent_container_id != null
         ? content_data.parent_container_id
         : null;
-
-    if ("container_title" in content_data) {
-        cardRoot.dataset.containerId = content_data.container_id || content_data.id;
-        const nav = wrapper.querySelector("#content_navigator");
-        nav.textContent = content_data.container_title;
-        nav.setAttribute("href", "javascript:load_container(" + content_data.id + ")");
-        if (typeof apply_show_title_to_card === "function") {
-            apply_show_title_to_card(wrapper, content_data);
-        }
-    } else if ("content_title" in content_data) {
-        const contentId = content_data.content_id || content_data.id;
-        cardRoot.dataset.contentId = contentId;
-        if (parentId != null) {
-            cardRoot.dataset.parentContainerId = parentId;
-        }
-        const nav = wrapper.querySelector("#content_navigator");
-        nav.textContent = content_data.content_title;
-        nav.setAttribute(
-            "href",
-            "javascript:play_media(" + contentId + ", " + (parentId != null ? parentId : "null") + ")"
-        );
-        if (typeof apply_show_title_to_card === "function") {
-            apply_show_title_to_card(wrapper, content_data);
-        }
-        // Play affordance on poster click
-        const img = wrapper.querySelector("#content_img");
-        if (img) {
-            img.classList.add("library-poster-playable");
-            img.title = "Play";
-            img.addEventListener("click", (e) => {
-                e.preventDefault();
-                play_media(contentId, parentId);
-            });
-        }
-        // Explicit play button in footer
-        const footerActions = wrapper.querySelector(".card-footer .d-grid");
-        if (footerActions) {
-            const playBtn = document.createElement("button");
-            playBtn.type = "button";
-            playBtn.className = "btn btn-success me-md-2";
-            playBtn.innerHTML = '<i class="bi-play-fill"></i>';
-            playBtn.title = "Play";
-            playBtn.addEventListener("click", () => play_media(contentId, parentId));
-            footerActions.insertBefore(playBtn, footerActions.firstChild);
-        }
+    tile.dataset.kind = kind;
+    tile.dataset.id = String(id);
+    if (parentId != null) {
+        tile.dataset.parentContainerId = String(parentId);
     }
-    if ("play_count" in content_data && content_data.play_count == 0) {
-        wrapper.querySelector("#new_tag").hidden = false;
+    if (opts.wide) {
+        tile.classList.add("nf-tile-wide");
     }
-    if ("user_tags" in content_data && content_data.user_tags) {
-        wrapper.querySelector("#card_tags").textContent = "Tags: " + content_data.user_tags;
+    const title = nfItemTitle(content_data);
+    tile.querySelector(".nf-tile-title").textContent = title;
+    const showTitle = content_data.show_title || content_data.tv_show_title || "";
+    const sub = tile.querySelector(".nf-tile-sub");
+    if (showTitle && showTitle !== title) {
+        sub.textContent = showTitle;
+    } else {
+        sub.textContent = "";
     }
-    if ("content_index" in content_data && content_data.content_index !== "" && content_data.content_index != null) {
-        wrapper.querySelector("#content_index").hidden = false;
-        wrapper.querySelector("#content_index").textContent = "Index: " + content_data.content_index;
-    }
-    wrapper.querySelector("#card_description").textContent = content_data.description || "";
+    const img = tile.querySelector(".nf-tile-img");
+    img.alt = title;
     if (content_data.img_src && content_data.img_url) {
-        wrapper.querySelector("#content_img").src = content_data.img_url;
+        img.src = content_data.img_url;
     }
-    wrapper.querySelector("#content_img").dataset.img_src = content_data.img_src || "";
-
-    // Progress bar for continue watching
-    const pos = parseFloat(content_data.last_position) || 0;
-    const dur = parseFloat(content_data.last_duration) || 0;
-    if (pos > 0) {
-        const pct = dur > 0 ? Math.min(100, (pos / dur) * 100) : 10;
-        const barWrap = document.createElement("div");
-        barWrap.className = "library-progress";
-        const bar = document.createElement("div");
-        bar.className = "library-progress-bar";
-        bar.style.width = pct + "%";
-        barWrap.appendChild(bar);
-        const body = wrapper.querySelector(".card-body");
-        if (body) {
-            body.appendChild(barWrap);
+    img.dataset.img_src = content_data.img_src || "";
+    const pct = nfProgressPct(content_data);
+    const progress = tile.querySelector(".nf-tile-progress");
+    if (pct > 0) {
+        progress.hidden = false;
+        progress.querySelector(".nf-tile-progress-bar").style.width = pct + "%";
+    }
+    if (content_data.play_count == 0) {
+        tile.querySelector(".nf-tile-new").hidden = false;
+    }
+    const playDirect = !!opts.playDirect && kind === "content";
+    const playBtn = tile.querySelector(".nf-tile-play");
+    if (playDirect) {
+        playBtn.classList.add("visible");
+        playBtn.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            play_media(id, parentId);
+        });
+    } else {
+        playBtn.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (typeof openTitleOverlay === "function") {
+                openTitleOverlay(kind, id);
+            }
+        });
+    }
+    tile.addEventListener("click", () => {
+        if (playDirect) {
+            play_media(id, parentId);
+            return;
         }
-    }
-    return wrapper;
+        if (typeof openTitleOverlay === "function" && !isTablePage()) {
+            openTitleOverlay(kind, id);
+            return;
+        }
+        if (kind === "container") {
+            load_container(id);
+        } else {
+            play_media(id, parentId);
+        }
+    });
+    return tile;
 }
 
 function build_shelf_section(title, emptyMessage) {
     const section = document.createElement("div");
-    section.className = "library-shelf col-md-12";
+    section.className = "library-shelf";
     const heading = document.createElement("div");
     heading.className = "library-shelf-title";
     heading.textContent = title;
+    const wrap = document.createElement("div");
+    wrap.className = "nf-row-wrap";
     const row = document.createElement("div");
     row.className = "library-shelf-row";
+    const left = document.createElement("button");
+    left.type = "button";
+    left.className = "nf-row-arrow left";
+    left.setAttribute("aria-label", "Scroll left");
+    left.textContent = "‹";
+    const right = document.createElement("button");
+    right.type = "button";
+    right.className = "nf-row-arrow right";
+    right.setAttribute("aria-label", "Scroll right");
+    right.textContent = "›";
+    left.addEventListener("click", () => {
+        row.scrollBy({ left: -Math.max(240, row.clientWidth * 0.8), behavior: "smooth" });
+    });
+    right.addEventListener("click", () => {
+        row.scrollBy({ left: Math.max(240, row.clientWidth * 0.8), behavior: "smooth" });
+    });
+    wrap.appendChild(left);
+    wrap.appendChild(row);
+    wrap.appendChild(right);
     section.appendChild(heading);
-    section.appendChild(row);
+    section.appendChild(wrap);
     section._row = row;
     section._emptyMessage = emptyMessage;
     return section;
 }
 
-async function render_library_home(homeData) {
-    const card_res = await fetch("static/media_card.html");
-    const media_card_template = await card_res.text();
-    const fragment = document.createDocumentFragment();
+function pickBillboardItem(homeData) {
+    const watching = homeData.continue_watching || [];
+    const added = homeData.recently_added || [];
+    const withArt = watching.find((item) => item.img_url) || added.find((item) => item.img_url);
+    return withArt || watching[0] || added[0] || null;
+}
 
-    // Libraries shortcut shelf
-    const libSection = build_shelf_section("Libraries", "No libraries configured");
-    (homeData.libraries || []).forEach((lib) => {
-        const tile = document.createElement("div");
-        tile.className = "library-tile";
-        tile.innerHTML =
-            '<div class="card" style="background-color:Linen;"><div class="card-body">' +
-            '<h5 class="card-title"></h5><p class="card-text text-muted library-count"></p></div></div>';
-        tile.querySelector(".card-title").textContent = lib.title;
-        tile.querySelector(".library-count").textContent = (lib.count || 0) + " items";
-        tile.addEventListener("click", () => load_library(lib.key));
-        libSection._row.appendChild(tile);
+function render_billboard(item) {
+    const el = document.getElementById("billboard");
+    if (!el) {
+        return;
+    }
+    if (!item || isTablePage()) {
+        el.hidden = true;
+        el.innerHTML = "";
+        return;
+    }
+    el.hidden = false;
+    const kind = nfItemKind(item);
+    const id = nfItemId(item);
+    const title = nfItemTitle(item);
+    const desc = item.description || "";
+    const img = item.img_url || "";
+    el.innerHTML =
+        (img ? '<img class="nf-billboard-img" alt="">' : "") +
+        '<div class="nf-billboard-fade"></div>' +
+        '<div class="nf-billboard-copy">' +
+        '<h1 class="nf-billboard-title"></h1>' +
+        '<p class="nf-billboard-desc"></p>' +
+        '<div><button type="button" class="nf-btn-play" id="billboard_play"></button>' +
+        '<button type="button" class="nf-btn-info" id="billboard_info">More Info</button></div>' +
+        "</div>";
+    if (img) {
+        const imgEl = el.querySelector(".nf-billboard-img");
+        imgEl.src = img;
+        imgEl.alt = title;
+        imgEl.onerror = function () {
+            apply_default_image(this);
+        };
+    }
+    el.querySelector(".nf-billboard-title").textContent = title;
+    el.querySelector(".nf-billboard-desc").textContent = desc;
+    const playBtn = el.querySelector("#billboard_play");
+    playBtn.textContent = typeof playTargetLabel === "function" ? playTargetLabel() : "Play";
+    const parentId = item.parent_container_id != null ? item.parent_container_id : null;
+    playBtn.addEventListener("click", () => {
+        if (kind === "content") {
+            play_media(id, parentId);
+        } else if (typeof openTitleOverlay === "function") {
+            openTitleOverlay(kind, id);
+        }
     });
-    fragment.appendChild(libSection);
+    el.querySelector("#billboard_info").addEventListener("click", () => {
+        if (typeof openTitleOverlay === "function") {
+            openTitleOverlay(kind, id);
+        }
+    });
+}
+
+async function fill_shelf_row(section, items, options) {
+    const opts = options || {};
+    if (!items.length) {
+        const empty = document.createElement("div");
+        empty.className = "library-empty";
+        empty.textContent = section._emptyMessage || "";
+        section._row.appendChild(empty);
+        return;
+    }
+    for (const item of items) {
+        section._row.appendChild(await buildNfTile(item, opts));
+    }
+}
+
+async function render_library_home(homeData) {
+    if (typeof nfShowChipRow === "function") {
+        nfShowChipRow(false);
+    }
+    const fragment = document.createDocumentFragment();
+    render_billboard(pickBillboardItem(homeData));
 
     const shelves = [
-        {key: "continue_watching", title: "Continue Watching", empty: "Nothing in progress"},
-        {key: "recently_added", title: "Recently Added", empty: "Library is empty — try Scan Media"},
-        {key: "recently_played", title: "Recently Played", empty: "Nothing played yet"},
+        { key: "continue_watching", title: "Continue Watching", empty: "Nothing in progress", playDirect: true, wide: true },
+        { key: "recently_added", title: "Recently Added", empty: "Library is empty — try Scan Media" },
+        { key: "recently_played", title: "Recently Played", empty: "Nothing played yet" },
     ];
-
     for (const shelf of shelves) {
         const section = build_shelf_section(shelf.title, shelf.empty);
-        const items = homeData[shelf.key] || [];
-        if (!items.length) {
-            const empty = document.createElement("div");
-            empty.className = "library-empty";
-            empty.textContent = shelf.empty;
-            section._row.appendChild(empty);
-        } else {
-            for (const item of items) {
-                section._row.appendChild(
-                    await generate_media_container_for_shelf(item, media_card_template)
-                );
-            }
-        }
+        await fill_shelf_row(section, homeData[shelf.key] || [], {
+            playDirect: !!shelf.playDirect,
+            wide: !!shelf.wide,
+        });
+        fragment.appendChild(section);
+    }
+    for (const tagShelf of homeData.tag_shelves || []) {
+        const section = build_shelf_section(tagShelf.tag, "No titles");
+        await fill_shelf_row(section, tagShelf.items || [], {});
         fragment.appendChild(section);
     }
 
@@ -202,7 +326,6 @@ async function render_library_home(homeData) {
 }
 
 function setActiveLibraryNav(activeKey) {
-    // activeKey: null = home, or tv|movies|books
     const navMap = {
         home: document.getElementById("nav_home"),
         tv: document.getElementById("nav_library_tv"),
@@ -221,13 +344,6 @@ function setActiveLibraryNav(activeKey) {
             el.removeAttribute("aria-current");
         }
     });
-    // Mirror active state on sidebar library shortcuts
-    const shortcuts = document.getElementById("library_shortcuts");
-    if (shortcuts) {
-        shortcuts.querySelectorAll("[data-library]").forEach((btn) => {
-            btn.classList.toggle("active", btn.dataset.library === activeKey);
-        });
-    }
 }
 
 async function load_library_home() {
@@ -258,6 +374,13 @@ function onLibrarySearchInput() {
         const searchEl = document.getElementById("library_search");
         const search = searchEl ? searchEl.value.trim() : "";
         if (!search) {
+            if (typeof nfSetHash === "function" && !isTablePage()) {
+                if (currentLibraryKey) {
+                    nfSetHash("/" + currentLibraryKey);
+                } else {
+                    nfSetHash("/");
+                }
+            }
             if (currentLibraryKey) {
                 load_library(currentLibraryKey);
             } else {
@@ -265,7 +388,9 @@ function onLibrarySearchInput() {
             }
             return;
         }
-        // Unified search across containers + content (and optional current tags)
+        if (typeof nfSetHash === "function" && !isTablePage()) {
+            nfSetHash("/search?q=" + encodeURIComponent(search));
+        }
         const containerSearch = document.getElementById("container_txt_search");
         const contentSearch = document.getElementById("content_txt_search");
         if (containerSearch) {
@@ -281,8 +406,15 @@ function onLibrarySearchInput() {
                 tags = [LIBRARY_TAG_MAP[currentLibraryKey]];
             }
         }
+        const extra = typeof nfSelectedChipTags === "function" ? nfSelectedChipTags() : [];
+        extra.forEach((tag) => {
+            if (tags.indexOf(tag) < 0) {
+                tags.push(tag);
+            }
+        });
         queryDB({
             tag_list: tags,
+            tag_match: tags.length ? "all" : undefined,
             container_txt_search: search,
             content_txt_search: search,
             container_dict: {},

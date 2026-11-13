@@ -43,6 +43,7 @@ def query_media_db():
                     json_request.get("container_dict", {}),
                     json_request.get("container_txt_search"),
                     json_request.get("content_txt_search"),
+                    match_all=json_request.get("tag_match") == "all",
                 )
             )
         except Exception as e:
@@ -331,6 +332,28 @@ def library_home():
     finally:
         db_connection.close()
     return data, 200
+
+
+@main_bp.route(APIEndpoints.LIBRARY_TITLE.value, methods=["GET"])
+def library_title():
+    kind = (request.args.get("kind") or "").strip()
+    item_id = request.args.get("id")
+    if kind not in ("container", "content") or not item_id:
+        return {"status": "error", "message": "kind=container|content and id required"}, 400
+    db_connection = DBHandler()
+    try:
+        db_connection.open()
+        data = db_connection.get_library_title(kind, item_id)
+        if not data:
+            return {"status": "error", "message": "not found"}, 404
+        return data, 200
+    except Exception as e:
+        print("Exception class: ", e.__class__)
+        print(f"ERROR: {e}")
+        print(traceback.print_exc())
+        return {"status": "error", "message": str(e)}, 500
+    finally:
+        db_connection.close()
 
 
 @main_bp.route(APIEndpoints.PLAYBACK_PROGRESS.value, methods=["POST"])

@@ -246,102 +246,33 @@ async function update_media_table(response_data) {
     });
 }
 async function update_media_container(response_data) {
-    const header_res = await fetch("static/media_list_header.html")
-    const media_list_template = await header_res.text()
-    const card_res = await fetch("static/media_card.html")
-    const media_card_template = await card_res.text()
-
-    const fragment = document.createDocumentFragment();
-    if ('parent_containers' in response_data) {
-        const template = document.createElement("div");
-        template.className = "col-md-12";
-        template.innerHTML = media_list_template;
-
-        const parent_containers = response_data["parent_containers"]
-        const parent_container = parent_containers[parent_containers.length - 1];
-        const nav_item_container = template.querySelector("#nav_item_container")
-        for (const content_data of response_data["parent_containers"]) {
-            nav_item = document.createElement("li");
-            nav_item.className = "nav-item";
-            nav_item_a = document.createElement("a");
-            nav_item_a.className = "nav-link";
-            nav_item_a.setAttribute('aria-current', true)
-            nav_item_a.textContent = content_data["container_title"];
-            nav_item_a.setAttribute('href', "javascript:load_container(" + content_data["id"] + ")")
-            nav_item.appendChild(nav_item_a)
-            nav_item_container.appendChild(nav_item)
-        }
-
-        if (parent_container["container_id"]) {
-            template.querySelector("#content_container").dataset.containerId = parent_container["container_id"];
-        } else {
-            template.querySelector("#content_container").dataset.containerId = parent_container["id"];
-        }
-        if ('content_index' in parent_container) {
-            template.querySelector("#content_index").hidden = false
-            template.querySelector("#content_index").textContent = "Index: " + parent_container["content_index"]
-        }
-        template.querySelector("#card_description").textContent = parent_container["description"];
-        if ('img_src' in parent_container && 'img_url' in parent_container) {
-            template.querySelector("#content_img").src = parent_container['img_url'];
-        }
-        template.querySelector("#content_img").dataset.img_src = parent_container['img_src'];
-        if ('user_tags' in parent_container) {
-            template.querySelector("#card_tags").textContent = "Tags: " + parent_container["user_tags"]
-        }
-        fragment.appendChild(template)
+    const billboard = document.getElementById("billboard");
+    if (billboard) {
+        billboard.hidden = true;
     }
-    if ('containers' in response_data) {
-        for (const content_data of response_data["containers"]) {
-            generate_media_container(content_data, media_card_template, fragment)
-        }
-    }
-    if ('content' in response_data) {
-        for (const content_data of response_data["content"]) {
-            generate_media_container(content_data, media_card_template, fragment)
+    const grid = document.createElement("div");
+    grid.className = "nf-grid";
+    const items = [];
+    (response_data.containers || []).forEach((row) => items.push(row));
+    (response_data.content || []).forEach((row) => items.push(row));
+    if (!items.length) {
+        const empty = document.createElement("div");
+        empty.className = "library-empty";
+        empty.textContent = "No titles match.";
+        grid.appendChild(empty);
+    } else if (typeof buildNfTile === "function") {
+        for (const row of items) {
+            grid.appendChild(await buildNfTile(row, {}));
         }
     }
     const mainContent = document.getElementById("mediaContentSelectDiv");
     mainContent.innerHTML = "";
-    document.getElementById("mediaContentSelectDiv").appendChild(fragment);
-
-    const contentEditors = document.querySelectorAll("#content_editor");
-    contentEditors.forEach(editor => {
-        editor.addEventListener('click', (event) => {
-            const cardElement = event.target.closest('.card');
-            if (cardElement) {
-                let data = {
-                    "tag_list": []
-                };
-                const container_id = cardElement?.dataset.containerId;
-                const content_id = cardElement?.dataset.contentId;
-                if (container_id != null) {
-                    data["container_dict"] = {"container_id": container_id}
-                    queryDBLocal(data).then(response_data => {
-                        if (response_data["parent_containers"][0] !== undefined) {
-                            const content_data = response_data["parent_containers"][response_data["parent_containers"].length - 1];
-                            edit_metadata_modal_open({"container_id": container_id}, content_data["container_title"], content_data["img_src"], content_data["description"], content_data["user_tags"], cardElement);
-                        }
-                    });
-                }
-                if (content_id != null) {
-                    data["container_dict"] = {"content_id": content_id}
-                    queryDBLocal(data).then(response_data => {
-                        if (response_data["content"][0] !== undefined) {
-                            content_data = response_data["content"][0]
-                            edit_metadata_modal_open({"content_id": content_id}, content_data["content_title"], content_data["img_src"], content_data["description"], content_data["user_tags"], cardElement);
-                        }
-                    });
-                }
-            }
-        });
-    });
-
-    document.getElementById("rainbow_loading_bar").hidden = true;
-    window.scroll({
-        top: 0,
-        behavior: 'smooth'
-    });
+    mainContent.appendChild(grid);
+    const loading = document.getElementById("rainbow_loading_bar");
+    if (loading) {
+        loading.hidden = true;
+    }
+    window.scroll({ top: 0, behavior: "smooth" });
 }
 
 async function queryDB(data) {

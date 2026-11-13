@@ -164,6 +164,9 @@ async function playerCommand(cmdNameOrValue, enumValue) {
                 try {
                     video.currentTime = 0;
                 } catch (e) { /* ignore */ }
+                if (typeof closePlayerOverlay === "function") {
+                    closePlayerOverlay();
+                }
                 break;
             case "CMD_REWIND_15":
                 playerLocalRelativeSeek(-15);

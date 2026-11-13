@@ -48,6 +48,7 @@ class APIEndpoints(Enum):
     SERVER_CONNECT = "/server_connect"
     REQUEST_CONTENT = "/request_content"
     LIBRARY_HOME = "/library/home"
+    LIBRARY_TITLE = "/library/title"
     PLAYBACK_PROGRESS = "/playback_progress"
     CONNECT_LOCAL_PLAYER = "/connect_local_player"
     SCAN_STATUS = "/scan_status"

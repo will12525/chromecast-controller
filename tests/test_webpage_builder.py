@@ -48,8 +48,7 @@ class TestWebpageBuilder(TestCase):
     app = None
 
     def setUp(self) -> None:
-        if self.DB_PATH.exists():
-            self.DB_PATH.unlink()
+        pytest_mocks.use_temp_catalog(self)
         pytest_mocks.patch_get_file_hash(self)
         pytest_mocks.patch_get_ffmpeg_metadata(self)
         pytest_mocks.patch_extract_subclip(self)

@@ -5,7 +5,12 @@ import unittest
 from unittest import mock
 
 from app.database.db_access import DBType
-from app.database.db_getter import DBHandler, LIBRARY_TAG_MAP
+from app.database.db_getter import (
+    DBHandler,
+    LIBRARY_TAG_MAP,
+    TAG_SHELF_MAX_TAGS,
+    TYPE_TAG_TITLES,
+)
 from app.utils import backend_handler
 
 
@@ -235,6 +240,110 @@ class TestLibraryHomeAndProgress(unittest.TestCase):
         self.assertGreaterEqual(movies["count"], 3)
         tv = next(lib for lib in home["libraries"] if lib["key"] == "tv")
         self.assertGreaterEqual(tv["count"], 1)
+        self.assertIn("tag_shelves", home)
+        self.assertIsInstance(home["tag_shelves"], list)
+
+    def _insert_user_tag_on_content(self, tag_title, content_id):
+        tag = {"tag_title": tag_title}
+        self.db.insert_tag(tag)
+        self.db.add_tag_to_content(
+            {"user_tags_id": tag["id"], "content_id": content_id}
+        )
+        return tag
+
+    def _insert_user_tag_on_container(self, tag_title, container_id):
+        tag = {"tag_title": tag_title}
+        self.db.insert_tag(tag)
+        self.db.add_tag_to_container(
+            {"user_tags_id": tag["id"], "container_id": container_id}
+        )
+        return tag
+
+    def test_query_db_match_all_tags_narrows(self):
+        self._insert_user_tag_on_content("broken?", self.content_1_id)
+        both = self.db.query_db(
+            ["movie", "broken?"], {}, None, None, match_all=True
+        )
+        both_ids = [row["id"] for row in both["content"]]
+        self.assertIn(self.content_1_id, both_ids)
+        self.assertNotIn(self.content_2_id, both_ids)
+        either = self.db.query_db(
+            ["movie", "broken?"], {}, None, None, match_all=False
+        )
+        either_ids = [row["id"] for row in either["content"]]
+        self.assertIn(self.content_1_id, either_ids)
+        self.assertIn(self.content_2_id, either_ids)
+        self._insert_user_tag_on_content("broken?", self.episode_id)
+        shows = self.db.query_db(
+            ["tv show", "broken?"], {}, None, None, match_all=True
+        )
+        show_ids = [row["id"] for row in shows.get("containers") or []]
+        self.assertIn(self.container_id, show_ids)
+        content_ids = [row["id"] for row in shows.get("content") or []]
+        self.assertNotIn(self.episode_id, content_ids)
+
+    def test_tag_shelves_exclude_type_tags(self):
+        home = self.db.get_library_home(limit=10)
+        names = [shelf["tag"] for shelf in home["tag_shelves"]]
+        for type_tag in TYPE_TAG_TITLES:
+            self.assertNotIn(type_tag, names)
+
+    def test_tag_shelves_promote_tagged_episodes_to_show(self):
+        self._insert_user_tag_on_content("disney", self.episode_id)
+        self._insert_user_tag_on_content("disney", self.content_1_id)
+        shelves = self.db.list_tag_shelves(max_tags=12, item_limit=20)
+        disney = next((s for s in shelves if s["tag"] == "disney"), None)
+        self.assertIsNotNone(disney)
+        kinds_and_titles = [
+            (item.get("kind"), item.get("container_title") or item.get("content_title"))
+            for item in disney["items"]
+        ]
+        self.assertIn(("container", "Demo Show"), kinds_and_titles)
+        episode_titles = [
+            item.get("content_title")
+            for item in disney["items"]
+            if item.get("kind") == "content"
+        ]
+        self.assertNotIn("Demo Show - s01e01", episode_titles)
+        self.assertEqual(disney["count"], len(disney["items"]))
+        self.assertGreaterEqual(disney["count"], 2)
+
+    def test_tag_shelves_cap_and_rank_by_count(self):
+        for i in range(TAG_SHELF_MAX_TAGS + 3):
+            self._insert_user_tag_on_content(f"genre-{i:02d}", self.content_1_id)
+        # One extra item so genre-00 ranks above the singleton tags
+        self._insert_user_tag_on_content("genre-00", self.content_2_id)
+        shelves = self.db.list_tag_shelves(max_tags=TAG_SHELF_MAX_TAGS, item_limit=20)
+        self.assertLessEqual(len(shelves), TAG_SHELF_MAX_TAGS)
+        names = [s["tag"] for s in shelves]
+        for type_tag in TYPE_TAG_TITLES:
+            self.assertNotIn(type_tag, names)
+        self.assertEqual(shelves[0]["tag"], "genre-00")
+        self.assertEqual(shelves[0]["count"], 2)
+
+    def test_get_library_title_show_includes_episode(self):
+        payload = self.db.get_library_title("container", self.container_id)
+        self.assertEqual(payload["kind"], "container")
+        self.assertEqual(payload["container_title"], "Demo Show")
+        episode_ids = [ep["id"] for ep in payload["episodes"]]
+        self.assertIn(self.episode_id, episode_ids)
+
+    def test_get_library_title_movie(self):
+        payload = self.db.get_library_title("content", self.content_1_id)
+        self.assertEqual(payload["kind"], "content")
+        self.assertEqual(payload["content_title"], "Alpha")
+        self.assertIsNone(payload.get("show_container_id") or None)
+
+    def test_get_library_title_resume_episode(self):
+        self.db.update_playback_progress(self.episode_id, 90, 600)
+        payload = self.db.get_library_title("container", self.container_id)
+        resume = payload.get("resume_content")
+        self.assertIsNotNone(resume)
+        self.assertEqual(resume["id"], self.episode_id)
+
+    def test_get_library_title_invalid(self):
+        self.assertIsNone(self.db.get_library_title("container", 99999))
+        self.assertIsNone(self.db.get_library_title("nope", self.content_1_id))
 
     def test_migration_from_v1(self):
         """Create a v1-shaped table and migrate through v2 to v3."""

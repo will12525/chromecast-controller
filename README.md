@@ -2,12 +2,12 @@
 
 Self-hosted LAN media library with Chromecast casting, a browser player, and an optional MP4 splitter editor.
 
-Inspired by a Plex-style **Home** (Continue Watching, Recently Added, library shortcuts), kept small with **YAGNI/KISS**: local MP4 files, SQLite catalog, no transcoding or multi-user stack.
+Inspired by a streaming-service **Home** (billboard, Continue Watching, tag rows as genres), kept small with **YAGNI/KISS**: local MP4 files, SQLite catalog, no transcoding or multi-user stack.
 
 ## Features
 
-- **Library home** — shelves for Continue Watching, Recently Added, Recently Played, and TV / Movies / Books
-- **Browse** — tag filters, unified search, card grid and table view
+- **Library home** — billboard, Continue Watching / Recently Added / Recently Played, and user-tag genre rows
+- **Browse** — TV / Movies / Books grids, tag chips, unified search, title overlay, operator Table view
 - **Play** — Chromecast (device UUID) and/or local HTML5; multi-device connect with stream modes; sequential next-in-show and tag-random playlists; resume position
 - **Catalog** — scan disks for TV / movies / books by filename convention
 - **Editor (SERVER mode)** — split raw MP4s into library layout with ffmpeg
@@ -146,13 +146,17 @@ Browser scripts are plain globals (no bundler) under `app/static/js/`:
 | `shared.js` | State, constants, `fetchAndSetData` |
 | `chromecast.js` | Multi-device cast menu, connect, stream mode |
 | `player_controls.js` | Unified Local + Cast transport (bottom bar) |
-| `browse.js` | Cards, table, query_db, tags/modal |
-| `playback.js` | Play, resume progress, shuffle |
-| `scan.js` | Scan toast + status polling |
-| `library.js` | Home shelves, library nav, search |
+| `browse.js` | Poster grid, table, query_db, tags/modal |
+| `playback.js` | Play, resume progress, player overlay |
+| `scan.js` | Scan toast + status polling (confirm in Manage) |
+| `library.js` | Billboard, home rows, library nav, search |
+| `title.js` | Title overlay (`GET /library/title`) |
+| `ui_nav.js` | Hash routes, tag chips, nav |
 | `app_main.js` | DOMContentLoaded / navbar wiring |
 
 Load order is set in `index.html` / `editor.html`. Template `onclick` handlers still call global function names.
+
+Chromecast control stays on the Flask server (`pychromecast`). The browser does not host a Cast instance. Manage (gear) holds Table, Editor, and Scan-with-confirm. Title overlays have no metadata pencils — edit covers on `/table`.
 
 Schema migrations run on app start via `DBHandler.create_db()` (currently version **3**: playback progress + `added_at` for Recently Added).
 

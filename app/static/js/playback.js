@@ -83,6 +83,9 @@ async function update_local_media_player(response_data) {
         videoPlayer.pause();
         videoPlayer.hidden = false;
         videoPlayer.style.visibility = 'visible';
+        if (typeof openPlayerOverlay === "function") {
+            openPlayerOverlay();
+        }
         videoSource.setAttribute('src', response_data['local_play_url']);
         if (response_data["id"] !== undefined) {
             videoPlayer.dataset.content_id = response_data['id'];
@@ -106,7 +109,6 @@ async function update_local_media_player(response_data) {
         const resumeDuration = response_data["last_duration"];
         videoPlayer.dataset.resumeAt = shouldResume(resumeAt, resumeDuration) ? String(resumeAt) : "";
         videoPlayer.load();
-        videoPlayer.scrollIntoView();
         const onLoaded = () => {
             videoPlayer.removeEventListener("loadedmetadata", onLoaded);
             if (videoPlayer.dataset.resumeAt) {
@@ -125,6 +127,35 @@ async function update_local_media_player(response_data) {
         }
     } catch (error) {
         console.error('Error playing video:', error);
+    }
+}
+
+function openPlayerOverlay() {
+    const overlay = document.getElementById("player_overlay");
+    if (overlay) {
+        overlay.hidden = false;
+    }
+    const video = document.getElementById("local_video_player");
+    if (video) {
+        video.hidden = false;
+    }
+    if (typeof nfSetHash === "function" && typeof isTablePage === "function" && !isTablePage()) {
+        nfSetHash("/play");
+    }
+}
+
+function closePlayerOverlay(opts) {
+    const overlay = document.getElementById("player_overlay");
+    if (overlay) {
+        overlay.hidden = true;
+    }
+    const skipHash = opts && opts.skipHash;
+    if (!skipHash && typeof nfSetHash === "function" && typeof isTablePage === "function" && !isTablePage()) {
+        if (currentLibraryKey) {
+            nfSetHash("/" + currentLibraryKey);
+        } else {
+            nfSetHash("/");
+        }
     }
 }
 

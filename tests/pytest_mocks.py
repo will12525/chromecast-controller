@@ -102,3 +102,28 @@ def patch_load_json_file_content(test_class):
     test_class.load_json_file_content = patcher.start()
     test_class.load_json_file_content.return_value = test_config_file
     test_class.addCleanup(patcher.stop)
+
+
+def use_temp_catalog(test_case):
+    """Point DBConnection at a temp file so a test cannot delete the live catalog."""
+    import tempfile
+
+    from app.database.db_access import DBConnection
+
+    test_case._prev_db_file = DBConnection.DB_FILE_NAME
+    fd, path = tempfile.mkstemp(prefix="cc-test-", suffix=".db")
+    os.close(fd)
+    os.remove(path)
+    DBConnection.DB_FILE_NAME = path
+    test_case.DB_PATH = pathlib.Path(path)
+    test_case.addCleanup(_restore_live_catalog, test_case)
+
+
+def _restore_live_catalog(test_case):
+    from app.database.db_access import DBConnection
+
+    DBConnection.DB_FILE_NAME = test_case._prev_db_file
+    path = getattr(test_case, "DB_PATH", None)
+    live = test_case._prev_db_file
+    if path is not None and str(path) != live and os.path.exists(path):
+        os.remove(path)

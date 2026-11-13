@@ -77,44 +77,44 @@ function setup_media_page() {
     if (librarySearch) {
         librarySearch.addEventListener("input", onLibrarySearchInput);
     }
-    const shortcuts = document.getElementById("library_shortcuts");
-    if (shortcuts) {
-        shortcuts.querySelectorAll("[data-library]").forEach((btn) => {
-            btn.addEventListener("click", () => load_library(btn.dataset.library));
-        });
-    }
-    const shuffleBtn = document.getElementById("shuffle_play_button");
-    if (shuffleBtn) {
-        shuffleBtn.addEventListener("click", shuffle_library_play);
-    }
-    const navHome = document.getElementById("nav_home");
-    if (navHome) {
-        navHome.addEventListener("click", (e) => {
-            if (new URL(window.location.href).pathname === "/" || new URL(window.location.href).pathname === "") {
-                e.preventDefault();
-                load_library_home();
+    const playerBack = document.getElementById("player_overlay_back");
+    if (playerBack) {
+        playerBack.addEventListener("click", () => {
+            const video = document.getElementById("local_video_player");
+            if (video) {
+                video.pause();
+            }
+            if (typeof closePlayerOverlay === "function") {
+                closePlayerOverlay();
             }
         });
     }
-    ["tv", "movies", "books"].forEach((key) => {
-        const el = document.getElementById("nav_library_" + key);
-        if (el) {
-            el.addEventListener("click", (e) => {
-                e.preventDefault();
-                // If on table page, still use query path
-                load_library(key);
-            });
-        }
-    });
 
     const pathname = new URL(window.location.href).pathname;
     if (pathname === "/table") {
+        document.body.classList.add("nf-table-page");
+        ["tv", "movies", "books"].forEach((key) => {
+            const el = document.getElementById("nav_library_" + key);
+            if (el) {
+                el.addEventListener("click", (e) => {
+                    e.preventDefault();
+                    load_library(key);
+                });
+            }
+        });
         load_tv_shows();
+    } else if (typeof setupNfNav === "function") {
+        setupNfNav();
+        nfApplyRoute();
     } else {
         load_library_home();
     }
-    get_tag_list().then(tagTitles => {
-        createTagElements(tagTitles)
+    get_tag_list().then((tagTitles) => {
+        if (typeof nfRenderChips === "function") {
+            nfRenderChips(tagTitles || []);
+        } else {
+            createTagElements(tagTitles);
+        }
     });
 }
 

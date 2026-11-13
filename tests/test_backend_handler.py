@@ -25,8 +25,7 @@ class TestSetupDB(TestCase):
         pytest_mocks.patch_extract_subclip(self)
         pytest_mocks.patch_update_processed_file(self)
         pytest_mocks.patch_load_json_file_content(self)
-        if os.path.exists(self.DB_PATH):
-            os.remove(self.DB_PATH)
+        pytest_mocks.use_temp_catalog(self)
 
     def test_setup_db(self):
         assert not os.path.exists(self.DB_PATH)

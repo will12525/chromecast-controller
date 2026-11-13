@@ -91,7 +91,7 @@ Do not commit real LAN secrets or machine-specific paths into docs as requiremen
 - **No bundler, no ES modules required.** Scripts are plain globals so template `onclick` handlers keep working.
 - Load order (templates must preserve):
 
-  `shared.js` → `chromecast.js` → `browse.js` → `playback.js` → `scan.js` → `library.js` → `app_main.js`
+  `shared.js` → `play_mode.js` → `chromecast.js` → `player_controls.js` → `browse.js` → `playback.js` → `scan.js` → `library.js` → `title.js` → `ui_nav.js` → `app_main.js`
 
 - `app/static/app.js` is a thin legacy stub — do not re-monolith UI there.
 - Editor page also loads `app_editor.js` after the shared chain.

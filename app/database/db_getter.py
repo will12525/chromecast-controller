@@ -22,6 +22,11 @@ LIBRARY_TITLES = {
     "books": "Books",
 }
 
+# Scanner/library type tags are nav categories, not genre rows.
+TYPE_TAG_TITLES = frozenset(LIBRARY_TAG_MAP.values())
+TAG_SHELF_MAX_TAGS = 12
+TAG_SHELF_ITEM_LIMIT = 20
+
 
 def build_tag_clause(table_name, tag_list, params):
     placeholders = ', '.join([f':tag_{i}' for i in range(len(tag_list))])
@@ -443,7 +448,233 @@ class DBHandler(DBConnection):
             "recently_added": self.list_recently_added(limit=limit),
             "recently_played": self.list_recently_played(limit=limit),
             "libraries": self.get_library_summaries(),
+            "tag_shelves": self.list_tag_shelves(
+                max_tags=TAG_SHELF_MAX_TAGS, item_limit=limit
+            ),
         }
+
+    def _container_parent_map(self):
+        rows = self.get_data_from_db(db_queries.LIST_CONTAINER_PARENTS)
+        return {
+            row["container_id"]: row["parent_container_id"]
+            for row in rows
+            if row.get("container_id")
+        }
+
+    def _content_parent_map(self):
+        """First parent_container_id per content (lowest id, matching shelf SQL)."""
+        rows = self.get_data_from_db(db_queries.LIST_CONTENT_PARENTS)
+        parents = {}
+        for row in rows:
+            cid = row.get("content_id")
+            if cid is None or cid in parents:
+                continue
+            parents[cid] = row.get("parent_container_id")
+        return parents
+
+    def _root_container_id(self, container_id, parent_map):
+        current = container_id
+        seen = set()
+        while current and current not in seen:
+            seen.add(current)
+            parent = parent_map.get(current)
+            if not parent:
+                return current
+            current = parent
+        return container_id
+
+    def _container_as_shelf_item(self, container):
+        item = dict(container)
+        item["kind"] = "container"
+        item["container_id"] = container.get("id")
+        item["container_title"] = container.get("container_title")
+        return item
+
+    def _content_as_shelf_item(self, content):
+        item = dict(content)
+        item["kind"] = "content"
+        item["content_id"] = content.get("id")
+        item["content_title"] = content.get("content_title")
+        return item
+
+    def list_tag_shelves(self, max_tags=TAG_SHELF_MAX_TAGS, item_limit=TAG_SHELF_ITEM_LIMIT):
+        """Genre rows: user tags ranked by distinct promoted titles (show/movie/book)."""
+        type_list = list(TYPE_TAG_TITLES)
+        placeholders = ", ".join([f":type_{i}" for i in range(len(type_list))])
+        params = {f"type_{i}": title for i, title in enumerate(type_list)}
+        query = db_queries.LIST_USER_TAG_LINKS.format(type_placeholders=placeholders)
+        links = self.get_data_from_db(query, params)
+        if not links:
+            return []
+
+        parent_map = self._container_parent_map()
+        content_parents = self._content_parent_map()
+        containers_by_id = {
+            row["id"]: row for row in self.get_data_from_db("SELECT * FROM container;")
+        }
+        content_ids_needed = {
+            link["content_id"] for link in links if link.get("content_id")
+        }
+        content_by_id = {}
+        if content_ids_needed:
+            placeholders_c = ", ".join(
+                [f":c_{i}" for i in range(len(content_ids_needed))]
+            )
+            cparams = {f"c_{i}": cid for i, cid in enumerate(content_ids_needed)}
+            for row in self.get_data_from_db(
+                "SELECT content.*, "
+                "content_directory.content_url || '/' || content.img_src AS img_url "
+                "FROM content INNER JOIN content_directory "
+                "ON content.content_directory_id = content_directory.id "
+                f"WHERE content.id IN ({placeholders_c});",
+                cparams,
+            ):
+                content_by_id[row["id"]] = row
+
+        per_tag = {}
+        for link in links:
+            tag = link.get("tag_title")
+            if not tag:
+                continue
+            bucket = per_tag.setdefault(tag, {"container_ids": set(), "content_ids": set()})
+            if link.get("container_id"):
+                bucket["container_ids"].add(link["container_id"])
+            if link.get("content_id"):
+                bucket["content_ids"].add(link["content_id"])
+
+        shelves = []
+        for tag, ids in per_tag.items():
+            promoted = {}
+            for container_id in ids["container_ids"]:
+                root_id = self._root_container_id(container_id, parent_map)
+                root = containers_by_id.get(root_id)
+                if root and root_id not in promoted:
+                    promoted[root_id] = ("container", root)
+            for content_id in ids["content_ids"]:
+                parent_id = content_parents.get(content_id)
+                if parent_id:
+                    root_id = self._root_container_id(parent_id, parent_map)
+                    root = containers_by_id.get(root_id)
+                    if root and root_id not in promoted:
+                        promoted[root_id] = ("container", root)
+                    continue
+                content = content_by_id.get(content_id)
+                if content and ("c", content_id) not in promoted:
+                    promoted[("c", content_id)] = ("content", content)
+
+            items = []
+            for _key, (kind, row) in promoted.items():
+                if kind == "container":
+                    items.append(self._container_as_shelf_item(row))
+                else:
+                    items.append(self._content_as_shelf_item(row))
+            if not items:
+                continue
+            self._attach_container_img_urls(
+                [it for it in items if it.get("kind") == "container"]
+            )
+            self._resolve_content_img_urls(
+                [it for it in items if it.get("kind") == "content"]
+            )
+            items.sort(
+                key=lambda it: (
+                    it.get("container_title") or it.get("content_title") or ""
+                ).lower()
+            )
+            shelves.append(
+                {
+                    "tag": tag,
+                    "count": len(items),
+                    "items": items[:item_limit],
+                }
+            )
+
+        shelves.sort(key=lambda s: (-s["count"], s["tag"].lower()))
+        return shelves[:max_tags]
+
+    def _resume_among_content(self, content_rows):
+        """Best Continue Watching row among episodes (latest last_played_at)."""
+        best = None
+        best_played = ""
+        for row in content_rows or []:
+            pos = float(row.get("last_position") or 0)
+            dur = float(row.get("last_duration") or 0)
+            if pos <= 30:
+                continue
+            if dur > 0 and pos / dur >= 0.9:
+                continue
+            played = row.get("last_played_at") or ""
+            if best is None or played > best_played:
+                best = row
+                best_played = played
+        return dict(best) if best else None
+
+    def get_library_title(self, kind, item_id):
+        """One-payload title overlay: show (container) or movie/book/episode (content)."""
+        try:
+            item_id = int(item_id)
+        except (TypeError, ValueError):
+            return None
+        kind = (kind or "").strip().lower()
+        if kind == "container":
+            parents = self.get_top_container(item_id)
+            node = parents[-1] if parents else {}
+            if not node or not node.get("id"):
+                return None
+            self._attach_container_img_urls([node])
+            child_containers = self.query_container([], {"container_id": item_id}, None) or []
+            child_content = self.query_content([], {"container_id": item_id}, None) or []
+            seasons = []
+            nested_episodes = []
+            for season in child_containers:
+                eps = self.query_content([], {"container_id": season.get("id")}, None) or []
+                season_item = dict(season)
+                season_item["episodes"] = eps
+                seasons.append(season_item)
+                nested_episodes.extend(eps)
+            all_episodes = list(child_content) + nested_episodes
+            resume = self._resume_among_content(all_episodes)
+            return {
+                "kind": "container",
+                "id": node.get("id"),
+                "container_id": node.get("id"),
+                "container_title": node.get("container_title"),
+                "description": node.get("description") or "",
+                "img_src": node.get("img_src") or "",
+                "img_url": node.get("img_url") or "",
+                "user_tags": node.get("user_tags"),
+                "parent_containers": parents,
+                "seasons": seasons,
+                "episodes": child_content,
+                "resume_content": resume,
+            }
+        if kind == "content":
+            rows = self.query_content([], {"content_id": item_id}, None) or []
+            if not rows:
+                return None
+            item = dict(rows[0])
+            parent_id = item.get("parent_container_id")
+            parent_map = self._container_parent_map()
+            show_id = (
+                self._root_container_id(parent_id, parent_map) if parent_id else None
+            )
+            return {
+                "kind": "content",
+                "id": item.get("id"),
+                "content_id": item.get("id"),
+                "content_title": item.get("content_title"),
+                "description": item.get("description") or "",
+                "img_src": item.get("img_src") or "",
+                "img_url": item.get("img_url") or "",
+                "user_tags": item.get("user_tags"),
+                "last_position": item.get("last_position"),
+                "last_duration": item.get("last_duration"),
+                "play_count": item.get("play_count"),
+                "parent_container_id": parent_id,
+                "show_container_id": show_id,
+                "show_title": item.get("show_title"),
+            }
+        return None
 
     def update_metadata(self, container_dict):
         if container_dict.get("container_id"):
@@ -475,7 +706,44 @@ class DBHandler(DBConnection):
         params = {'id': content_id}
         return self.get_data_from_db_first_result(parent_containers_query, params)
 
-    def query_container(self, tag_list, container_dict, container_txt_search):
+    def _tag_match_clauses(self, tag_list, owner_expr, match_all, owner_kind):
+        """OR (IN) by default. match_all requires every tag (library chips narrow).
+
+        On a show, a non-type tag also matches when a season or episode has it,
+        so a chip narrows the show grid instead of matching nothing.
+        """
+        if not match_all:
+            placeholders = ", ".join([f":tag_{i}" for i in range(len(tag_list))])
+            return [f"user_tags.tag_title IN ({placeholders})"]
+        clauses = []
+        for index, tag in enumerate(tag_list):
+            on_self = (
+                "EXISTS (SELECT 1 FROM user_tags_content utc "
+                "INNER JOIN user_tags ut ON utc.user_tags_id = ut.id "
+                f"WHERE {owner_expr.replace('user_tags_content.', 'utc.')} "
+                f"AND ut.tag_title = :tag_{index})"
+            )
+            if owner_kind == "container" and tag not in TYPE_TAG_TITLES:
+                clauses.append(
+                    "EXISTS (SELECT 1 FROM user_tags_content utc "
+                    "INNER JOIN user_tags ut ON utc.user_tags_id = ut.id "
+                    f"WHERE ut.tag_title = :tag_{index} AND ("
+                    "utc.container_id = container.id "
+                    "OR utc.container_id IN ("
+                    "SELECT cc.container_id FROM container_container cc "
+                    "WHERE cc.parent_container_id = container.id) "
+                    "OR utc.content_id IN ("
+                    "SELECT cco.content_id FROM container_content cco "
+                    "WHERE cco.parent_container_id = container.id "
+                    "OR cco.parent_container_id IN ("
+                    "SELECT cc2.container_id FROM container_container cc2 "
+                    "WHERE cc2.parent_container_id = container.id))))"
+                )
+            else:
+                clauses.append(on_self)
+        return clauses
+
+    def query_container(self, tag_list, container_dict, container_txt_search, match_all=False):
         # DEFINE
         container_select_clauses = [
             "*",
@@ -489,11 +757,16 @@ class DBHandler(DBConnection):
 
         # BUILD
         if tag_list:
-            placeholders = ', '.join([f':tag_{i}' for i in range(len(tag_list))])
             for index, value in enumerate(tag_list):
                 params[f'tag_{index}'] = value
-            container_where_clauses.append(f"user_tags.tag_title IN ({placeholders})")
-
+            container_where_clauses.extend(
+                self._tag_match_clauses(
+                    tag_list,
+                    "user_tags_content.container_id = container.id",
+                    match_all,
+                    "container",
+                )
+            )
             container_select_clauses.append("GROUP_CONCAT(user_tags.tag_title) AS user_tags")
             container_join_clauses.append(
                 "LEFT JOIN user_tags_content ON container.id = user_tags_content.container_id LEFT JOIN user_tags ON user_tags_content.user_tags_id = user_tags.id")
@@ -528,7 +801,7 @@ class DBHandler(DBConnection):
             params
         )
 
-    def query_content(self, tag_list, container_dict, content_txt_search):
+    def query_content(self, tag_list, container_dict, content_txt_search, match_all=False):
         # print(tag_list)
         # print(container_dict)
         # print()
@@ -539,10 +812,16 @@ class DBHandler(DBConnection):
         content_sort_order = f"ORDER BY content_title"
 
         if tag_list:
-            placeholders = ', '.join([f':tag_{i}' for i in range(len(tag_list))])
             for index, value in enumerate(tag_list):
                 params[f'tag_{index}'] = value
-            content_where_clauses.append(f"user_tags.tag_title IN ({placeholders})")
+            content_where_clauses.extend(
+                self._tag_match_clauses(
+                    tag_list,
+                    "user_tags_content.content_id = content.id",
+                    match_all,
+                    "content",
+                )
+            )
 
         content_select_clauses.append("GROUP_CONCAT(user_tags.tag_title) AS user_tags")
         content_join_clauses.append(
@@ -619,7 +898,7 @@ class DBHandler(DBConnection):
                     container["img_url"] = ""
         return containers
 
-    def query_db(self, tag_list, container_dict, container_txt_search, content_txt_search):
+    def query_db(self, tag_list, container_dict, container_txt_search, content_txt_search, match_all=False):
         ret_data = {}
         # When only one search field is set, keep legacy single-dimension browse.
         # When both are set (unified search) or neither is, return both kinds.
@@ -628,13 +907,13 @@ class DBHandler(DBConnection):
 
         if include_containers:
             ret_data["containers"] = self.query_container(
-                tag_list, container_dict, container_txt_search
+                tag_list, container_dict, container_txt_search, match_all=match_all
             )
             self._attach_container_img_urls(ret_data.get("containers"))
 
         if include_content:
             ret_data["content"] = self.query_content(
-                tag_list, container_dict, content_txt_search
+                tag_list, container_dict, content_txt_search, match_all=match_all
             )
         if container_id := container_dict.get("container_id"):
             ret_data["parent_containers"] = self.get_top_container(container_id)

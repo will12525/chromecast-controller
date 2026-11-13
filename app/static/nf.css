@@ -1,0 +1,556 @@
+/* Netflix-like library chrome. No Netflix wordmark. LAN-safe (no webfonts). */
+:root {
+    --nf-bg: #141414;
+    --nf-elev: #181818;
+    --nf-panel: #181818;
+    --nf-text: #ffffff;
+    --nf-muted: #b3b3b3;
+    --nf-accent: #e50914;
+    --nf-row-gap: 0.35vw;
+    --nf-nav-h: 68px;
+}
+
+.nf-body {
+    background-color: var(--nf-bg);
+    color: var(--nf-text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    padding-top: 0;
+}
+
+.nf-body .navbar.nf-topnav {
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.85), rgba(0, 0, 0, 0)) !important;
+    background-color: transparent !important;
+    transition: background-color 0.2s ease;
+}
+
+.nf-body .navbar.nf-topnav.nf-nav-solid {
+    background: #141414 !important;
+}
+
+.nf-body .navbar .nav-link {
+    color: var(--nf-muted) !important;
+    font-weight: 500;
+}
+
+.nf-body .navbar .nav-link.active,
+.nf-body .navbar .nav-link:hover {
+    color: var(--nf-text) !important;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.nf-app {
+    padding-top: var(--nf-nav-h);
+    padding-bottom: 160px;
+    min-height: 100vh;
+}
+
+.nf-search {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.nf-search input {
+    background: rgba(0, 0, 0, 0.7);
+    border: 1px solid #333;
+    color: var(--nf-text);
+    max-width: 14rem;
+    height: 2rem;
+    font-size: 0.9rem;
+}
+
+.nf-search input:focus {
+    outline: 1px solid var(--nf-text);
+    background: #000;
+    color: var(--nf-text);
+}
+
+.nf-billboard {
+    position: relative;
+    width: 100%;
+    min-height: 42vw;
+    max-height: 80vh;
+    overflow: hidden;
+    margin-bottom: 1rem;
+    background: #000;
+}
+
+.nf-billboard-img {
+    width: 100%;
+    height: 100%;
+    min-height: 42vw;
+    max-height: 80vh;
+    object-fit: cover;
+    object-position: center 20%;
+    display: block;
+    filter: brightness(0.55);
+}
+
+.nf-billboard-fade {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, rgba(20, 20, 20, 0.92) 12%, rgba(20, 20, 20, 0.35) 48%, transparent 70%),
+                linear-gradient(to top, var(--nf-bg) 0%, transparent 42%);
+    pointer-events: none;
+}
+
+.nf-billboard-copy {
+    position: absolute;
+    left: 4%;
+    bottom: 18%;
+    max-width: min(42rem, 52%);
+    z-index: 2;
+}
+
+.nf-billboard-title {
+    font-size: clamp(1.8rem, 4vw, 3.4rem);
+    font-weight: 800;
+    margin: 0 0 0.6rem;
+    text-shadow: 0 2px 16px #000;
+}
+
+.nf-billboard-desc {
+    color: var(--nf-muted);
+    font-size: 1.05rem;
+    max-height: 4.8em;
+    overflow: hidden;
+    margin-bottom: 1rem;
+}
+
+.nf-btn-play,
+.nf-btn-info {
+    border: 0;
+    border-radius: 4px;
+    padding: 0.45rem 1.2rem;
+    font-weight: 700;
+    margin-right: 0.5rem;
+    min-height: 44px;
+}
+
+.nf-btn-play {
+    background: var(--nf-text);
+    color: #141414;
+}
+
+.nf-btn-play:hover {
+    background: #e6e6e6;
+}
+
+.nf-btn-info {
+    background: rgba(109, 109, 110, 0.7);
+    color: var(--nf-text);
+}
+
+.nf-btn-info:hover {
+    background: rgba(109, 109, 110, 0.4);
+}
+
+.nf-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    padding: 0.5rem 4%;
+}
+
+.nf-chip {
+    background: #2a2a2a;
+    color: var(--nf-text);
+    border: 1px solid #3a3a3a;
+    border-radius: 999px;
+    padding: 0.2rem 0.75rem;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.nf-chip.active {
+    background: var(--nf-text);
+    color: #141414;
+    border-color: var(--nf-text);
+}
+
+.library-shelf {
+    margin-bottom: 1.75rem;
+    width: 100%;
+    padding-left: 4%;
+}
+
+.library-shelf-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 0.4rem;
+    color: var(--nf-text);
+}
+
+.nf-row-wrap {
+    position: relative;
+}
+
+.library-shelf-row {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 0.45rem;
+    overflow-x: auto;
+    padding: 0.85rem 4% 1.2rem 0;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+}
+
+.library-shelf-row::-webkit-scrollbar {
+    display: none;
+}
+
+.nf-row-arrow {
+    position: absolute;
+    top: 0;
+    bottom: 0.8rem;
+    width: 2.4rem;
+    z-index: 3;
+    border: 0;
+    background: rgba(20, 20, 20, 0.55);
+    color: var(--nf-text);
+    font-size: 2rem;
+    cursor: pointer;
+    display: none;
+}
+
+.nf-row-arrow.left {
+    left: 0;
+}
+
+.nf-row-arrow.right {
+    right: 0;
+}
+
+@media (hover: hover) {
+    .nf-row-wrap:hover .nf-row-arrow {
+        display: block;
+    }
+}
+
+.nf-tile {
+    flex: 0 0 auto;
+    width: 16vw;
+    min-width: 8.5rem;
+    max-width: 18rem;
+    scroll-snap-align: start;
+    cursor: pointer;
+    color: var(--nf-text);
+}
+
+.nf-tile.nf-tile-wide {
+    width: 22vw;
+    min-width: 11rem;
+}
+
+.nf-tile-poster {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    border-radius: 4px;
+    overflow: hidden;
+    background: #2a2a2a;
+}
+
+.nf-tile-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.nf-tile-progress {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 4px;
+    background: #4d4d4d;
+}
+
+.nf-tile-progress-bar {
+    height: 100%;
+    background: var(--nf-accent);
+}
+
+.nf-tile-play {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    background: rgba(0, 0, 0, 0.55);
+    color: #fff;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+
+.nf-tile-play.visible {
+    display: inline-flex;
+}
+
+@media (hover: hover) {
+    .nf-tile:hover {
+        transform: scale(1.08);
+        z-index: 4;
+        transition: transform 0.2s ease;
+    }
+    .nf-tile:hover .nf-tile-play {
+        display: inline-flex;
+    }
+}
+
+.nf-tile-new {
+    position: absolute;
+    top: 0.35rem;
+    left: 0.35rem;
+    background: var(--nf-accent);
+    color: #fff;
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 0.1rem 0.35rem;
+    border-radius: 2px;
+}
+
+.nf-tile-title {
+    font-size: 0.85rem;
+    margin-top: 0.35rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.nf-tile-sub {
+    font-size: 0.75rem;
+    color: var(--nf-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.nf-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    padding: 0.5rem 4% 2rem;
+}
+
+.nf-grid .nf-tile {
+    width: calc(20% - 0.5rem);
+    min-width: 8rem;
+}
+
+.library-empty {
+    color: var(--nf-muted);
+    font-style: italic;
+    padding: 0.5rem;
+}
+
+.nf-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1080;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 4rem 1rem 8rem;
+    overflow: auto;
+}
+
+.nf-overlay[hidden] {
+    display: none !important;
+}
+
+.nf-overlay-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.72);
+}
+
+.nf-overlay-panel {
+    position: relative;
+    z-index: 1;
+    width: min(56rem, 100%);
+    background: var(--nf-elev);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.6);
+}
+
+.nf-overlay-hero {
+    position: relative;
+    min-height: 16rem;
+}
+
+.nf-overlay-hero img {
+    width: 100%;
+    max-height: 22rem;
+    object-fit: cover;
+    filter: brightness(0.55);
+}
+
+.nf-overlay-hero-text {
+    position: absolute;
+    left: 1.5rem;
+    right: 1.5rem;
+    bottom: 1.25rem;
+}
+
+.nf-overlay-close {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    z-index: 2;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 0;
+    background: #181818;
+    color: #fff;
+}
+
+.nf-overlay-seasons,
+.nf-overlay-episodes {
+    padding: 1rem 1.5rem 1.5rem;
+}
+
+.nf-episode {
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.65rem 0;
+    border-bottom: 1px solid #2a2a2a;
+    cursor: pointer;
+    color: var(--nf-text);
+}
+
+.nf-episode:hover {
+    background: #222;
+}
+
+.nf-player-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1090;
+    background: #000;
+    display: flex;
+    flex-direction: column;
+    padding: 4.5rem 1rem 9rem;
+}
+
+.nf-player-overlay[hidden] {
+    display: none !important;
+}
+
+.nf-player-overlay video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: #000;
+}
+
+.nf-player-back {
+    align-self: flex-start;
+    background: transparent;
+    border: 0;
+    color: #fff;
+    font-size: 1.1rem;
+    min-height: 44px;
+    margin-bottom: 0.5rem;
+}
+
+.nf-body .media-control-bar {
+    background: #141414 !important;
+    color: var(--nf-text);
+}
+
+.nf-body .media-control-bar .form-label,
+.nf-body .media-control-bar output,
+.nf-body .media-control-btn i {
+    color: var(--nf-text) !important;
+}
+
+.nf-body .slider {
+    background: #4d4d4d;
+}
+
+.nf-body .slider::-webkit-slider-thumb {
+    background: var(--nf-accent);
+}
+
+.nf-body .slider::-moz-range-thumb {
+    background: var(--nf-accent);
+}
+
+.nf-body .dropdown-menu {
+    background: #191919;
+    color: var(--nf-text);
+}
+
+.nf-body .dropdown-item {
+    color: var(--nf-text);
+}
+
+.nf-body .dropdown-item:hover {
+    background: #333;
+    color: #fff;
+}
+
+.nf-table-page .nf-billboard,
+.nf-table-page .nf-chips {
+    display: none !important;
+}
+
+.nf-table-page .nf-operator {
+    display: block !important;
+}
+
+.nf-operator {
+    display: none;
+    padding: 0.75rem 4%;
+}
+
+.nf-body .modal-content {
+    background: var(--nf-elev);
+    color: var(--nf-text);
+}
+
+.nf-body .modal-header,
+.nf-body .modal-footer {
+    border-color: #333;
+}
+
+.nf-body .form-control,
+.nf-body .form-select {
+    background: #111;
+    color: var(--nf-text);
+    border-color: #333;
+}
+
+@media (max-width: 768px) {
+    .nf-billboard,
+    .nf-billboard-img {
+        min-height: 56vw;
+    }
+    .nf-billboard-copy {
+        max-width: 90%;
+        bottom: 12%;
+    }
+    .nf-grid .nf-tile,
+    .nf-tile {
+        width: 42vw;
+    }
+    .nf-row-arrow {
+        display: none !important;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .nf-tile:hover {
+        transform: none;
+    }
+}
