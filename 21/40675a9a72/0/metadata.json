@@ -1,0 +1,144 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "2140675a9a72",
+  "session_id": "062ed66e-0240-46c0-9122-399e0c5ccfd8",
+  "strategy": "manual-commit",
+  "created_at": "2026-11-13T17:24:20.624854319Z",
+  "branch": "fix_tests",
+  "checkpoints_count": 7,
+  "save_step_count": 2,
+  "files_touched": [
+    ".gitignore",
+    "README.md",
+    "app/database/db_getter.py",
+    "app/routes/__init__.py",
+    "app/routes/cast_routes.py",
+    "app/routes/editor_routes.py",
+    "app/routes/library_routes.py",
+    "app/routes/shared.py",
+    "app/routes/transfer_routes.py",
+    "app/static/js/app_main.js",
+    "app/static/js/browse.js",
+    "app/static/js/library.js",
+    "app/static/js/scan.js",
+    "app/static/js/title.js",
+    "app/templates/top_navbar.html",
+    "app/utils/backend_handler.py",
+    "app/utils/content_transfer.py",
+    "tests/test_content_transfer_unit.py"
+  ],
+  "agent": "Cursor",
+  "model": "grok-4.7-medium",
+  "turn_id": "d28cbf053764",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 7493,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 140416,
+    "output_tokens": 5301,
+    "api_call_count": 2
+  },
+  "skill_events_version": 1,
+  "skill_events": [
+    {
+      "id": "prompt-skill-cursor-grill-me-2026-11-13T16:55:00.506120279Z",
+      "event_type": "prompt_invocation",
+      "skill": {
+        "name": "grill-me"
+      },
+      "source": {
+        "agent": "cursor",
+        "signal": "prompt_slash_command",
+        "confidence": "explicit"
+      },
+      "turn_id": "dc23eda0aa68",
+      "timestamp": "2026-11-13T16:55:00.506120279Z",
+      "native": {
+        "command": "/grill-me"
+      },
+      "collapse": {
+        "target": "user_message",
+        "label": "/grill-me",
+        "default_collapsed": true
+      }
+    }
+  ],
+  "session_metrics": {
+    "turn_count": 7
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-11-13T17:24:20.620077032Z",
+    "agent_lines": 0,
+    "agent_removed": 1,
+    "human_added": 3027,
+    "human_modified": 48,
+    "human_removed": 0,
+    "total_committed": 3050,
+    "total_lines_changed": 3076,
+    "agent_percentage": 0.032509752925877766,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 29,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0,
+      "user_added_per_file": {
+        "config.json.old": 16,
+        "output.txt": 13
+      }
+    },
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 1563,
+      "user_lines_removed": 48,
+      "agent_lines_added": 97,
+      "agent_lines_removed": 1,
+      "user_added_per_file": {
+        ".gitignore": 3,
+        "README.md": 13,
+        "app/database/db_getter.py": 46,
+        "app/routes/__init__.py": 1,
+        "app/routes/clone_routes.py": 153,
+        "app/routes/shared.py": 6,
+        "app/routes/transfer_routes.py": 5,
+        "app/static/js/browse.js": 13,
+        "app/static/js/clone.js": 410,
+        "app/static/js/library.js": 7,
+        "app/static/js/scan.js": 25,
+        "app/static/js/title.js": 3,
+        "app/templates/clone.html": 67,
+        "app/utils/backend_handler.py": 112,
+        "app/utils/clone_manifest.py": 520,
+        "app/utils/content_transfer.py": 179
+      },
+      "user_removed_per_file": {
+        "README.md": 2,
+        "app/database/db_getter.py": 2,
+        "app/routes/transfer_routes.py": 1,
+        "app/static/js/browse.js": 3,
+        "app/static/js/library.js": 3,
+        "app/static/js/title.js": 2,
+        "app/utils/backend_handler.py": 16,
+        "app/utils/content_transfer.py": 19
+      }
+    },
+    {
+      "checkpoint_number": 3,
+      "user_lines_added": 1512,
+      "user_lines_removed": 0,
+      "agent_lines_added": 465,
+      "agent_lines_removed": 49,
+      "user_added_per_file": {
+        "app/routes/clone_routes.py": 153,
+        "app/routes/main_routes.py": 1,
+        "app/static/js/clone.js": 410,
+        "app/templates/clone.html": 67,
+        "app/utils/clone_manifest.py": 627,
+        "tests/test_content_transfer_unit.py": 254
+      }
+    }
+  ]
+}

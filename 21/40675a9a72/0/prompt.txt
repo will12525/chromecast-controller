@@ -1,0 +1,39 @@
+This stack will run on a RPi 4, suggest ideal lightweight OS to support webapp running in kiosk mode and static auto mounting usb disks
+
+---
+
+The headless Raspberry Pi OS Lite 64-bit will be able to present the kiosked browser?
+
+---
+
+Generate simple bash script to setup client:
+install necssary apt packages
+generate system service to start chromium kiosk target system_services/chromecast_controller.service 
+Turn off console blanking
+identify all USB disks and create automount
+auto setup system_services/media_drive_as_webpage.service for mounted drives
+
+---
+
+Ensure the system will not sleep/turn off the monitor/hdmi output
+Include a cleanup of client OS
+Disable unnecssary functionality to focus media server
+e.g. wifi/bluetooth
+
+---
+
+/grill-me
+
+---
+
+Q1: True
+Q2: True
+Q3: autologin
+Q4: True
+Q5: True
+
+---
+
+Q6: True
+Q7: SERVER_URL is not required, the client setup is a manual process, the user can add server_url at any time
+Q8: True
