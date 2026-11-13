@@ -1,0 +1,47 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "11220144fc56",
+  "strategy": "manual-commit",
+  "branch": "fix_tests",
+  "checkpoints_count": 4,
+  "files_touched": [
+    "AGENTS.md",
+    "README.md",
+    "app/database/db_getter.py",
+    "app/database/db_queries.py",
+    "app/routes/library_routes.py",
+    "app/routes/shared.py",
+    "app/static/app.js",
+    "app/static/js/app_main.js",
+    "app/static/js/browse.js",
+    "app/static/js/library.js",
+    "app/static/js/playback.js",
+    "app/static/js/player_controls.js",
+    "app/static/style.css",
+    "app/templates/bottom_navbar.html",
+    "app/templates/editor.html",
+    "app/templates/index.html",
+    "app/templates/top_navbar.html",
+    "tests/pytest_mocks.py",
+    "tests/test_backend_handler.py",
+    "tests/test_chromecast_handler.py",
+    "tests/test_library_home.py",
+    "tests/test_webpage_builder.py"
+  ],
+  "sessions": [
+    {
+      "metadata": "/11/220144fc56/0/metadata.json",
+      "transcript": "/11/220144fc56/0/full.jsonl",
+      "compact_transcript": "/11/220144fc56/0/transcript.jsonl",
+      "content_hash": "/11/220144fc56/0/content_hash.txt",
+      "prompt": "/11/220144fc56/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 494294,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 12132736,
+    "output_tokens": 46433,
+    "api_call_count": 4
+  }
+}
