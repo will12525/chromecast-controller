@@ -1,0 +1,1 @@
+Analyze workspace, what are the uncommited changes, what chat applied them

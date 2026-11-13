@@ -3,7 +3,7 @@
   "checkpoint_id": "80e849c78f7c",
   "strategy": "manual-commit",
   "branch": "fix_tests",
-  "checkpoints_count": 14,
+  "checkpoints_count": 15,
   "files_touched": [
     "README.md",
     "app/static/nf.css",
@@ -26,13 +26,20 @@
       "compact_transcript": "/80/e849c78f7c/1/transcript.jsonl",
       "content_hash": "/80/e849c78f7c/1/content_hash.txt",
       "prompt": "/80/e849c78f7c/1/prompt.txt"
+    },
+    {
+      "metadata": "/80/e849c78f7c/2/metadata.json",
+      "transcript": "/80/e849c78f7c/2/full.jsonl",
+      "compact_transcript": "/80/e849c78f7c/2/transcript.jsonl",
+      "content_hash": "/80/e849c78f7c/2/content_hash.txt",
+      "prompt": "/80/e849c78f7c/2/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 466536,
+    "input_tokens": 505362,
     "cache_creation_tokens": 0,
-    "cache_read_tokens": 7692416,
-    "output_tokens": 57939,
-    "api_call_count": 11
+    "cache_read_tokens": 7738112,
+    "output_tokens": 59225,
+    "api_call_count": 12
   }
 }
