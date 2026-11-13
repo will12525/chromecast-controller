@@ -17,6 +17,14 @@ NPM_PACKAGES_DEST="${WORKSPACE}/app/static/"
 PYTHON_VENV="${WORKSPACE}/.venv"
 
 EXIT_CODE=0
+DEPS_ONLY=0
+
+if [[ "${1:-}" == "--deps-only" ]]; then
+    DEPS_ONLY=1
+elif [[ -n "${1:-}" ]]; then
+    echo "Unknown argument: ${1}"
+    exit 1
+fi
 
 if [[ $EUID -ne 0 ]]; then
     echo "RUN AS ROOT"
@@ -114,14 +122,17 @@ if [ $EXIT_CODE -eq 0 ]; then
     create_venv
     EXIT_CODE=$?
 fi
-if [ $EXIT_CODE -eq 0 ]; then
-    source_config_file
-    EXIT_CODE=$?
-fi
-if [ $EXIT_CODE -eq 0 ]; then
+if [ "$DEPS_ONLY" -eq 0 ]; then
+    if [ $EXIT_CODE -eq 0 ]; then
+        source_config_file
+        EXIT_CODE=$?
+    fi
+    if [ $EXIT_CODE -eq 0 ]; then
 #    install_system_services
-    EXIT_CODE=$?
+        EXIT_CODE=$?
+    fi
 fi
 if [ $EXIT_CODE -ne 0 ]; then
     echo "INSTALL FAILED"
 fi
+exit "$EXIT_CODE"
