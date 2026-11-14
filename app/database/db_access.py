@@ -1,6 +1,7 @@
 import sys
 import traceback
 import sqlite3
+from contextlib import contextmanager
 from enum import Enum, auto
 
 import app.database.db_queries as queries
@@ -30,6 +31,7 @@ class DBConnection:
 
     def __init__(self, db_type=DBType.PHYSICAL, file_name=None):
         self.db_type = db_type
+        self._in_batch = False
         if file_name:
             self.DB_FILE_NAME = file_name
 
@@ -61,9 +63,28 @@ class DBConnection:
         if sqlite3.complete_statement(query):
             try:
                 cursor.execute(query, params)
-                self.connection.commit()
+                if not self._in_batch:
+                    self.connection.commit()
             except sqlite3.Error as error:
                 print_db_traceback(error, f"Error: Query: {query} Params: {params}")
+                if self._in_batch:
+                    raise
+
+    @contextmanager
+    def batch_writes(self):
+        """Run statements in one transaction. Nested calls join the open batch."""
+        if self._in_batch:
+            yield
+            return
+        self._in_batch = True
+        try:
+            yield
+            self.connection.commit()
+        except Exception:
+            self.connection.rollback()
+            raise
+        finally:
+            self._in_batch = False
 
     def execute_db_script(self, db_script_lines: list):
         ret_val = 0
@@ -85,18 +106,21 @@ class DBConnection:
     def add_data_to_db(self, query, params):
         ret_val = None
         cursor = self.connection.cursor()
-        self.execute_db_query(query, cursor, params)
-        if cursor.rowcount > 0:
-            ret_val = cursor.lastrowid
-        cursor.close()
-        return ret_val
+        try:
+            self.execute_db_query(query, cursor, params)
+            if cursor.rowcount > 0:
+                ret_val = cursor.lastrowid
+            return ret_val
+        finally:
+            cursor.close()
 
     def get_data_from_db(self, query, params=()):
         cursor = self.connection.cursor()
-        self.execute_db_query(query, cursor, params)
-        ret_val = [dict(row) for row in cursor.fetchall()]
-        cursor.close()
-        return ret_val
+        try:
+            self.execute_db_query(query, cursor, params)
+            return [dict(row) for row in cursor.fetchall()]
+        finally:
+            cursor.close()
 
     def get_data_from_db_first_result(self, query, params=()) -> dict:
         if query_result := self.get_data_from_db(query, params):

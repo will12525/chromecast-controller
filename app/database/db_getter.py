@@ -114,9 +114,16 @@ class DBHandler(DBConnection):
         return self.get_row_id(db_queries.GET_USER_TAGS_INFO_ID, tag)
 
     def insert_tag(self, tag):
+        cache = getattr(self, "_scan_tag_ids", None)
+        title = tag.get("tag_title")
+        if cache is not None and title in cache:
+            tag["id"] = cache[title]
+            return tag["id"]
         tag["id"] = self.add_data_to_db(db_queries.SET_USER_TAGS_INFO_TABLE, tag)
         if not tag["id"]:
             tag["id"] = self.get_tag_id(tag)
+        if cache is not None and title and tag.get("id"):
+            cache[title] = tag["id"]
         return tag["id"]
 
     def add_tag_to_container(self, params):
@@ -136,11 +143,18 @@ class DBHandler(DBConnection):
             params)
 
     def insert_container(self, container):
-        if container_id := self.add_data_to_db(db_queries.SET_CONTAINER_INFO_TABLE, container):
+        cache = getattr(self, "_scan_container_ids", None)
+        key = (container.get("container_title"), container.get("container_path"))
+        cached_id = cache.get(key) if cache is not None else None
+        if cached_id:
+            container["id"] = cached_id
+        elif container_id := self.add_data_to_db(db_queries.SET_CONTAINER_INFO_TABLE, container):
             container["id"] = container_id
         else:
             container["id"] = self.get_row_id(db_queries.GET_CONTAINER_INFO_ID, container)
             # self.update_metadata()
+        if cache is not None and container.get("id"):
+            cache[key] = container["id"]
         for tag in container.get("tags"):
             self.insert_tag(tag)
             self.add_tag_to_container({"user_tags_id": tag.get("id"), "container_id": container.get("id")})
@@ -175,17 +189,46 @@ class DBHandler(DBConnection):
         else:
             self.insert_content(container_content)
 
+    def _restore_scan_caches(self, container_snapshot, tag_snapshot):
+        if getattr(self, "_scan_container_ids", None) is not None:
+            self._scan_container_ids.clear()
+            self._scan_container_ids.update(container_snapshot)
+        if getattr(self, "_scan_tag_ids", None) is not None:
+            self._scan_tag_ids.clear()
+            self._scan_tag_ids.update(tag_snapshot)
+
     def collect_directory_content(self, content_directory_info):
         print(f"Scanning directory: {content_directory_info}")
-        for container_content in collect_mp4_files(content_directory_info):
-            self.insert_container_content(container_content)
+        known_srcs = {
+            row.get("content_src")
+            for row in self.get_all_content_paths()
+            if row.get("content_src")
+        }
+        for container_content in collect_mp4_files(
+            content_directory_info, known_srcs=known_srcs
+        ):
+            container_snapshot = dict(getattr(self, "_scan_container_ids", None) or {})
+            tag_snapshot = dict(getattr(self, "_scan_tag_ids", None) or {})
+            try:
+                with self.batch_writes():
+                    self.insert_container_content(container_content)
+            except Exception as error:
+                print(f"ERROR: scan skipped file: {error}")
+                traceback.print_exc()
+                self._restore_scan_caches(container_snapshot, tag_snapshot)
 
     def scan_content_directories(self):
-        if content_directory_list := self.get_all_content_directory_info():
-            print(f"Scanning: {content_directory_list}")
-            for content_directory_info in content_directory_list:
-                self.collect_directory_content(content_directory_info)
-        print("Scan Complete")
+        self._scan_container_ids = {}
+        self._scan_tag_ids = {}
+        try:
+            if content_directory_list := self.get_all_content_directory_info():
+                print(f"Scanning: {content_directory_list}")
+                for content_directory_info in content_directory_list:
+                    self.collect_directory_content(content_directory_info)
+            print("Scan Complete")
+        finally:
+            self._scan_container_ids = None
+            self._scan_tag_ids = None
 
     def setup_content_directory(self, content_directory_info):
         if self.add_content_directory_info(content_directory_info):

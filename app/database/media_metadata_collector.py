@@ -148,7 +148,7 @@ def build_book(content_src, mp4_file_path, match, content_data):
         content_data['img_src'] = img_src.as_posix().replace(content_src, '')
 
 
-def build_tv_show(content_src, mp4_file_path, match, content_data):
+def build_tv_show(content_src, mp4_file_path, match, content_data, probe=True):
     parent_folder = mp4_file_path.parent
     container_path = parent_folder.as_posix().replace(content_src, '')
     tv_show_title, season_index_str, episode_index_str = match.groups()
@@ -159,7 +159,8 @@ def build_tv_show(content_src, mp4_file_path, match, content_data):
     content_data["tags"] = [{"tag_title": "episode"}]
     if img_src := file_exists_with_extensions(parent_folder, mp4_file_path.name):
         content_data['img_src'] = img_src.as_posix().replace(content_src, '')
-    if mp4_file_path.exists():
+    # Rescans already have a title from the first insert (INSERT OR IGNORE).
+    if probe and mp4_file_path.exists():
         get_ffmpeg_metadata(mp4_file_path, content_data)
 
     if not content_data.get("content_title"):
@@ -203,10 +204,11 @@ def get_content_type(file_name):
 # def get_file_path_list():
 #     yield list((content_directory_src / sub_dir).rglob(mp4_file_ext))
 
-def collect_mp4_files(content_directory_info, search_func=None):
+def collect_mp4_files(content_directory_info, search_func=None, known_srcs=None):
     content_directory_src = pathlib.Path(content_directory_info.get("content_src"))
     content_directory_src_posix = content_directory_src.as_posix()
-    search_func = search_func or (lambda p, ext: list(p.rglob(ext)))
+    known_srcs = set(known_srcs or ())
+    search_func = search_func or (lambda p, ext: p.rglob(ext))
     for sub_dir in ["tv_shows", "movies", "books"]:
         for mp4_file_path in search_func(content_directory_src / sub_dir, mp4_file_ext):
             # print(mp4_file_path)
@@ -217,7 +219,10 @@ def collect_mp4_files(content_directory_info, search_func=None):
             content_data['content_directory_id'] = content_directory_info['id']
             content_data['content_src'] = mp4_file_path_posix.replace(content_directory_src_posix, '')
             if ContentType.TV == content_type:
-                container_data = build_tv_show(content_directory_src_posix, mp4_file_path, match, content_data)
+                probe = content_data["content_src"] not in known_srcs
+                container_data = build_tv_show(
+                    content_directory_src_posix, mp4_file_path, match, content_data, probe=probe
+                )
             elif ContentType.MOVIE == content_type:
                 build_movie(content_directory_src_posix, mp4_file_path, match, content_data)
             elif ContentType.BOOK == content_type:
