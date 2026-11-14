@@ -1,0 +1,33 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "4286cb1dd1b3",
+  "session_id": "6004fa95-83b6-462c-9f34-5e7d4b3581b8",
+  "strategy": "manual-commit",
+  "created_at": "2026-11-14T04:15:35.808604486Z",
+  "branch": "fix_tests",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "app/database/db_getter.py"
+  ],
+  "agent": "Cursor",
+  "model": "grok-4.7-medium",
+  "turn_id": "6e1cc86882ef",
+  "checkpoint_transcript_start": 8,
+  "transcript_lines_at_start": 8,
+  "compact_transcript_start": 3,
+  "session_metrics": {
+    "turn_count": 2
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-11-14T04:15:35.806178315Z",
+    "agent_lines": 0,
+    "agent_removed": 0,
+    "human_added": 144,
+    "human_modified": 8,
+    "human_removed": 0,
+    "total_committed": 144,
+    "total_lines_changed": 157,
+    "agent_percentage": 0,
+    "metric_version": 2
+  }
+}
