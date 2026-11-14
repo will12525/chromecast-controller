@@ -3,9 +3,12 @@
   "checkpoint_id": "4286cb1dd1b3",
   "strategy": "manual-commit",
   "branch": "fix_tests",
-  "checkpoints_count": 5,
+  "checkpoints_count": 7,
   "files_touched": [
-    "app/database/db_getter.py"
+    "app/database/db_access.py",
+    "app/database/db_getter.py",
+    "app/database/media_metadata_collector.py",
+    "tests/test_media_scan.py"
   ],
   "sessions": [
     {
@@ -21,6 +24,20 @@
       "compact_transcript": "/42/86cb1dd1b3/1/transcript.jsonl",
       "content_hash": "/42/86cb1dd1b3/1/content_hash.txt",
       "prompt": "/42/86cb1dd1b3/1/prompt.txt"
+    },
+    {
+      "metadata": "/42/86cb1dd1b3/2/metadata.json",
+      "transcript": "/42/86cb1dd1b3/2/full.jsonl",
+      "compact_transcript": "/42/86cb1dd1b3/2/transcript.jsonl",
+      "content_hash": "/42/86cb1dd1b3/2/content_hash.txt",
+      "prompt": "/42/86cb1dd1b3/2/prompt.txt"
     }
-  ]
+  ],
+  "token_usage": {
+    "input_tokens": 147365,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 1559936,
+    "output_tokens": 26146,
+    "api_call_count": 2
+  }
 }
